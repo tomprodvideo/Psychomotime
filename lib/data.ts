@@ -8,6 +8,7 @@ const DEFAULT_SETTINGS: Omit<Settings, "user_id" | "created_at" | "updated_at"> 
     urssaf_rate: 0.232,
     charge_mode: "retrocession",
     monthly_rent: 0,
+    profile: {},
   };
 
 /** Récupère (ou crée) la ligne de paramètres de l'utilisateur connecté. */

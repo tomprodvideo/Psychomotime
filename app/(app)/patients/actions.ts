@@ -18,6 +18,7 @@ export async function savePatient(formData: FormData) {
     birth_date: str(formData.get("birth_date")),
     email: str(formData.get("email")),
     phone: str(formData.get("phone")),
+    address: str(formData.get("address")),
     notes: str(formData.get("notes")),
   };
   if (id) {

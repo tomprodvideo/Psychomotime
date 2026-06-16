@@ -1,5 +1,15 @@
 export type ChargeMode = "retrocession" | "loyer";
 
+export interface Profile {
+  logo_url?: string; // image en base64 (data URL)
+  address?: string;
+  siret?: string;
+  adeli?: string;
+  business_email?: string;
+  business_phone?: string;
+  legal_mentions?: string;
+}
+
 export interface Settings {
   user_id: string;
   display_name: string | null;
@@ -7,6 +17,7 @@ export interface Settings {
   urssaf_rate: number;
   charge_mode: ChargeMode;
   monthly_rent: number;
+  profile: Profile;
   created_at: string;
   updated_at: string;
 }
@@ -19,6 +30,7 @@ export interface Patient {
   birth_date: string | null;
   email: string | null;
   phone: string | null;
+  address: string | null;
   notes: string | null;
   created_at: string;
 }
@@ -36,6 +48,8 @@ export interface Invoice {
   revenue_gross_paid: number;
   payment_method: string | null;
   payment_date: string | null;
+  issue_date: string | null;
+  service_label: string | null;
   retrocession_amount: number;
   urssaf_amount: number;
   after_retro: number; // colonne générée

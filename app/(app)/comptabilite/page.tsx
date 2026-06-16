@@ -75,16 +75,26 @@ export default async function ComptabilitePage({
 
       <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-6">
         <StatCard label="Total brut" value={euro(totals.brut)} accent="slate" />
-        <StatCard
-          label="Rétrocession"
-          value={euro(totals.retrocession)}
-          accent="rose"
-        />
-        <StatCard
-          label="Brut − rétro"
-          value={euro(totals.brutMoinsRetro)}
-          accent="slate"
-        />
+        {settings.charge_mode === "loyer" ? (
+          <StatCard
+            label="Loyers"
+            value={euro(totalLoyers)}
+            accent="rose"
+          />
+        ) : (
+          <>
+            <StatCard
+              label="Rétrocession"
+              value={euro(totals.retrocession)}
+              accent="rose"
+            />
+            <StatCard
+              label="Brut − rétro"
+              value={euro(totals.brutMoinsRetro)}
+              accent="slate"
+            />
+          </>
+        )}
         <StatCard label="URSSAF" value={euro(totals.urssaf)} accent="amber" />
         <StatCard
           label="Revenu net"
@@ -93,7 +103,7 @@ export default async function ComptabilitePage({
           hint={`${totals.count} facture${totals.count > 1 ? "s" : ""}`}
         />
         <StatCard
-          label="Net après loyer"
+          label={settings.charge_mode === "loyer" ? "Net après loyer" : "Net − loyer"}
           value={euro(resultatApresLoyer)}
           accent="emerald"
           hint={totalLoyers ? `loyers ${euro(totalLoyers)}` : undefined}

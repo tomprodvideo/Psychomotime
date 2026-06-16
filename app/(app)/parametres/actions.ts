@@ -23,6 +23,21 @@ export async function updateSettings(formData: FormData) {
   const charge_mode =
     String(formData.get("charge_mode")) === "loyer" ? "loyer" : "retrocession";
 
+  const str = (k: string) => {
+    const v = String(formData.get(k) ?? "").trim();
+    return v === "" ? undefined : v;
+  };
+
+  const profile = {
+    logo_url: str("logo_url"),
+    address: str("address"),
+    siret: str("siret"),
+    adeli: str("adeli"),
+    business_email: str("business_email"),
+    business_phone: str("business_phone"),
+    legal_mentions: str("legal_mentions"),
+  };
+
   await supabase.from("settings").upsert({
     user_id: user.id,
     display_name: String(formData.get("display_name") ?? "").trim() || null,
@@ -30,6 +45,7 @@ export async function updateSettings(formData: FormData) {
     urssaf_rate: pctToRate(formData.get("urssaf_rate")),
     charge_mode,
     monthly_rent: num(formData.get("monthly_rent")),
+    profile,
     updated_at: new Date().toISOString(),
   });
 

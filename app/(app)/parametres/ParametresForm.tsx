@@ -9,6 +9,21 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
   const [mode, setMode] = useState(settings.charge_mode);
   const [pending, start] = useTransition();
   const [saved, setSaved] = useState(false);
+  const [logo, setLogo] = useState(settings.profile?.logo_url ?? "");
+  const [logoError, setLogoError] = useState("");
+
+  function handleLogo(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 1_000_000) {
+      setLogoError("Image trop lourde (max 1 Mo). Réduisez-la puis réessayez.");
+      return;
+    }
+    setLogoError("");
+    const reader = new FileReader();
+    reader.onload = () => setLogo(String(reader.result));
+    reader.readAsDataURL(file);
+  }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -31,6 +46,107 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
             placeholder="Ex. Manon Dupont, psychomotricienne D.E."
             className={inputCls}
           />
+        </div>
+      </Section>
+
+      <Section title="Profil professionnel (apparaît sur les factures)">
+        <input type="hidden" name="logo_url" value={logo} />
+        <div className="flex items-center gap-4 mb-4">
+          <div className="h-20 w-20 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0">
+            {logo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={logo}
+                alt="Logo"
+                className="max-h-full max-w-full object-contain"
+              />
+            ) : (
+              <span className="text-xs text-slate-400 text-center px-1">
+                Aucun logo
+              </span>
+            )}
+          </div>
+          <div>
+            <label className="inline-block cursor-pointer text-sm font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 px-3 py-2 rounded-lg">
+              {logo ? "Changer le logo" : "Ajouter un logo"}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/svg+xml"
+                onChange={handleLogo}
+                className="hidden"
+              />
+            </label>
+            {logo && (
+              <button
+                type="button"
+                onClick={() => setLogo("")}
+                className="ml-2 text-sm text-slate-500 hover:text-rose-600"
+              >
+                Retirer
+              </button>
+            )}
+            {logoError && (
+              <p className="text-xs text-rose-600 mt-1">{logoError}</p>
+            )}
+            <p className="text-xs text-slate-400 mt-1">PNG, JPG ou SVG · max 1 Mo.</p>
+          </div>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="sm:col-span-2">
+            <Label>Adresse (cabinet)</Label>
+            <input
+              name="address"
+              defaultValue={settings.profile?.address ?? ""}
+              placeholder="12 rue des Lilas, 75000 Paris"
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <Label>Email professionnel</Label>
+            <input
+              name="business_email"
+              type="email"
+              defaultValue={settings.profile?.business_email ?? ""}
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <Label>Téléphone</Label>
+            <input
+              name="business_phone"
+              defaultValue={settings.profile?.business_phone ?? ""}
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <Label>N° SIRET</Label>
+            <input
+              name="siret"
+              defaultValue={settings.profile?.siret ?? ""}
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <Label>N° ADELI</Label>
+            <input
+              name="adeli"
+              defaultValue={settings.profile?.adeli ?? ""}
+              className={inputCls}
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <Label>Mentions légales (bas de facture)</Label>
+            <textarea
+              name="legal_mentions"
+              rows={2}
+              defaultValue={
+                settings.profile?.legal_mentions ??
+                "TVA non applicable, art. 293 B du CGI."
+              }
+              className={inputCls}
+            />
+          </div>
         </div>
       </Section>
 

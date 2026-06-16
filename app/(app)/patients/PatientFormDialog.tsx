@@ -101,6 +101,14 @@ export default function PatientFormDialog({
                   />
                 </div>
                 <div className="col-span-2">
+                  <Label>Adresse</Label>
+                  <input
+                    name="address"
+                    defaultValue={patient?.address ?? ""}
+                    className={inputCls}
+                  />
+                </div>
+                <div className="col-span-2">
                   <Label>Notes</Label>
                   <textarea
                     name="notes"

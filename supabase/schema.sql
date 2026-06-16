@@ -12,6 +12,7 @@ create table if not exists public.settings (
   urssaf_rate numeric not null default 0.232,         -- 23,2 %
   charge_mode text not null default 'retrocession' check (charge_mode in ('retrocession','loyer')),
   monthly_rent numeric not null default 0,            -- loyer mensuel
+  profile jsonb not null default '{}'::jsonb,         -- logo (base64), adresse, SIRET, ADELI, mentions, contacts
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -25,6 +26,7 @@ create table if not exists public.patients (
   birth_date date,
   email text,
   phone text,
+  address text,
   notes text,
   created_at timestamptz not null default now()
 );
@@ -43,6 +45,8 @@ create table if not exists public.invoices (
   revenue_gross_paid numeric not null default 0,      -- revenu brut payé
   payment_method text,                                -- ex: Virement, Espèces, Chèque, CB
   payment_date date,
+  issue_date date,                                    -- date d'émission de la facture
+  service_label text,                                 -- libellé de la prestation
   retrocession_amount numeric not null default 0,     -- montant rétrocession (ou 0 en mode loyer)
   urssaf_amount numeric not null default 0,           -- montant URSSAF estimé
   after_retro numeric generated always as (revenue_gross - retrocession_amount) stored,

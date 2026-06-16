@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
+import Link from "next/link";
+import {
+  Check,
+  Download,
+  FileText,
+  Pencil,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
 import type { Invoice, Patient, Settings } from "@/lib/types";
 import { euro } from "@/lib/format";
 import { computeInvoice } from "@/lib/calc";
@@ -33,9 +42,19 @@ export default function ComptaClient({
     setOpen(true);
   };
 
+  const showRetro = settings.charge_mode !== "loyer";
+
   return (
     <>
-      <div className="flex justify-end mb-4">
+      <div className="flex justify-end gap-2 mb-4">
+        <button
+          onClick={() => exportInvoicesCSV(invoices, showRetro)}
+          disabled={invoices.length === 0}
+          className="inline-flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium px-4 py-2 rounded-lg transition disabled:opacity-50"
+        >
+          <Download className="h-4 w-4" />
+          Télécharger (CSV)
+        </button>
         <button
           onClick={openNew}
           className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shadow-sm"
@@ -56,8 +75,8 @@ export default function ComptaClient({
               <Th className="text-right">Brut</Th>
               <Th className="text-right">Brut payé</Th>
               <Th>Paiement</Th>
-              <Th className="text-right">Rétrocession</Th>
-              <Th className="text-right">Après rétro</Th>
+              {showRetro && <Th className="text-right">Rétrocession</Th>}
+              {showRetro && <Th className="text-right">Après rétro</Th>}
               <Th className="text-right">URSSAF</Th>
               <Th className="text-right">Net</Th>
               <Th className="text-right">Actions</Th>
@@ -67,7 +86,7 @@ export default function ComptaClient({
             {invoices.length === 0 && (
               <tr>
                 <td
-                  colSpan={12}
+                  colSpan={showRetro ? 12 : 10}
                   className="text-center text-slate-400 py-10 text-sm"
                 >
                   Aucune facture pour le moment. Cliquez sur « Nouvelle facture ».
@@ -104,10 +123,14 @@ export default function ComptaClient({
                     ? ` ${new Date(inv.payment_date + "T00:00:00").toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })}`
                     : ""}
                 </Td>
-                <Td className="text-right text-rose-600">
-                  {euro(inv.retrocession_amount)}
-                </Td>
-                <Td className="text-right">{euro(inv.after_retro)}</Td>
+                {showRetro && (
+                  <Td className="text-right text-rose-600">
+                    {euro(inv.retrocession_amount)}
+                  </Td>
+                )}
+                {showRetro && (
+                  <Td className="text-right">{euro(inv.after_retro)}</Td>
+                )}
                 <Td className="text-right text-amber-600">
                   {euro(inv.urssaf_amount)}
                 </Td>
@@ -115,6 +138,14 @@ export default function ComptaClient({
                   {euro(inv.net_revenue)}
                 </Td>
                 <Td className="text-right whitespace-nowrap">
+                  <Link
+                    href={`/comptabilite/${inv.id}/facture`}
+                    className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded inline-block"
+                    aria-label="Éditer la facture"
+                    title="Éditer / envoyer la facture"
+                  >
+                    <FileText className="h-4 w-4" />
+                  </Link>
                   <button
                     onClick={() => openEdit(inv)}
                     className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded"
@@ -368,6 +399,26 @@ function InvoiceDialog({
               />
             </div>
 
+            <div>
+              <Label>Date de la facture</Label>
+              <input
+                name="issue_date"
+                type="date"
+                defaultValue={invoice?.issue_date ?? ""}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <Label>Prestation (libellé facture)</Label>
+              <input
+                name="service_label"
+                defaultValue={
+                  invoice?.service_label ?? "Séance de psychomotricité"
+                }
+                className={inputCls}
+              />
+            </div>
+
             <div className="flex items-center gap-2 sm:col-span-2">
               <input
                 id="has_pco"
@@ -530,4 +581,74 @@ function Td({
   className?: string;
 }) {
   return <td className={`px-3 py-2.5 ${className}`}>{children}</td>;
+}
+
+function exportInvoicesCSV(invoices: Invoice[], showRetro: boolean) {
+  const fmt = (n: number) => (n ?? 0).toFixed(2).replace(".", ",");
+  const sum = (sel: (i: Invoice) => number) =>
+    invoices.reduce((s, i) => s + (sel(i) || 0), 0);
+
+  const headers = [
+    "Prénom / Nom",
+    "N° facture",
+    "Mois",
+    "Année",
+    "PCO",
+    "Brut",
+    "Brut payé",
+    "Moyen paiement",
+    "Date paiement",
+    ...(showRetro ? ["Rétrocession", "Après rétro"] : []),
+    "URSSAF",
+    "Net",
+  ];
+
+  const rows = invoices.map((i) => [
+    i.patient_name ?? "",
+    i.invoice_number ?? "",
+    i.billing_month ?? "",
+    i.billing_year ?? "",
+    i.has_pco ? "oui" : "non",
+    fmt(i.revenue_gross),
+    fmt(i.revenue_gross_paid),
+    i.payment_method ?? "",
+    i.payment_date ?? "",
+    ...(showRetro ? [fmt(i.retrocession_amount), fmt(i.after_retro)] : []),
+    fmt(i.urssaf_amount),
+    fmt(i.net_revenue),
+  ]);
+
+  const totalRow = [
+    "TOTAL",
+    "",
+    "",
+    "",
+    "",
+    fmt(sum((i) => i.revenue_gross)),
+    fmt(sum((i) => i.revenue_gross_paid)),
+    "",
+    "",
+    ...(showRetro
+      ? [fmt(sum((i) => i.retrocession_amount)), fmt(sum((i) => i.after_retro))]
+      : []),
+    fmt(sum((i) => i.urssaf_amount)),
+    fmt(sum((i) => i.net_revenue)),
+  ];
+
+  const esc = (v: string | number) => {
+    const s = String(v);
+    return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+
+  const csv =
+    "﻿" +
+    [headers, ...rows, totalRow].map((r) => r.map(esc).join(";")).join("\r\n");
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "comptabilite-psychomotime.csv";
+  a.click();
+  URL.revokeObjectURL(url);
 }
