@@ -1,26 +1,53 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f5f7f8;
+  --foreground: #1a2230;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-brand-50: #eef7f6;
+  --color-brand-100: #d4ebe8;
+  --color-brand-200: #a9d7d1;
+  --color-brand-300: #76bdb4;
+  --color-brand-400: #4aa097;
+  --color-brand-500: #2f8a82;
+  --color-brand-600: #226e69;
+  --color-brand-700: #1d5854;
+  --color-brand-800: #194745;
+  --color-brand-900: #163b3a;
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- Impression (export PDF des bilans via Imprimer) ---- */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .print-area {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+  body {
+    background: #fff !important;
+  }
+  @page {
+    margin: 18mm 16mm;
+  }
 }

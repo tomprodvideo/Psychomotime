@@ -1,36 +1,77 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Psychomotime
 
-## Getting Started
+Application web pour psychomotricien(ne) libéral(e) : **comptabilité** (factures, calculs
+automatiques rétrocession / URSSAF / net, loyers) et **bilans psychomoteurs**
+(modèle structuré + texte libre, export PDF).
 
-First, run the development server:
+Construit avec **Next.js 16**, **React 19**, **Tailwind CSS** et **Supabase**
+(base de données PostgreSQL + authentification).
+
+---
+
+## Mise en route (3 étapes)
+
+### 1. Créer les tables dans Supabase
+
+- Ouvrez votre projet Supabase → **SQL Editor** → **New query**
+- Copiez tout le contenu de [`supabase/schema.sql`](supabase/schema.sql)
+- Cliquez sur **Run**
+
+Cela crée les tables (patients, factures, bilans, charges, paramètres),
+la sécurité par utilisateur (RLS) et la création automatique du profil.
+
+### 2. Renseigner la clé Supabase
+
+Dans le fichier `.env.local` à la racine, collez votre clé **anon / publishable**
+(Supabase → **Project Settings** → **API Keys**) :
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+NEXT_PUBLIC_SUPABASE_URL=https://sisummvlowhtfgiatwwf.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...        # votre clé
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+> Astuce : pour une connexion immédiate sans email de confirmation, désactivez
+> « Confirm email » dans Supabase → **Authentication** → **Sign In / Providers** → Email.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Lancer l'application
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm install      # si ce n'est pas déjà fait
+npm run dev
+```
 
-## Learn More
+Ouvrez http://localhost:3000, créez votre compte (onglet « Créer un compte »),
+puis connectez-vous.
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Fonctionnalités
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Tableau de bord** : revenu net de l'année, URSSAF estimée, patients, derniers bilans.
+- **Comptabilité** : tableau des factures façon tableur, calcul automatique de la
+  rétrocession, de l'URSSAF et du revenu net ; totaux ; filtre par année ; suivi
+  des loyers/charges ; case PCO ; moyen et date de paiement.
+- **Patients** : fiches (prénom, nom, naissance, contact, notes), historique des
+  factures et bilans.
+- **Bilans psychomoteurs** : éditeur structuré par domaines (anamnèse, tonus,
+  motricité globale/fine, latéralité, schéma corporel, espace, temps, graphisme,
+  attention, affect, conclusion, projet) ; statut brouillon/finalisé ; aperçu
+  imprimable et export PDF (via Imprimer).
+- **Paramètres** : taux de rétrocession, mode loyer fixe, taux URSSAF, nom affiché.
 
-## Deploy on Vercel
+## Calculs
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `rétrocession = revenu brut × taux` (ou `0` en mode loyer)
+- `après rétro = revenu brut − rétrocession`
+- `URSSAF = après rétro × taux URSSAF`
+- `revenu net = après rétro − URSSAF`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Les montants sont enregistrés à la saisie : modifier un taux plus tard ne change
+pas les factures déjà créées (historique préservé). Chaque montant reste modifiable
+à la main (bouton Auto / Manuel).
+
+## Déploiement en ligne (optionnel)
+
+Hébergez gratuitement sur [Vercel](https://vercel.com) : importez le dépôt GitHub,
+ajoutez les deux variables d'environnement (`NEXT_PUBLIC_SUPABASE_URL` et
+`NEXT_PUBLIC_SUPABASE_ANON_KEY`), déployez.
