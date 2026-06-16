@@ -7,6 +7,8 @@ import {
   Check,
   Eye,
   Loader2,
+  Mic,
+  Square,
   Save,
   Sparkles,
   Undo2,
@@ -16,6 +18,7 @@ import { BILAN_TEMPLATE } from "@/lib/constants";
 import ConfirmDeleteButton from "@/components/ConfirmDeleteButton";
 import { saveBilan, deleteBilan } from "../actions";
 import { reformulateText } from "../ai-actions";
+import { useDictation } from "./useDictation";
 
 export default function BilanEditor({ bilan }: { bilan: Bilan }) {
   const [title, setTitle] = useState(bilan.title);
@@ -64,6 +67,16 @@ export default function BilanEditor({ bilan }: { bilan: Bilan }) {
     setUndo(null);
     setDirty(true);
   }
+
+  // Dictée vocale : ajoute le texte transcrit à la fin de la section.
+  const dictation = useDictation((text, id) => {
+    setContent((c) => {
+      const prev = c[id] ?? "";
+      const sep = prev && !/\s$/.test(prev) ? " " : "";
+      return { ...c, [id]: prev + sep + text };
+    });
+    setDirty(true);
+  });
 
   const doSave = (newStatus?: string) =>
     start(async () => {
@@ -158,30 +171,57 @@ export default function BilanEditor({ bilan }: { bilan: Bilan }) {
               {grp.sections.map((s) => {
                 const busy = aiBusy === s.id;
                 const hasText = (content[s.id] ?? "").trim() !== "";
+                const recording = dictation.activeId === s.id;
+                const otherRecording =
+                  dictation.activeId !== null && dictation.activeId !== s.id;
                 return (
                   <div key={s.id} className="p-4">
                     <div className="flex items-center justify-between gap-2 mb-1">
                       <label className="block text-sm font-medium text-slate-700">
                         {s.title}
                       </label>
-                      <button
-                        type="button"
-                        onClick={() => handleReformulate(s.id, s.title)}
-                        disabled={busy || !hasText || aiBusy !== null}
-                        title={
-                          hasText
-                            ? "Reformuler proprement avec l'IA"
-                            : "Écrivez d'abord vos notes"
-                        }
-                        className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 px-2.5 py-1 rounded-full transition disabled:opacity-40 shrink-0"
-                      >
-                        {busy ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Sparkles className="h-3.5 w-3.5" />
-                        )}
-                        {busy ? "Reformulation…" : "Reformuler"}
-                      </button>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => dictation.toggle(s.id)}
+                          disabled={!dictation.supported || otherRecording || busy}
+                          title={
+                            dictation.supported
+                              ? "Dicter à la voix"
+                              : "Dictée non disponible sur ce navigateur (utilisez Chrome ou Safari)"
+                          }
+                          className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition disabled:opacity-40 ${
+                            recording
+                              ? "bg-rose-100 text-rose-700 animate-pulse"
+                              : "text-slate-600 bg-slate-100 hover:bg-slate-200"
+                          }`}
+                        >
+                          {recording ? (
+                            <Square className="h-3.5 w-3.5 fill-current" />
+                          ) : (
+                            <Mic className="h-3.5 w-3.5" />
+                          )}
+                          {recording ? "Stop" : "Dicter"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleReformulate(s.id, s.title)}
+                          disabled={busy || !hasText || aiBusy !== null}
+                          title={
+                            hasText
+                              ? "Reformuler proprement avec l'IA"
+                              : "Écrivez d'abord vos notes"
+                          }
+                          className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 px-2.5 py-1 rounded-full transition disabled:opacity-40"
+                        >
+                          {busy ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Sparkles className="h-3.5 w-3.5" />
+                          )}
+                          {busy ? "Reformulation…" : "Reformuler"}
+                        </button>
+                      </div>
                     </div>
                     <textarea
                       value={content[s.id] ?? ""}
