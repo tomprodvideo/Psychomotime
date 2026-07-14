@@ -80,6 +80,7 @@ export default async function BilanApercuPage({
   const author = settings.display_name ?? b.author ?? "Psychomotricien(ne)";
   const birth = patient?.birth_date;
   const usedLabels = usedIds.length > 0;
+  const accent = profile.theme_color || "#2f8a82";
 
   function mabcTables(blockKeys?: ("equilibre" | "oculo" | "dexterite")[]) {
     if (!mabcUsed || !group || !blockKeys) return null;
@@ -159,7 +160,10 @@ export default async function BilanApercuPage({
       </div>
 
       <div className="py-8 px-4 print:p-0">
-        <article className="print-area max-w-3xl mx-auto bg-white shadow-sm border border-slate-200 rounded-lg px-12 py-10 print:shadow-none print:border-0 text-[13px] leading-relaxed text-slate-800">
+        <article
+          className="print-area max-w-3xl mx-auto bg-white shadow-sm border border-slate-200 rounded-lg px-12 py-10 print:shadow-none print:border-0 text-[13px] leading-relaxed text-slate-800"
+          style={{ ["--accent" as string]: accent } as React.CSSProperties}
+        >
           {/* En-tête praticien */}
           <header className="mb-6">
             <div className="flex items-start gap-4">
@@ -187,7 +191,10 @@ export default async function BilanApercuPage({
               {profile.city ? `Au ${profile.city}, le ` : "Le "}
               {b.bilan_date ? frDate(b.bilan_date) : "…"}
             </p>
-            <h1 className="text-center text-lg font-bold tracking-wide text-slate-900 mt-4">
+            <h1
+              className="text-center text-lg font-bold tracking-wide mt-4"
+              style={{ color: "var(--accent)" }}
+            >
               COMPTE RENDU DU BILAN PSYCHOMOTEUR
             </h1>
           </header>
@@ -327,7 +334,10 @@ export default async function BilanApercuPage({
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="font-bold text-slate-900 text-[14px] mb-2 pb-1 border-b-2 border-brand-500 inline-block">
+    <h2
+      className="font-bold text-slate-900 text-[14px] mb-2 pb-1 border-b-2 inline-block"
+      style={{ borderColor: "var(--accent)" }}
+    >
       {children}
     </h2>
   );

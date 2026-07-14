@@ -38,6 +38,7 @@ export async function updateSettings(formData: FormData) {
     business_email: str("business_email"),
     business_phone: str("business_phone"),
     legal_mentions: str("legal_mentions"),
+    theme_color: str("theme_color"),
   };
 
   await supabase.from("settings").upsert({

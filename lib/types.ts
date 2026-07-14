@@ -10,6 +10,7 @@ export interface Profile {
   business_email?: string;
   business_phone?: string;
   legal_mentions?: string;
+  theme_color?: string; // couleur d'accent des bilans (hex)
 }
 
 export interface Settings {

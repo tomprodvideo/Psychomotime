@@ -5,12 +5,29 @@ import { Check } from "lucide-react";
 import type { Settings } from "@/lib/types";
 import { updateSettings } from "./actions";
 
+const DEFAULT_THEME = "#2f8a82";
+const THEME_PRESETS = [
+  { name: "Bleu-vert (défaut)", value: "#2f8a82" },
+  { name: "Émeraude", value: "#059669" },
+  { name: "Bleu", value: "#2563eb" },
+  { name: "Indigo", value: "#4f46e5" },
+  { name: "Violet", value: "#7c3aed" },
+  { name: "Rose", value: "#db2777" },
+  { name: "Framboise", value: "#e11d48" },
+  { name: "Ambre", value: "#d97706" },
+  { name: "Terracotta", value: "#c0504d" },
+  { name: "Ardoise", value: "#475569" },
+];
+
 export default function ParametresForm({ settings }: { settings: Settings }) {
   const [mode, setMode] = useState(settings.charge_mode);
   const [pending, start] = useTransition();
   const [saved, setSaved] = useState(false);
   const [logo, setLogo] = useState(settings.profile?.logo_url ?? "");
   const [logoError, setLogoError] = useState("");
+  const [themeColor, setThemeColor] = useState(
+    settings.profile?.theme_color ?? DEFAULT_THEME,
+  );
 
   function handleLogo(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -165,6 +182,46 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
             />
           </div>
         </div>
+      </Section>
+
+      <Section title="Thème des bilans">
+        <input type="hidden" name="theme_color" value={themeColor} />
+        <p className="text-sm text-slate-500 -mt-2 mb-3">
+          Couleur d&apos;accent des titres dans vos comptes rendus de bilan.
+        </p>
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          {THEME_PRESETS.map((c) => (
+            <button
+              key={c.value}
+              type="button"
+              title={c.name}
+              onClick={() => setThemeColor(c.value)}
+              className={`h-8 w-8 rounded-full border-2 border-white transition ${
+                themeColor.toLowerCase() === c.value.toLowerCase()
+                  ? "ring-2 ring-offset-2 ring-slate-400"
+                  : ""
+              }`}
+              style={{ backgroundColor: c.value }}
+            />
+          ))}
+          <label className="inline-flex items-center gap-1.5 text-xs text-slate-600 border border-slate-200 rounded-lg px-2 py-1.5 cursor-pointer">
+            Personnalisée
+            <input
+              type="color"
+              value={themeColor}
+              onChange={(e) => setThemeColor(e.target.value)}
+              className="h-6 w-8 cursor-pointer border-0 bg-transparent p-0"
+            />
+          </label>
+        </div>
+        <p className="text-sm">
+          <span
+            className="font-bold text-slate-800 border-b-2 pb-0.5"
+            style={{ borderColor: themeColor }}
+          >
+            Aperçu du titre de section
+          </span>
+        </p>
       </Section>
 
       <Section title="Charges du cabinet">
