@@ -9,6 +9,9 @@ function str(v: FormDataEntryValue | null): string | null {
   return s === "" ? null : s;
 }
 
+// Code d'erreur Postgres pour « colonne inexistante » (migration non appliquée).
+const UNDEFINED_COLUMN = "42703";
+
 export async function createBilan(formData: FormData) {
   const supabase = await createClient();
   const payload = {
@@ -20,11 +23,23 @@ export async function createBilan(formData: FormData) {
     content: {},
     tests: {},
   };
-  const { data } = await supabase
+
+  let { data, error } = await supabase
     .from("bilans")
     .insert(payload)
     .select("id")
     .single();
+
+  // Repli si la colonne "tests" n'existe pas encore (migration_003 non lancée).
+  if (error?.code === UNDEFINED_COLUMN) {
+    const { tests: _t, ...rest } = payload;
+    void _t;
+    ({ data, error } = await supabase
+      .from("bilans")
+      .insert(rest)
+      .select("id")
+      .single());
+  }
 
   revalidatePath("/bilans");
   if (data?.id) redirect(`/bilans/${data.id}`);
@@ -62,7 +77,15 @@ export async function saveBilan(formData: FormData) {
     updated_at: new Date().toISOString(),
   };
 
-  await supabase.from("bilans").update(payload).eq("id", id);
+  const { error } = await supabase.from("bilans").update(payload).eq("id", id);
+
+  // Repli si la colonne "tests" n'existe pas encore (migration_003 non lancée).
+  if (error?.code === UNDEFINED_COLUMN) {
+    const { tests: _t, ...rest } = payload;
+    void _t;
+    await supabase.from("bilans").update(rest).eq("id", id);
+  }
+
   revalidatePath(`/bilans/${id}`);
   revalidatePath("/bilans");
 }
