@@ -20,6 +20,7 @@ import {
   MABC_BLOCK_TITLES,
   MABC_GROUPS,
   PSYCHOMOTOR_TESTS,
+  nsColor,
   type MabcRow,
 } from "@/lib/constants";
 import ConfirmDeleteButton from "@/components/ConfirmDeleteButton";
@@ -478,6 +479,10 @@ function MabcTable({
                   <input
                     value={scores[r.key]?.ns ?? ""}
                     onChange={(e) => onChange(r.key, "ns", e.target.value)}
+                    style={{
+                      color: nsColor(scores[r.key]?.ns),
+                      fontWeight: scores[r.key]?.ns ? 600 : undefined,
+                    }}
                     className="w-full rounded border border-slate-200 py-1 px-2 text-sm text-center outline-none focus:border-brand-400"
                   />
                 </td>

@@ -10,6 +10,7 @@ import {
   MABC_BLOCK_TITLES,
   MABC_GROUPS,
   SCORE_INTERPRETATION,
+  nsColor,
   type MabcRow,
 } from "@/lib/constants";
 import { ageFromBirth, frDate } from "@/lib/format";
@@ -297,7 +298,10 @@ function MabcTablePrint({
               <td className="border border-slate-300 px-2 py-1 whitespace-pre-wrap">
                 {scores[r.key]?.p ?? ""}
               </td>
-              <td className="border border-slate-300 px-2 py-1 text-center">
+              <td
+                className="border border-slate-300 px-2 py-1 text-center font-semibold"
+                style={{ color: nsColor(scores[r.key]?.ns) }}
+              >
                 {scores[r.key]?.ns ?? ""}
               </td>
             </tr>

@@ -314,6 +314,22 @@ export const MABC_GROUPS: MabcGroup[] = [
   },
 ];
 
+/**
+ * Couleur d'une note standard (NS) selon la zone de la courbe :
+ * ≤4 rouge (pathologique), 5–7 orange (fragilité), 8–13 vert (moyenne),
+ * 14–16 vert clair (supérieur), ≥17 vert pâle (très supérieur).
+ */
+export function nsColor(value?: string | null): string | undefined {
+  if (value == null) return undefined;
+  const n = parseInt(String(value).replace(/[^\d-]/g, ""), 10);
+  if (Number.isNaN(n)) return undefined;
+  if (n <= 4) return "#c0504d";
+  if (n <= 7) return "#d99b2b";
+  if (n <= 13) return "#4e7d2f";
+  if (n <= 16) return "#7ba653";
+  return "#5a8a37";
+}
+
 /** Texte fixe d'interprétation des scores (encadré « Résultats chiffrés »). */
 export const SCORE_INTERPRETATION = {
   intro:
