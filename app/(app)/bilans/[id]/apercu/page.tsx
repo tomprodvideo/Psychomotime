@@ -13,6 +13,7 @@ import {
   type MabcRow,
 } from "@/lib/constants";
 import { ageFromBirth, frDate } from "@/lib/format";
+import GaussianCurve from "@/components/GaussianCurve";
 import ApercuActions from "./ApercuActions";
 
 export default async function BilanApercuPage({
@@ -126,53 +127,54 @@ export default async function BilanApercuPage({
             </h1>
           </header>
 
-          {/* ANAMNÈSE : encadré + narratif */}
-          {(content.anamnese?.trim() ||
+          {/* Encart détail patient (AU-DESSUS de l'anamnèse) */}
+          {(b.patient_name ||
+            birth ||
             BILAN_META.some((f) => content[f.id]?.trim())) && (
-            <section className="mb-5 break-inside-avoid">
-              <SectionTitle>L&apos;anamnèse</SectionTitle>
-              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-[12px] mb-3">
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-[12px] mb-5 break-inside-avoid">
+              <p>
+                <span className="text-slate-500">Enfant concerné : </span>
+                <strong>{b.patient_name || "—"}</strong>
+                {birth && (
+                  <>
+                    , né(e) le {frDate(birth)} ({ageFromBirth(birth)})
+                  </>
+                )}
+              </p>
+              {content.scolarite && (
                 <p>
-                  <span className="text-slate-500">Enfant concerné : </span>
-                  <strong>{b.patient_name || "—"}</strong>
-                  {birth && (
-                    <>
-                      , né(e) le {frDate(birth)} ({ageFromBirth(birth)})
-                    </>
-                  )}
-                </p>
-                {content.scolarite && (
-                  <p>
-                    <span className="text-slate-500">Scolarité : </span>
-                    {content.scolarite}
-                  </p>
-                )}
-                {content.passation && (
-                  <p>
-                    <span className="text-slate-500">Dates de passation : </span>
-                    {content.passation}
-                  </p>
-                )}
-                {content.prescripteur && (
-                  <p>
-                    <span className="text-slate-500">
-                      Médecin prescripteur :{" "}
-                    </span>
-                    {content.prescripteur}
-                  </p>
-                )}
-                {content.motif && (
-                  <p>
-                    <span className="text-slate-500">Motif de la demande : </span>
-                    {content.motif}
-                  </p>
-                )}
-              </div>
-              {content.anamnese && (
-                <p className="whitespace-pre-wrap text-justify">
-                  {content.anamnese}
+                  <span className="text-slate-500">Scolarité : </span>
+                  {content.scolarite}
                 </p>
               )}
+              {content.passation && (
+                <p>
+                  <span className="text-slate-500">Dates de passation : </span>
+                  {content.passation}
+                </p>
+              )}
+              {content.prescripteur && (
+                <p>
+                  <span className="text-slate-500">Médecin prescripteur : </span>
+                  {content.prescripteur}
+                </p>
+              )}
+              {content.motif && (
+                <p>
+                  <span className="text-slate-500">Motif de la demande : </span>
+                  {content.motif}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Anamnèse (narratif) */}
+          {content.anamnese?.trim() && (
+            <section className="mb-5 break-inside-avoid">
+              <SectionTitle>L&apos;anamnèse</SectionTitle>
+              <p className="whitespace-pre-wrap text-justify">
+                {content.anamnese}
+              </p>
             </section>
           )}
 
@@ -217,6 +219,9 @@ export default async function BilanApercuPage({
                     ))}
                   </ul>
                 </div>
+              </div>
+              <div className="mt-4 break-inside-avoid">
+                <GaussianCurve />
               </div>
             </section>
           )}

@@ -44,6 +44,11 @@ body {
     margin: 0 !important;
     max-width: none !important;
   }
+  .print-area,
+  .print-area * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
   body {
     background: #fff !important;
   }
