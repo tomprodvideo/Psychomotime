@@ -19,6 +19,23 @@ const COLORS = {
   pale: "#d4e3c3",
 };
 
+// Couleurs de texte (plus soutenues, lisibles) par zone.
+const TEXT = {
+  red: "#b23b37",
+  orange: "#d17a1e",
+  green: "#5a8a37",
+  lightGreen: "#7ba653",
+  pale: "#93b673",
+};
+
+function zoneColor(ds: number) {
+  if (ds < -2) return TEXT.red;
+  if (ds < -1) return TEXT.orange;
+  if (ds <= 1) return TEXT.green;
+  if (ds <= 2) return TEXT.lightGreen;
+  return TEXT.pale;
+}
+
 function X(ds: number) {
   return X_LEFT + ((ds - DS_MIN) / (DS_MAX - DS_MIN)) * (X_RIGHT - X_LEFT);
 }
@@ -140,7 +157,7 @@ export default function GaussianCurve() {
           textAnchor="middle"
           fontSize={8.5}
           fontStyle="italic"
-          fill="#7a7a7a"
+          fill={zoneColor(ds)}
         >
           {label}
         </text>
@@ -166,7 +183,7 @@ export default function GaussianCurve() {
           textAnchor="middle"
           fontSize={9}
           fontWeight={600}
-          fill="#333"
+          fill={zoneColor(ds)}
         >
           {ds > 0 ? `+${ds}` : ds} DS
         </text>
@@ -180,7 +197,8 @@ export default function GaussianCurve() {
           y={337}
           textAnchor="middle"
           fontSize={8.5}
-          fill="#555"
+          fontWeight={600}
+          fill={zoneColor((ns - 10) / 3)}
         >
           {ns}
         </text>
@@ -194,7 +212,8 @@ export default function GaussianCurve() {
           y={359}
           textAnchor="middle"
           fontSize={8.5}
-          fill="#555"
+          fontWeight={600}
+          fill={zoneColor(ds)}
         >
           {label}
         </text>

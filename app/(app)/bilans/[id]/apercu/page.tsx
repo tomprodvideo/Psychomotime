@@ -16,6 +16,9 @@ import { ageFromBirth, frDate } from "@/lib/format";
 import GaussianCurve from "@/components/GaussianCurve";
 import ApercuActions from "./ApercuActions";
 
+// Couleurs des puces : Moyenne (vert) / Fragilité (orange) / Pathologique (rouge)
+const ZONE_TEXT = ["#4e7d2f", "#d99b2b", "#c0504d"];
+
 export default async function BilanApercuPage({
   params,
 }: {
@@ -206,16 +209,20 @@ export default async function BilanApercuPage({
                 <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
                   <p className="font-semibold mb-1">Déviations standards (DS)</p>
                   <ul className="list-disc pl-4 space-y-0.5">
-                    {SCORE_INTERPRETATION.ds.map((l) => (
-                      <li key={l}>{l}</li>
+                    {SCORE_INTERPRETATION.ds.map((l, i) => (
+                      <li key={l} style={{ color: ZONE_TEXT[i] }}>
+                        {l}
+                      </li>
                     ))}
                   </ul>
                 </div>
                 <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
                   <p className="font-semibold mb-1">Notes standards (NS)</p>
                   <ul className="list-disc pl-4 space-y-0.5">
-                    {SCORE_INTERPRETATION.ns.map((l) => (
-                      <li key={l}>{l}</li>
+                    {SCORE_INTERPRETATION.ns.map((l, i) => (
+                      <li key={l} style={{ color: ZONE_TEXT[i] }}>
+                        {l}
+                      </li>
                     ))}
                   </ul>
                 </div>
