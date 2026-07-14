@@ -31,8 +31,10 @@ export async function updateSettings(formData: FormData) {
   const profile = {
     logo_url: str("logo_url"),
     address: str("address"),
+    city: str("city"),
     siret: str("siret"),
     adeli: str("adeli"),
+    rpps: str("rpps"),
     business_email: str("business_email"),
     business_phone: str("business_phone"),
     legal_mentions: str("legal_mentions"),

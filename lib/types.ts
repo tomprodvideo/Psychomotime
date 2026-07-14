@@ -3,8 +3,10 @@ export type ChargeMode = "retrocession" | "loyer";
 export interface Profile {
   logo_url?: string; // image en base64 (data URL)
   address?: string;
+  city?: string; // ville (ex. "Le Puy-en-Velay") pour l'en-tête
   siret?: string;
   adeli?: string;
+  rpps?: string;
   business_email?: string;
   business_phone?: string;
   legal_mentions?: string;
@@ -73,6 +75,17 @@ export interface Expense {
 
 export type BilanStatus = "brouillon" | "finalisé";
 
+export interface MabcScore {
+  p?: string; // performance
+  ns?: string; // note standard
+}
+
+export interface BilanTests {
+  used?: string[]; // ids des tests utilisés
+  mabc3_group?: 1 | 2 | 3 | null;
+  mabc3?: Record<string, MabcScore>; // clé de ligne -> score
+}
+
 export interface Bilan {
   id: string;
   user_id: string;
@@ -83,6 +96,7 @@ export interface Bilan {
   author: string | null;
   status: BilanStatus;
   content: Record<string, string>;
+  tests: BilanTests;
   created_at: string;
   updated_at: string;
 }

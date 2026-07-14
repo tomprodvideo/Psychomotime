@@ -22,16 +22,44 @@ export const PAYMENT_METHODS = [
   "Autre",
 ];
 
-/**
- * Structure du bilan psychomoteur.
- * Chaque section a un id (clé de stockage dans content jsonb),
- * un titre, une aide, et un type (texte long ou court).
- */
+/* ============================================================
+ *  BILAN PSYCHOMOTEUR
+ * ============================================================ */
+
+/** Champs d'en-tête (encadré anamnèse). Stockés dans content jsonb. */
+export interface BilanMetaField {
+  id: string;
+  label: string;
+  placeholder?: string;
+}
+
+export const BILAN_META: BilanMetaField[] = [
+  { id: "scolarite", label: "Scolarité", placeholder: "Ex. CE1 (2025-2026)" },
+  {
+    id: "passation",
+    label: "Dates de passation",
+    placeholder: "Ex. 20/02, 27/02, 06/03/2026",
+  },
+  {
+    id: "prescripteur",
+    label: "Médecin prescripteur",
+    placeholder: "Ex. PCO 42-43",
+  },
+  {
+    id: "motif",
+    label: "Motif de la demande",
+    placeholder: "Ex. Particularités sensorielles, gestion des émotions",
+  },
+];
+
+/** Sections rédigées (texte). */
 export interface BilanSection {
   id: string;
   title: string;
   hint?: string;
   long?: boolean;
+  /** Bloc M-ABC3 à insérer sous cette section dans le PDF. */
+  mabcBlocks?: ("equilibre" | "oculo" | "dexterite")[];
 }
 
 export interface BilanGroup {
@@ -44,32 +72,15 @@ export const BILAN_TEMPLATE: BilanGroup[] = [
     group: "Anamnèse & contexte",
     sections: [
       {
-        id: "motif",
-        title: "Motif de la demande",
-        hint: "Qui adresse, médecin prescripteur, inquiétudes principales…",
-        long: true,
-      },
-      {
-        id: "scolarite",
-        title: "Scolarité",
-        hint: "Classe, école, type de classe…",
-      },
-      {
-        id: "tests",
-        title: "Tests utilisés et dates de passation",
-        hint: "Ex. M-ABC, NP-MOT, BHK, figure de Rey, Bergès-Lézine… + dates",
-        long: true,
-      },
-      {
         id: "anamnese",
-        title: "Anamnèse",
-        hint: "Grossesse, naissance, développement, langage, propreté, sommeil, repas, autonomie, vie familiale et scolaire, sensoriel…",
+        title: "L'anamnèse",
+        hint: "Grossesse, naissance, développement, langage, propreté, suivis, sommeil, repas, autonomie, vie familiale et scolaire, sensoriel…",
         long: true,
       },
       {
         id: "comportement",
         title: "Comportement durant le bilan",
-        hint: "Contact, coopération, attention, fatigabilité, réaction au chronomètre…",
+        hint: "Contact, coopération, attention, besoin de mouvement, réaction au chronomètre…",
         long: true,
       },
     ],
@@ -79,61 +90,63 @@ export const BILAN_TEMPLATE: BilanGroup[] = [
     sections: [
       {
         id: "motricite_globale",
-        title: "Motricité globale",
-        hint: "Coordinations MS/MI (pantin, espaliers), coordinations oculo-manuelles, équilibres (M-ABC, NP-MOT)…",
+        title: "La motricité globale",
+        hint: "Coordinations MS/MI (pantin), coordinations oculo-manuelles, équilibres…",
         long: true,
+        mabcBlocks: ["equilibre", "oculo"],
       },
       {
         id: "motricite_fine",
-        title: "Motricité fine et praxies manuelles",
-        hint: "Dextérité (M-ABC), prono-supination (NP-MOT), EMG, praxies…",
+        title: "La motricité fine et les praxies manuelles",
+        hint: "Dextérité, prono-supination, EMG, praxies…",
         long: true,
+        mabcBlocks: ["dexterite"],
       },
       {
         id: "graphisme",
-        title: "Graphisme et écriture",
+        title: "Le graphisme",
         hint: "Pré-scripturaux, tenue du stylo, fluidité, BHK (qualité, vitesse)…",
         long: true,
       },
       {
         id: "schema_corporel",
-        title: "Schéma corporel",
+        title: "Le schéma corporel",
         hint: "Somatognosies (Bergès-Lézine), dessin du bonhomme…",
         long: true,
       },
       {
         id: "tonus",
-        title: "Tonus",
-        hint: "Tonus de fond, de soutien, d'attitude, d'action ; syncinésies (NP-MOT)…",
+        title: "Le tonus",
+        hint: "Tonus de fond, de soutien, d'action ; syncinésies (NP-MOT)…",
         long: true,
       },
       {
         id: "lateralite",
-        title: "Latéralité",
+        title: "La latéralité",
         hint: "Manuelle (spontanée, usuelle, psycho-sociale, graphique), pédestre (NP-MOT)…",
         long: true,
       },
       {
         id: "espace",
-        title: "Organisation spatiale",
-        hint: "Droite/gauche sur soi et autrui, orientation, figure de Rey…",
+        title: "L'organisation spatiale",
+        hint: "Droite/gauche sur soi et autrui, orientation, figure de Rey, image de Rey…",
         long: true,
       },
       {
         id: "temps",
-        title: "Organisation temporelle et rythme",
+        title: "L'organisation temporelle",
         hint: "Tempo spontané, adaptation aux rythmes frappés/marchés, repères temporels (NP-MOT)…",
         long: true,
       },
       {
         id: "attention",
-        title: "Attention et mémoire",
-        hint: "Attention soutenue (frappes 1-2), mémoire immédiate et différée…",
+        title: "Attention & Mémoire",
+        hint: "Attention soutenue (frappes 1-2), mémoire des dessins (rappel immédiat/différé)…",
         long: true,
       },
       {
         id: "affectif",
-        title: "Émotions et aspects psycho-affectifs",
+        title: "Les émotions",
         hint: "Reconnaissance et régulation émotionnelle, ressentis corporels, confiance en soi…",
         long: true,
       },
@@ -143,21 +156,9 @@ export const BILAN_TEMPLATE: BilanGroup[] = [
     group: "Synthèse",
     sections: [
       {
-        id: "resultats",
-        title: "Résultats chiffrés des tests",
-        hint: "Synthèse des scores (DS, notes standards) et interprétation…",
-        long: true,
-      },
-      {
         id: "conclusion",
         title: "Conclusion",
-        hint: "Profil psychomoteur par domaine (points d'appui / fragilités), synthèse…",
-        long: true,
-      },
-      {
-        id: "projet",
-        title: "Projet, adaptations et préconisations",
-        hint: "Indication de suivi, objectifs, adaptations scolaires et quotidiennes, préconisations…",
+        hint: "Profil psychomoteur par domaine (points d'appui / fragilités), hypothèses, proposition de suivi, adaptations, préconisations…",
         long: true,
       },
     ],
@@ -165,3 +166,166 @@ export const BILAN_TEMPLATE: BilanGroup[] = [
 ];
 
 export const BILAN_SECTIONS = BILAN_TEMPLATE.flatMap((g) => g.sections);
+
+/* ---------- Tests étalonnés ---------- */
+export interface PsychomotorTest {
+  id: string;
+  label: string;
+}
+
+export const PSYCHOMOTOR_TESTS: PsychomotorTest[] = [
+  { id: "mabc3", label: "M-ABC3" },
+  { id: "np_mot", label: "NP-MOT" },
+  { id: "bonhomme", label: "Dessin du bonhomme (Goodenough)" },
+  { id: "bhk", label: "BHK" },
+  { id: "memoire_dessins", label: "Mémoire des dessins" },
+  { id: "figure_rey", label: "Figure de Rey" },
+  { id: "image_rey", label: "Image de Rey" },
+  { id: "berges_lezine", label: "Somatognosies de Bergès-Lézine" },
+  { id: "emg", label: "EMG (motricité gnosopraxique distale)" },
+];
+
+/* ---------- M-ABC3 par groupe d'âge ---------- */
+export interface MabcRow {
+  key: string;
+  epreuve: string;
+  perfHint?: string;
+}
+export interface MabcGroup {
+  group: 1 | 2 | 3;
+  label: string;
+  blocks: {
+    equilibre: MabcRow[];
+    oculo: MabcRow[];
+    dexterite: MabcRow[];
+  };
+}
+
+export const MABC_BLOCK_TITLES: Record<string, string> = {
+  equilibre: "Équilibre et locomotion",
+  oculo: "Coordination oculo-manuelle",
+  dexterite: "Dextérité manuelle",
+};
+
+const JAMBES = "Meilleure jambe (JD) : … / Autre jambe (JG) : …";
+const MAINS = "Main préférée (MD) : … / Main non préférée (MG) : …";
+
+export const MABC_GROUPS: MabcGroup[] = [
+  {
+    group: 1,
+    label: "Groupe 1 · 3 – 6 ans 11 mois",
+    blocks: {
+      equilibre: [
+        {
+          key: "g1_eq_0",
+          epreuve: "Tenir en équilibre sur un pied sur un tapis",
+          perfHint: JAMBES,
+        },
+        { key: "g1_eq_1", epreuve: "Marcher sur la pointe des pieds", perfHint: "… pas" },
+        { key: "g1_eq_2", epreuve: "Sauter pieds joints sur les tapis" },
+      ],
+      oculo: [
+        { key: "g1_oc_0", epreuve: "Attraper le sac lesté", perfHint: "…/10" },
+        { key: "g1_oc_1", epreuve: "Lancer le sac sur le tapis", perfHint: "…/10" },
+        {
+          key: "g1_oc_2",
+          epreuve: "Faire rebondir une grosse balle et l'attraper à deux mains",
+          perfHint: "…/10",
+        },
+      ],
+      dexterite: [
+        { key: "g1_dx_0", epreuve: "Tracer des cercles" },
+        {
+          key: "g1_dx_1",
+          epreuve: "Mettre des jetons dans une tirelire",
+          perfHint: MAINS,
+        },
+        { key: "g1_dx_2", epreuve: "Enfiler des cubes" },
+        { key: "g1_dx_3", epreuve: "Enfiler un lacet" },
+      ],
+    },
+  },
+  {
+    group: 2,
+    label: "Groupe 2 · 7 – 11 ans 11 mois",
+    blocks: {
+      equilibre: [
+        {
+          key: "g2_eq_0",
+          epreuve: "Tenir en équilibre sur un pied sur une planche",
+          perfHint: JAMBES,
+        },
+        { key: "g2_eq_1", epreuve: "Marcher talon-pointe en avant", perfHint: "… pas" },
+        { key: "g2_eq_2", epreuve: "Sauter à cloche-pied sur les tapis" },
+      ],
+      oculo: [
+        {
+          key: "g2_oc_0",
+          epreuve: "Attraper le sac lesté à deux mains",
+          perfHint: "…/10",
+        },
+        { key: "g2_oc_1", epreuve: "Lancer le sac sur le tapis", perfHint: "…/10" },
+        {
+          key: "g2_oc_2",
+          epreuve: "Faire rebondir une balle de tennis et l'attraper à deux mains",
+          perfHint: "…/10",
+        },
+      ],
+      dexterite: [
+        { key: "g2_dx_0", epreuve: "Tracer des cercles" },
+        { key: "g2_dx_1", epreuve: "Placer les chevilles", perfHint: MAINS },
+        { key: "g2_dx_2", epreuve: "Enfiler des cubes" },
+        { key: "g2_dx_3", epreuve: "Enfiler un lacet" },
+      ],
+    },
+  },
+  {
+    group: 3,
+    label: "Groupe 3 · 12 – 25 ans 11 mois",
+    blocks: {
+      equilibre: [
+        {
+          key: "g3_eq_0",
+          epreuve: "Tenir en équilibre sur deux pieds sur une planche",
+        },
+        { key: "g3_eq_1", epreuve: "Marcher talon-pointe en arrière", perfHint: "… pas" },
+        { key: "g3_eq_2", epreuve: "Sauter à cloche-pied en zig-zag sur les tapis" },
+      ],
+      oculo: [
+        {
+          key: "g3_oc_0",
+          epreuve: "Attraper le sac lesté à une main",
+          perfHint: "…/10",
+        },
+        { key: "g3_oc_1", epreuve: "Lancer le sac sur le tapis", perfHint: "…/10" },
+        {
+          key: "g3_oc_2",
+          epreuve: "Faire rebondir une balle de tennis et l'attraper à une main",
+          perfHint: "…/10",
+        },
+      ],
+      dexterite: [
+        { key: "g3_dx_0", epreuve: "Tracer des cercles" },
+        { key: "g3_dx_1", epreuve: "Retourner les chevilles", perfHint: MAINS },
+        { key: "g3_dx_2", epreuve: "Enfiler des cubes" },
+        { key: "g3_dx_3", epreuve: "Faire un triangle avec écrous et vis" },
+      ],
+    },
+  },
+];
+
+/** Texte fixe d'interprétation des scores (encadré « Résultats chiffrés »). */
+export const SCORE_INTERPRETATION = {
+  intro:
+    "Les scores ont pour but de rendre l'évaluation la plus objective possible et de situer l'enfant par rapport à sa classe d'âge. Les scores sont pour la plupart exprimés en déviations standards (DS), quelques-uns en notes standards (NS). Ces notes allant jusqu'à 19 ne sont pas équivalentes au barème scolaire noté sur 20.",
+  ds: [
+    "Moyenne : entre -1 DS et +1 DS",
+    "Zone de fragilité : entre -1 et -2 DS",
+    "Zone dite « pathologique » : inférieur ou égal à -2 DS",
+  ],
+  ns: [
+    "Moyenne : entre 7 et 13",
+    "Zone de fragilité : entre 5 et 7",
+    "Zone dite « pathologique » : inférieur ou égal à 4",
+  ],
+};

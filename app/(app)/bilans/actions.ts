@@ -18,6 +18,7 @@ export async function createBilan(formData: FormData) {
     bilan_date: str(formData.get("bilan_date")),
     author: str(formData.get("author")),
     content: {},
+    tests: {},
   };
   const { data } = await supabase
     .from("bilans")
@@ -42,6 +43,13 @@ export async function saveBilan(formData: FormData) {
     content = {};
   }
 
+  let tests: Record<string, unknown> = {};
+  try {
+    tests = JSON.parse(String(formData.get("tests") ?? "{}"));
+  } catch {
+    tests = {};
+  }
+
   const payload = {
     patient_id: str(formData.get("patient_id")),
     patient_name: String(formData.get("patient_name") ?? "").trim(),
@@ -50,6 +58,7 @@ export async function saveBilan(formData: FormData) {
     author: str(formData.get("author")),
     status: str(formData.get("status")) ?? "brouillon",
     content,
+    tests,
     updated_at: new Date().toISOString(),
   };
 

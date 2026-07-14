@@ -80,6 +80,7 @@ create table if not exists public.bilans (
   author text,
   status text not null default 'brouillon' check (status in ('brouillon','finalisé')),
   content jsonb not null default '{}'::jsonb,
+  tests jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

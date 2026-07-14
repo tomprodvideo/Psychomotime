@@ -98,7 +98,16 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
             <input
               name="address"
               defaultValue={settings.profile?.address ?? ""}
-              placeholder="12 rue des Lilas, 75000 Paris"
+              placeholder="4 rue Francisque Mandet, 43000 Le Puy-en-Velay"
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <Label>Ville (en-tête « Au …, le »)</Label>
+            <input
+              name="city"
+              defaultValue={settings.profile?.city ?? ""}
+              placeholder="Le Puy-en-Velay"
               className={inputCls}
             />
           </div>
@@ -132,6 +141,14 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
             <input
               name="adeli"
               defaultValue={settings.profile?.adeli ?? ""}
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <Label>N° RPPS</Label>
+            <input
+              name="rpps"
+              defaultValue={settings.profile?.rpps ?? ""}
               className={inputCls}
             />
           </div>
