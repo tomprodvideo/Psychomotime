@@ -12,7 +12,7 @@ import {
   X,
 } from "lucide-react";
 import type { Invoice, Patient, Settings } from "@/lib/types";
-import { euro } from "@/lib/format";
+import { euro, frDate } from "@/lib/format";
 import { computeInvoice } from "@/lib/calc";
 import { MONTHS, PAYMENT_METHODS } from "@/lib/constants";
 import { saveInvoice, deleteInvoice } from "./actions";
@@ -65,7 +65,7 @@ export default function ComptaClient({
       </div>
 
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-x-auto">
-        <table className="w-full text-sm min-w-[920px]">
+        <table className="w-full text-sm min-w-[1040px]">
           <thead>
             <tr className="bg-brand-600 text-white text-left">
               <Th>Prénom / Nom</Th>
@@ -74,7 +74,8 @@ export default function ComptaClient({
               <Th className="text-center">PCO</Th>
               <Th className="text-right">Brut</Th>
               <Th className="text-right">Brut payé</Th>
-              <Th>Paiement</Th>
+              <Th>Moyen de paiement</Th>
+              <Th>Date de paiement</Th>
               {showRetro && <Th className="text-right">Rétrocession</Th>}
               {showRetro && <Th className="text-right">Après rétro</Th>}
               <Th className="text-right">URSSAF</Th>
@@ -86,7 +87,7 @@ export default function ComptaClient({
             {invoices.length === 0 && (
               <tr>
                 <td
-                  colSpan={showRetro ? 12 : 10}
+                  colSpan={showRetro ? 13 : 11}
                   className="text-center text-slate-400 py-10 text-sm"
                 >
                   Aucune facture pour le moment. Cliquez sur « Nouvelle facture ».
@@ -119,9 +120,9 @@ export default function ComptaClient({
                 <Td className="text-right">{euro(inv.revenue_gross_paid)}</Td>
                 <Td className="text-slate-500 whitespace-nowrap">
                   {inv.payment_method || "—"}
-                  {inv.payment_date
-                    ? ` ${new Date(inv.payment_date + "T00:00:00").toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })}`
-                    : ""}
+                </Td>
+                <Td className="text-slate-500 whitespace-nowrap">
+                  {inv.payment_date ? frDate(inv.payment_date) : "—"}
                 </Td>
                 {showRetro && (
                   <Td className="text-right text-rose-600">
