@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -11,6 +12,7 @@ import {
   MABC_GROUPS,
   SCORE_INTERPRETATION,
   nsColor,
+  testLabel,
   type MabcRow,
 } from "@/lib/constants";
 import { ageFromBirth, frDate } from "@/lib/format";
@@ -19,6 +21,14 @@ import ApercuActions from "./ApercuActions";
 
 // Couleurs des puces : Moyenne (vert) / Fragilité (orange) / Pathologique (rouge)
 const ZONE_TEXT = ["#4e7d2f", "#d99b2b", "#c0504d"];
+
+function parseJSON<T>(s: unknown, fallback: T): T {
+  try {
+    return typeof s === "string" ? (JSON.parse(s) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 export default async function BilanApercuPage({
   params,
@@ -38,6 +48,11 @@ export default async function BilanApercuPage({
   if (!data) notFound();
   const b = data as Bilan;
   const content = b.content ?? {};
+  const blocks = parseJSON<Record<string, { id: string; test: string }[]>>(
+    content.__blocks__,
+    {},
+  );
+  const images = parseJSON<Record<string, string[]>>(content.__images__, {});
   const tests = b.tests ?? {};
   const profile = settings.profile ?? {};
   const usedIds = tests.used ?? [];
@@ -76,6 +91,52 @@ export default async function BilanApercuPage({
         scores={scores}
       />
     ));
+  }
+
+  function hasExtras(sectionId: string) {
+    const bl = blocks[sectionId] ?? [];
+    const imgs = images[sectionId] ?? [];
+    return (
+      bl.some((x) => content[`${sectionId}::${x.id}`]?.trim()) ||
+      imgs.length > 0
+    );
+  }
+
+  function sectionExtras(sectionId: string) {
+    const bl = blocks[sectionId] ?? [];
+    const imgs = images[sectionId] ?? [];
+    const blockNodes = bl
+      .map((x) => {
+        const txt = content[`${sectionId}::${x.id}`]?.trim();
+        if (!txt) return null;
+        return (
+          <div key={x.id} className="mt-2">
+            <p className="font-semibold text-slate-800">
+              {testLabel(x.test)} :
+            </p>
+            <p className="whitespace-pre-wrap text-justify">{txt}</p>
+          </div>
+        );
+      })
+      .filter(Boolean);
+    if (blockNodes.length === 0 && imgs.length === 0) return null;
+    return (
+      <>
+        {blockNodes}
+        {imgs.length > 0 && (
+          <div className="mt-3 grid grid-cols-2 gap-3 break-inside-avoid">
+            {imgs.map((src, i) => (
+              <img
+                key={i}
+                src={src}
+                alt=""
+                className="w-full max-h-72 object-contain rounded border border-slate-200"
+              />
+            ))}
+          </div>
+        )}
+      </>
+    );
   }
 
   return (
@@ -173,12 +234,15 @@ export default async function BilanApercuPage({
           )}
 
           {/* Anamnèse (narratif) */}
-          {content.anamnese?.trim() && (
+          {(content.anamnese?.trim() || hasExtras("anamnese")) && (
             <section className="mb-5 break-inside-avoid">
               <SectionTitle>L&apos;anamnèse</SectionTitle>
-              <p className="whitespace-pre-wrap text-justify">
-                {content.anamnese}
-              </p>
+              {content.anamnese?.trim() && (
+                <p className="whitespace-pre-wrap text-justify">
+                  {content.anamnese}
+                </p>
+              )}
+              {sectionExtras("anamnese")}
             </section>
           )}
 
@@ -189,7 +253,7 @@ export default async function BilanApercuPage({
               const text = content[s.id]?.trim();
               const hasTables =
                 mabcUsed && group && (s.mabcBlocks?.length ?? 0) > 0;
-              if (!text && !hasTables) return null;
+              if (!text && !hasTables && !hasExtras(s.id)) return null;
               return (
                 <section key={s.id} className="mb-5 break-inside-avoid">
                   <SectionTitle>{s.title}</SectionTitle>
@@ -197,6 +261,7 @@ export default async function BilanApercuPage({
                     <p className="whitespace-pre-wrap text-justify">{text}</p>
                   )}
                   {mabcTables(s.mabcBlocks)}
+                  {sectionExtras(s.id)}
                 </section>
               );
             })}
@@ -235,12 +300,15 @@ export default async function BilanApercuPage({
           )}
 
           {/* Conclusion */}
-          {content.conclusion?.trim() && (
+          {(content.conclusion?.trim() || hasExtras("conclusion")) && (
             <section className="mb-6 break-inside-avoid">
               <SectionTitle>Conclusion</SectionTitle>
-              <p className="whitespace-pre-wrap text-justify">
-                {content.conclusion}
-              </p>
+              {content.conclusion?.trim() && (
+                <p className="whitespace-pre-wrap text-justify">
+                  {content.conclusion}
+                </p>
+              )}
+              {sectionExtras("conclusion")}
             </section>
           )}
 

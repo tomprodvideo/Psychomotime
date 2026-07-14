@@ -182,8 +182,13 @@ export const PSYCHOMOTOR_TESTS: PsychomotorTest[] = [
   { id: "figure_rey", label: "Figure de Rey" },
   { id: "image_rey", label: "Image de Rey" },
   { id: "berges_lezine", label: "Somatognosies de Bergès-Lézine" },
-  { id: "emg", label: "EMG (motricité gnosopraxique distale)" },
 ];
+
+/** Libellé affichable d'un test (ou d'un bloc libre). */
+export function testLabel(id: string): string {
+  if (id === "autre") return "Autre";
+  return PSYCHOMOTOR_TESTS.find((t) => t.id === id)?.label ?? id;
+}
 
 /* ---------- M-ABC3 par groupe d'âge ---------- */
 export interface MabcRow {
