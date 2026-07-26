@@ -610,22 +610,20 @@ export default function BilanEditor({
               ))}
             </div>
 
-            {!group && (
+            {!group ? (
               <p className="text-sm text-slate-400">
-                Choisissez un groupe d&apos;âge pour afficher les épreuves.
+                Choisissez un groupe d&apos;âge : les tableaux apparaîtront dans
+                les sections « La motricité globale » et « La motricité fine »
+                ci-dessous.
+              </p>
+            ) : (
+              <p className="text-sm text-slate-500">
+                Groupe sélectionné. Remplissez les tableaux directement dans les
+                sections <strong>Motricité globale</strong> (équilibre &amp;
+                coordination oculo-manuelle) et{" "}
+                <strong>Motricité fine</strong> (dextérité) ci-dessous.
               </p>
             )}
-
-            {group &&
-              (["equilibre", "oculo", "dexterite"] as const).map((blockKey) => (
-                <MabcTable
-                  key={blockKey}
-                  title={MABC_BLOCK_TITLES[blockKey]}
-                  rows={group.blocks[blockKey]}
-                  scores={mabcScores}
-                  onChange={setScore}
-                />
-              ))}
           </div>
         )}
       </div>
@@ -646,6 +644,19 @@ export default function BilanEditor({
                     hint={s.hint}
                     rows={s.id === "anamnese" || s.id === "conclusion" ? 6 : 3}
                   />
+                  {mabcUsed && group && s.mabcBlocks && (
+                    <div className="mt-3">
+                      {s.mabcBlocks.map((bk) => (
+                        <MabcTable
+                          key={bk}
+                          title={MABC_BLOCK_TITLES[bk]}
+                          rows={group.blocks[bk]}
+                          scores={mabcScores}
+                          onChange={setScore}
+                        />
+                      ))}
+                    </div>
+                  )}
                   <SectionExtras sectionId={s.id} />
                 </div>
               ))}
