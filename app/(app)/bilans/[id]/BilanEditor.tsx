@@ -94,6 +94,7 @@ export default function BilanEditor({ bilan }: { bilan: Bilan }) {
     const c = { ...raw0 };
     delete c.__blocks__;
     delete c.__images__;
+    delete c.__flags__;
     return c;
   });
   const [blocks, setBlocks] = useState<Record<string, ExtraBlock[]>>(() =>
@@ -101,6 +102,15 @@ export default function BilanEditor({ bilan }: { bilan: Bilan }) {
   );
   const [images, setImages] = useState<Record<string, string[]>>(() =>
     parseJSON(raw0.__images__, {}),
+  );
+
+  const flags0 = parseJSON<{ adaptations?: boolean; preconisations?: boolean }>(
+    raw0.__flags__,
+    {},
+  );
+  const [adaptationsOn, setAdaptationsOn] = useState(!!flags0.adaptations);
+  const [preconisationsOn, setPreconisationsOn] = useState(
+    !!flags0.preconisations,
   );
 
   // Tests
@@ -233,6 +243,10 @@ export default function BilanEditor({ bilan }: { bilan: Bilan }) {
           ...content,
           __blocks__: JSON.stringify(blocks),
           __images__: JSON.stringify(images),
+          __flags__: JSON.stringify({
+            adaptations: adaptationsOn,
+            preconisations: preconisationsOn,
+          }),
         }),
       );
       fd.set(
@@ -605,6 +619,55 @@ export default function BilanEditor({ bilan }: { bilan: Bilan }) {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Paragraphes optionnels après la conclusion */}
+      <div className="mt-6 bg-white rounded-xl border border-slate-100 shadow-sm p-5 space-y-4">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-brand-600">
+          Paragraphes optionnels (après la conclusion)
+        </h2>
+
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={adaptationsOn}
+            onChange={(e) => {
+              setAdaptationsOn(e.target.checked);
+              markDirty();
+            }}
+            className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-400"
+          />
+          Ajouter un paragraphe « Adaptations »
+        </label>
+        {adaptationsOn && (
+          <TextField
+            fieldKey="adaptations"
+            label="Adaptations"
+            hint="Adaptations à mettre en place au quotidien et en contexte scolaire…"
+            rows={4}
+          />
+        )}
+
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={preconisationsOn}
+            onChange={(e) => {
+              setPreconisationsOn(e.target.checked);
+              markDirty();
+            }}
+            className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-400"
+          />
+          Ajouter un paragraphe « Préconisations »
+        </label>
+        {preconisationsOn && (
+          <TextField
+            fieldKey="preconisations"
+            label="Préconisations"
+            hint="Préconisations, orientations, suivi conseillé…"
+            rows={4}
+          />
+        )}
       </div>
 
       {/* Barre d'actions fixe */}

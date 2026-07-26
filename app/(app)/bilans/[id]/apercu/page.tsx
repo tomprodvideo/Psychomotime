@@ -53,6 +53,10 @@ export default async function BilanApercuPage({
     {},
   );
   const images = parseJSON<Record<string, string[]>>(content.__images__, {});
+  const flags = parseJSON<{ adaptations?: boolean; preconisations?: boolean }>(
+    content.__flags__,
+    {},
+  );
   const tests = b.tests ?? {};
   const profile = settings.profile ?? {};
   const usedIds = tests.used ?? [];
@@ -316,6 +320,26 @@ export default async function BilanApercuPage({
                 </p>
               )}
               {sectionExtras("conclusion")}
+            </section>
+          )}
+
+          {/* Adaptations */}
+          {flags.adaptations && content.adaptations?.trim() && (
+            <section className="mb-5 break-inside-avoid">
+              <SectionTitle>Adaptations</SectionTitle>
+              <p className="whitespace-pre-wrap text-justify">
+                {content.adaptations}
+              </p>
+            </section>
+          )}
+
+          {/* Préconisations */}
+          {flags.preconisations && content.preconisations?.trim() && (
+            <section className="mb-6 break-inside-avoid">
+              <SectionTitle>Préconisations</SectionTitle>
+              <p className="whitespace-pre-wrap text-justify">
+                {content.preconisations}
+              </p>
             </section>
           )}
 
