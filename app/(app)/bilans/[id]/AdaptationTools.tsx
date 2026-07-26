@@ -61,7 +61,7 @@ export default function AdaptationTools({
               className="fixed inset-0 z-10"
               onClick={() => setMenuOpen(false)}
             />
-            <div className="absolute right-0 z-20 mt-1 w-64 max-h-72 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-lg py-1">
+            <div className="absolute right-0 z-20 mt-1 w-80 sm:w-96 max-h-[26rem] overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-lg divide-y divide-slate-100">
               {templates.length === 0 ? (
                 <p className="text-xs text-slate-400 px-3 py-2">
                   Aucun modèle. Cliquez sur ⚙️ pour en créer.
@@ -75,12 +75,14 @@ export default function AdaptationTools({
                       onInsert(t.text);
                       setMenuOpen(false);
                     }}
-                    className="block w-full text-left px-3 py-2 hover:bg-brand-50"
+                    className="block w-full text-left px-3 py-2.5 hover:bg-brand-50"
                   >
-                    <p className="text-sm font-medium text-slate-700 truncate">
+                    <p className="text-sm font-medium text-slate-700">
                       {t.title || "Sans titre"}
                     </p>
-                    <p className="text-xs text-slate-400 truncate">{t.text}</p>
+                    <p className="text-xs text-slate-500 whitespace-pre-wrap mt-0.5 leading-relaxed">
+                      {t.text}
+                    </p>
                   </button>
                 ))
               )}
