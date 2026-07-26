@@ -2,6 +2,7 @@ import { getSettings, getAccess } from "@/lib/data";
 import { PageHeader } from "@/components/ui";
 import ParametresForm from "./ParametresForm";
 import SubscriptionCard from "./SubscriptionCard";
+import DeleteAccountCard from "./DeleteAccountCard";
 
 export default async function ParametresPage() {
   const settings = await getSettings();
@@ -21,6 +22,9 @@ export default async function ParametresPage() {
         />
       </div>
       <ParametresForm settings={settings} />
+      <div className="mt-6">
+        <DeleteAccountCard />
+      </div>
     </div>
   );
 }

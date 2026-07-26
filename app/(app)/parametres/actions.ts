@@ -57,6 +57,30 @@ export async function updateSettings(formData: FormData) {
   revalidatePath("/");
 }
 
+/** Suppression définitive de son propre compte et de toutes ses données. */
+export async function deleteAccount() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  // Nettoyage des fichiers stockés (le cascade DB ne couvre pas le storage).
+  const { data: files } = await supabase.storage
+    .from("documents")
+    .list(user.id, { limit: 1000 });
+  if (files && files.length) {
+    await supabase.storage
+      .from("documents")
+      .remove(files.map((f) => `${user.id}/${f.name}`));
+  }
+
+  // Supprime le compte (cascade sur toutes les tables liées).
+  await supabase.rpc("delete_my_account");
+  await supabase.auth.signOut();
+  redirect("/login");
+}
+
 /** Résiliation de son propre abonnement (l'utilisateur ne peut que résilier). */
 export async function cancelSubscription() {
   const supabase = await createClient();

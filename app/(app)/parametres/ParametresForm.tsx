@@ -115,7 +115,6 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
             <input
               name="address"
               defaultValue={settings.profile?.address ?? ""}
-              placeholder="4 rue Francisque Mandet, 43000 Le Puy-en-Velay"
               className={inputCls}
             />
           </div>
@@ -124,7 +123,6 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
             <input
               name="city"
               defaultValue={settings.profile?.city ?? ""}
-              placeholder="Le Puy-en-Velay"
               className={inputCls}
             />
           </div>
