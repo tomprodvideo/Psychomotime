@@ -670,6 +670,9 @@ export default function BilanEditor({ bilan }: { bilan: Bilan }) {
         )}
       </div>
 
+      {/* Espace de sécurité sous le dernier bloc (barre d'actions fixe) */}
+      <div aria-hidden className="h-24" />
+
       {/* Barre d'actions fixe */}
       <div className="fixed bottom-0 inset-x-0 md:left-64 bg-white/90 backdrop-blur border-t border-slate-200 px-4 py-3 no-print">
         <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
