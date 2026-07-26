@@ -8,6 +8,7 @@ import {
   Calculator,
   Users,
   FileText,
+  FolderClosed,
   Settings as SettingsIcon,
   ShieldCheck,
   LogOut,
@@ -21,6 +22,7 @@ const NAV = [
   { href: "/comptabilite", label: "Comptabilité", icon: Calculator },
   { href: "/patients", label: "Patients", icon: Users },
   { href: "/bilans", label: "Bilans", icon: FileText },
+  { href: "/documents", label: "Documents", icon: FolderClosed },
   { href: "/parametres", label: "Paramètres", icon: SettingsIcon },
 ];
 

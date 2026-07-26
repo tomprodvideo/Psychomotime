@@ -128,6 +128,24 @@ export interface Expense {
   created_at: string;
 }
 
+export interface DocFolder {
+  id: string;
+  user_id: string;
+  name: string;
+  created_at: string;
+}
+
+export interface DocumentFile {
+  id: string;
+  user_id: string;
+  folder_id: string | null;
+  name: string;
+  storage_path: string;
+  mime_type: string | null;
+  size: number | null;
+  created_at: string;
+}
+
 export type BilanStatus = "brouillon" | "finalisé";
 
 export interface MabcScore {
