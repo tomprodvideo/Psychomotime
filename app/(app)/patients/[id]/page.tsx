@@ -1,9 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, FileText, Plus, Receipt } from "lucide-react";
+import { ArrowLeft, FileDown, FileText, Plus, Receipt } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import type { Bilan, Invoice, Patient } from "@/lib/types";
 import { ageFromBirth, euro, frDate } from "@/lib/format";
+import {
+  DOSSIER_GROUPS,
+  PATIENT_DOSSIER_FIELDS,
+} from "@/lib/constants";
 import { Card } from "@/components/ui";
 import ConfirmDeleteButton from "@/components/ConfirmDeleteButton";
 import PatientFormDialog from "../PatientFormDialog";
@@ -43,6 +47,11 @@ export default async function PatientDetailPage({
   const bilans = (bilansRaw ?? []) as Bilan[];
   const totalNet = invoices.reduce((s, i) => s + (i.net_revenue || 0), 0);
 
+  const dossier = (p.dossier ?? {}) as Record<string, string | null | undefined>;
+  const hasDossier = PATIENT_DOSSIER_FIELDS.some(
+    (f) => (dossier[f.id] ?? "").toString().trim() !== "",
+  );
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
       <Link
@@ -71,6 +80,13 @@ export default async function PatientDetailPage({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              href={`/patients/${p.id}/fiche`}
+              className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:bg-slate-100 px-3 py-1.5 rounded-lg"
+            >
+              <FileDown className="h-4 w-4" />
+              Exporter PDF
+            </Link>
             <PatientFormDialog patient={p} />
             <ConfirmDeleteButton
               id={p.id}
@@ -145,6 +161,42 @@ export default async function PatientDetailPage({
             </div>
           )}
       </Card>
+
+      {hasDossier && (
+        <Card className="p-6 mb-6">
+          <h2 className="font-semibold text-slate-800 mb-4">Dossier de suivi</h2>
+          {DOSSIER_GROUPS.map((group) => {
+            const fields = PATIENT_DOSSIER_FIELDS.filter(
+              (f) =>
+                f.group === group &&
+                (dossier[f.id] ?? "").toString().trim() !== "",
+            );
+            if (fields.length === 0) return null;
+            return (
+              <div key={group} className="mb-4 last:mb-0">
+                <p className="text-xs font-semibold uppercase tracking-wider text-brand-600 mb-2">
+                  {group}
+                </p>
+                <div className="grid sm:grid-cols-2 gap-3 text-sm">
+                  {fields.map((f) => (
+                    <div
+                      key={f.id}
+                      className={f.type === "long" ? "sm:col-span-2" : ""}
+                    >
+                      <p className="text-xs text-slate-400">{f.label}</p>
+                      <p className="text-slate-700 whitespace-pre-wrap">
+                        {f.type === "date"
+                          ? frDate(dossier[f.id])
+                          : dossier[f.id]}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </Card>
+      )}
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* Bilans */}

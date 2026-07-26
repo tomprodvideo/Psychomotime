@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { Fragment, useState, useTransition } from "react";
 import { Plus, X } from "lucide-react";
 import type { Patient } from "@/lib/types";
+import { DOSSIER_GROUPS, PATIENT_DOSSIER_FIELDS } from "@/lib/constants";
 import { savePatient } from "./actions";
 
 export default function PatientFormDialog({
@@ -14,6 +15,10 @@ export default function PatientFormDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
+  const dossier = (patient?.dossier ?? {}) as Record<
+    string,
+    string | null | undefined
+  >;
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -182,6 +187,42 @@ export default function PatientFormDialog({
                     className={inputCls}
                   />
                 </div>
+
+                {/* Dossier de suivi */}
+                {DOSSIER_GROUPS.map((group) => (
+                  <Fragment key={group}>
+                    <div className="col-span-2 pt-2 border-t border-slate-100">
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-brand-600 mt-1 mb-1">
+                        {group}
+                      </h3>
+                    </div>
+                    {PATIENT_DOSSIER_FIELDS.filter(
+                      (f) => f.group === group,
+                    ).map((f) => (
+                      <div
+                        key={f.id}
+                        className={f.type === "long" ? "col-span-2" : ""}
+                      >
+                        <Label>{f.label}</Label>
+                        {f.type === "long" ? (
+                          <textarea
+                            name={`dossier_${f.id}`}
+                            rows={2}
+                            defaultValue={dossier[f.id] ?? ""}
+                            className={inputCls}
+                          />
+                        ) : (
+                          <input
+                            name={`dossier_${f.id}`}
+                            type={f.type === "date" ? "date" : "text"}
+                            defaultValue={dossier[f.id] ?? ""}
+                            className={inputCls}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </Fragment>
+                ))}
               </div>
               <div className="flex justify-end gap-2 pt-1">
                 <button

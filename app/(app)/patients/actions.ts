@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { PATIENT_DOSSIER_FIELDS } from "@/lib/constants";
 
 function str(v: FormDataEntryValue | null): string | null {
   const s = String(v ?? "").trim();
@@ -22,7 +23,12 @@ export async function savePatient(formData: FormData) {
     address: str(formData.get("guardian_address")),
   };
 
-  const payload = {
+  const dossier: Record<string, string | null> = {};
+  for (const f of PATIENT_DOSSIER_FIELDS) {
+    dossier[f.id] = str(formData.get(`dossier_${f.id}`));
+  }
+
+  const base = {
     first_name: String(formData.get("first_name") ?? "").trim(),
     last_name: String(formData.get("last_name") ?? "").trim(),
     birth_date: str(formData.get("birth_date")),
@@ -30,7 +36,6 @@ export async function savePatient(formData: FormData) {
     phone: str(formData.get("phone")),
     address: str(formData.get("address")),
     notes: str(formData.get("notes")),
-    guardian,
   };
 
   const run = async (data: Record<string, unknown>) =>
@@ -38,12 +43,13 @@ export async function savePatient(formData: FormData) {
       ? supabase.from("patients").update(data).eq("id", id)
       : supabase.from("patients").insert(data);
 
-  const { error } = await run(payload);
-  // Repli si la colonne guardian n'existe pas encore (migration_006 non lancée).
+  // Repli progressif si guardian/dossier n'existent pas encore (migrations 006/007).
+  let { error } = await run({ ...base, guardian, dossier });
   if (error?.code === "42703") {
-    const { guardian: _g, ...rest } = payload;
-    void _g;
-    await run(rest);
+    ({ error } = await run({ ...base, guardian }));
+  }
+  if (error?.code === "42703") {
+    await run(base);
   }
 
   revalidatePath("/patients");

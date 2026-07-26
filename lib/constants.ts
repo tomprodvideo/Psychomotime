@@ -23,6 +23,77 @@ export const PAYMENT_METHODS = [
 ];
 
 /* ============================================================
+ *  DOSSIER PATIENT (suivi)
+ * ============================================================ */
+export interface DossierField {
+  id: string;
+  label: string;
+  type?: "text" | "date" | "long";
+  group: string;
+}
+
+export const PATIENT_DOSSIER_FIELDS: DossierField[] = [
+  {
+    id: "prescripteur",
+    label: "Médecin prescripteur",
+    group: "Prescription & demande",
+  },
+  {
+    id: "ordonnance_date",
+    label: "Date d'ordonnance",
+    type: "date",
+    group: "Prescription & demande",
+  },
+  {
+    id: "referrer",
+    label: "Qui adresse la demande",
+    group: "Prescription & demande",
+  },
+  {
+    id: "bilan_initial_date",
+    label: "Date du bilan initial",
+    type: "date",
+    group: "Prescription & demande",
+  },
+  { id: "motif", label: "Motif de la demande", type: "long", group: "Clinique" },
+  { id: "diagnostic", label: "Diagnostic", type: "long", group: "Clinique" },
+  {
+    id: "hypothese",
+    label: "Hypothèse diagnostique",
+    type: "long",
+    group: "Clinique",
+  },
+  {
+    id: "accompagnement",
+    label: "Accompagnement et objectifs",
+    type: "long",
+    group: "Clinique",
+  },
+  {
+    id: "school",
+    label: "Coordonnées de l'école",
+    type: "long",
+    group: "Environnement",
+  },
+  {
+    id: "autres_suivis",
+    label: "Autres suivis / bilans",
+    type: "long",
+    group: "Environnement",
+  },
+  {
+    id: "complement",
+    label: "Informations complémentaires",
+    type: "long",
+    group: "Environnement",
+  },
+];
+
+export const DOSSIER_GROUPS = Array.from(
+  new Set(PATIENT_DOSSIER_FIELDS.map((f) => f.group)),
+);
+
+/* ============================================================
  *  BILAN PSYCHOMOTEUR
  * ============================================================ */
 
@@ -39,11 +110,6 @@ export const BILAN_META: BilanMetaField[] = [
     id: "passation",
     label: "Dates de passation",
     placeholder: "Ex. 20/02, 27/02, 06/03/2026",
-  },
-  {
-    id: "prescripteur",
-    label: "Médecin prescripteur",
-    placeholder: "Ex. PCO 42-43",
   },
   {
     id: "motif",

@@ -85,6 +85,9 @@ export default async function BilanApercuPage({
   const birth = patient?.birth_date;
   const usedLabels = usedIds.length > 0;
   const accent = profile.theme_color || "#2f8a82";
+  // Médecin prescripteur : ancien champ du bilan, sinon depuis la fiche patient.
+  const prescripteur =
+    content.prescripteur || patient?.dossier?.prescripteur || "";
 
   function mabcTables(blockKeys?: ("equilibre" | "oculo" | "dexterite")[]) {
     if (!mabcUsed || !group || !blockKeys) return null;
@@ -206,6 +209,7 @@ export default async function BilanApercuPage({
           {/* Encart détail patient (AU-DESSUS de l'anamnèse) */}
           {(b.patient_name ||
             birth ||
+            prescripteur ||
             BILAN_META.some((f) => content[f.id]?.trim())) && (
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-[12px] mb-5 break-inside-avoid">
               <p>
@@ -229,10 +233,10 @@ export default async function BilanApercuPage({
                   {content.passation}
                 </p>
               )}
-              {content.prescripteur && (
+              {prescripteur && (
                 <p>
                   <span className="text-slate-500">Médecin prescripteur : </span>
-                  {content.prescripteur}
+                  {prescripteur}
                 </p>
               )}
               {content.motif && (

@@ -63,6 +63,20 @@ export interface Guardian {
   address?: string | null;
 }
 
+export interface PatientDossier {
+  prescripteur?: string | null;
+  ordonnance_date?: string | null;
+  referrer?: string | null;
+  bilan_initial_date?: string | null;
+  motif?: string | null;
+  diagnostic?: string | null;
+  hypothese?: string | null;
+  accompagnement?: string | null;
+  school?: string | null;
+  autres_suivis?: string | null;
+  complement?: string | null;
+}
+
 export interface Patient {
   id: string;
   user_id: string;
@@ -74,6 +88,7 @@ export interface Patient {
   address: string | null;
   notes: string | null;
   guardian: Guardian;
+  dossier: PatientDossier;
   created_at: string;
 }
 
