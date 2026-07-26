@@ -17,12 +17,12 @@ export default async function NouveauBilanPage({
 
   const { data } = await supabase
     .from("patients")
-    .select("id, first_name, last_name")
+    .select("id, first_name, last_name, birth_date")
     .order("last_name");
 
   const patients = (data ?? []) as Pick<
     Patient,
-    "id" | "first_name" | "last_name"
+    "id" | "first_name" | "last_name" | "birth_date"
   >[];
 
   const today = new Date().toISOString().slice(0, 10);

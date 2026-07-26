@@ -18,9 +18,26 @@ export default async function BilanEditPage({
     .maybeSingle();
 
   if (!data) notFound();
+  const bilan = data as Bilan;
 
   const settings = await getSettings();
   const templates = settings.profile?.adaptation_templates ?? [];
 
-  return <BilanEditor bilan={data as Bilan} templates={templates} />;
+  let patientBirthDate: string | null = null;
+  if (bilan.patient_id) {
+    const { data: p } = await supabase
+      .from("patients")
+      .select("birth_date")
+      .eq("id", bilan.patient_id)
+      .maybeSingle();
+    patientBirthDate = (p?.birth_date as string) ?? null;
+  }
+
+  return (
+    <BilanEditor
+      bilan={bilan}
+      templates={templates}
+      patientBirthDate={patientBirthDate}
+    />
+  );
 }

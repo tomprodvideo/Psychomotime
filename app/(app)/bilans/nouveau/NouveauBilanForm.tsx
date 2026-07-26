@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import type { Patient } from "@/lib/types";
+import { ageFromBirth, frDate } from "@/lib/format";
 import { createBilan } from "../actions";
 
-type PatientLite = Pick<Patient, "id" | "first_name" | "last_name">;
+type PatientLite = Pick<Patient, "id" | "first_name" | "last_name" | "birth_date">;
 
 export default function NouveauBilanForm({
   patients,
@@ -23,9 +24,30 @@ export default function NouveauBilanForm({
     initial ? `${initial.first_name} ${initial.last_name}`.trim() : "",
   );
 
+  const selected = patients.find((p) => p.id === patientId);
+
   return (
     <form action={createBilan} className="space-y-5">
       <input type="hidden" name="patient_id" value={patientId} />
+
+      {/* En-tête patient */}
+      {selected && (
+        <div className="bg-brand-50 border border-brand-100 rounded-xl p-4 flex items-center gap-3">
+          <div className="h-11 w-11 rounded-full bg-brand-600 text-white flex items-center justify-center font-semibold uppercase">
+            {(selected.first_name?.[0] ?? "") + (selected.last_name?.[0] ?? "")}
+          </div>
+          <div>
+            <p className="font-semibold text-slate-800">
+              {selected.first_name} {selected.last_name}
+            </p>
+            <p className="text-sm text-slate-500">
+              {selected.birth_date
+                ? `Né(e) le ${frDate(selected.birth_date)} · ${ageFromBirth(selected.birth_date)}`
+                : "Date de naissance non renseignée"}
+            </p>
+          </div>
+        </div>
+      )}
 
       <div>
         <Label>Patient</Label>

@@ -54,6 +54,15 @@ export interface Settings {
   updated_at: string;
 }
 
+export interface Guardian {
+  relation?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+}
+
 export interface Patient {
   id: string;
   user_id: string;
@@ -64,6 +73,7 @@ export interface Patient {
   phone: string | null;
   address: string | null;
   notes: string | null;
+  guardian: Guardian;
   created_at: string;
 }
 

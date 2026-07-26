@@ -117,6 +117,71 @@ export default function PatientFormDialog({
                     className={inputCls}
                   />
                 </div>
+
+                {/* Tuteur / Parent */}
+                <div className="col-span-2 pt-2 border-t border-slate-100">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-brand-600 mt-1 mb-1">
+                    Tuteur / Parent
+                  </h3>
+                </div>
+                <div>
+                  <Label>Prénom</Label>
+                  <input
+                    name="guardian_first_name"
+                    defaultValue={patient?.guardian?.first_name ?? ""}
+                    className={inputCls}
+                  />
+                </div>
+                <div>
+                  <Label>Nom</Label>
+                  <input
+                    name="guardian_last_name"
+                    defaultValue={patient?.guardian?.last_name ?? ""}
+                    className={inputCls}
+                  />
+                </div>
+                <div>
+                  <Label>Lien</Label>
+                  <select
+                    name="guardian_relation"
+                    defaultValue={patient?.guardian?.relation ?? ""}
+                    className={inputCls}
+                  >
+                    <option value="">—</option>
+                    {["Parent", "Mère", "Père", "Tuteur légal", "Autre"].map(
+                      (r) => (
+                        <option key={r} value={r}>
+                          {r}
+                        </option>
+                      ),
+                    )}
+                  </select>
+                </div>
+                <div>
+                  <Label>Téléphone</Label>
+                  <input
+                    name="guardian_phone"
+                    defaultValue={patient?.guardian?.phone ?? ""}
+                    className={inputCls}
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Label>Email</Label>
+                  <input
+                    name="guardian_email"
+                    type="email"
+                    defaultValue={patient?.guardian?.email ?? ""}
+                    className={inputCls}
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Label>Adresse</Label>
+                  <input
+                    name="guardian_address"
+                    defaultValue={patient?.guardian?.address ?? ""}
+                    className={inputCls}
+                  />
+                </div>
               </div>
               <div className="flex justify-end gap-2 pt-1">
                 <button

@@ -102,6 +102,48 @@ export default async function PatientDetailPage({
             )}
           </div>
         )}
+
+        {p.guardian &&
+          (p.guardian.first_name ||
+            p.guardian.last_name ||
+            p.guardian.phone ||
+            p.guardian.email ||
+            p.guardian.address) && (
+            <div className="mt-4 pt-4 border-t border-slate-100">
+              <p className="text-xs font-semibold uppercase tracking-wider text-brand-600 mb-2">
+                Tuteur / Parent
+              </p>
+              <div className="grid sm:grid-cols-3 gap-3 text-sm">
+                <div>
+                  <p className="text-xs text-slate-400">Nom</p>
+                  <p className="text-slate-700">
+                    {[p.guardian.first_name, p.guardian.last_name]
+                      .filter(Boolean)
+                      .join(" ") || "—"}
+                    {p.guardian.relation ? ` (${p.guardian.relation})` : ""}
+                  </p>
+                </div>
+                {p.guardian.phone && (
+                  <div>
+                    <p className="text-xs text-slate-400">Téléphone</p>
+                    <p className="text-slate-700">{p.guardian.phone}</p>
+                  </div>
+                )}
+                {p.guardian.email && (
+                  <div>
+                    <p className="text-xs text-slate-400">Email</p>
+                    <p className="text-slate-700">{p.guardian.email}</p>
+                  </div>
+                )}
+                {p.guardian.address && (
+                  <div className="sm:col-span-3">
+                    <p className="text-xs text-slate-400">Adresse</p>
+                    <p className="text-slate-700">{p.guardian.address}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
       </Card>
 
       <div className="grid md:grid-cols-2 gap-6">

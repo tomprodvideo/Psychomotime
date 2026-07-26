@@ -33,6 +33,7 @@ import {
   testLabel,
   type MabcRow,
 } from "@/lib/constants";
+import { ageFromBirth, frDate } from "@/lib/format";
 import ConfirmDeleteButton from "@/components/ConfirmDeleteButton";
 import { saveBilan, deleteBilan } from "../actions";
 import { reformulateText } from "../ai-actions";
@@ -90,9 +91,11 @@ function resizeImage(file: File, maxDim = 1200, quality = 0.82): Promise<string>
 export default function BilanEditor({
   bilan,
   templates,
+  patientBirthDate,
 }: {
   bilan: Bilan;
   templates: AdaptationTemplate[];
+  patientBirthDate?: string | null;
 }) {
   const raw0 = bilan.content ?? {};
 
@@ -503,6 +506,12 @@ export default function BilanEditor({
               }}
               className={inputCls}
             />
+            {patientBirthDate && (
+              <p className="text-xs text-slate-400 mt-1">
+                Né(e) le {frDate(patientBirthDate)} ·{" "}
+                {ageFromBirth(patientBirthDate)}
+              </p>
+            )}
           </div>
           <div>
             <Label>Date du bilan</Label>
