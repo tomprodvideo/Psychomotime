@@ -442,7 +442,7 @@ export default function BilanEditor({ bilan }: { bilan: Bilan }) {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto pb-28">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto pb-40">
       <div className="flex items-center justify-between mb-4">
         <Link
           href="/bilans"
