@@ -56,3 +56,24 @@ export async function updateSettings(formData: FormData) {
   revalidatePath("/comptabilite");
   revalidatePath("/");
 }
+
+/** Résiliation de son propre abonnement (l'utilisateur ne peut que résilier). */
+export async function cancelSubscription() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  await supabase
+    .from("subscriptions")
+    .update({
+      status: "canceled",
+      manual_override: false,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", user.id);
+
+  revalidatePath("/parametres");
+  revalidatePath("/");
+}

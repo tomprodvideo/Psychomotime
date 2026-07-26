@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { BadgeCheck, Sparkles } from "lucide-react";
+import { cancelSubscription } from "./actions";
 
 export default function SubscriptionCard({
   status,
@@ -13,6 +14,8 @@ export default function SubscriptionCard({
   isAdmin: boolean;
 }) {
   const [info, setInfo] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [pending, start] = useTransition();
 
   const isPro = status === "active";
 
@@ -61,6 +64,52 @@ export default function SubscriptionCard({
               Vous pourrez activer votre abonnement ici en un clic. En attendant,
               votre accès reste ouvert pendant la période d&apos;essai.
             </p>
+          )}
+        </div>
+      )}
+
+      {/* Gestion / résiliation pour un compte Pro actif */}
+      {!isAdmin && isPro && (
+        <div className="mt-4 pt-4 border-t border-slate-100">
+          <dl className="grid grid-cols-2 gap-y-1 text-sm mb-4">
+            <dt className="text-slate-500">Formule</dt>
+            <dd className="text-slate-800 text-right">Pro — 29 €/mois</dd>
+            <dt className="text-slate-500">Statut</dt>
+            <dd className="text-emerald-600 font-medium text-right">Actif</dd>
+          </dl>
+
+          {!confirmCancel ? (
+            <button
+              type="button"
+              onClick={() => setConfirmCancel(true)}
+              className="text-sm font-medium text-rose-600 hover:bg-rose-50 border border-rose-200 px-4 py-2 rounded-lg"
+            >
+              Résilier mon abonnement
+            </button>
+          ) : (
+            <div className="bg-rose-50 border border-rose-200 rounded-lg p-4">
+              <p className="text-sm text-slate-700">
+                Confirmer la résiliation ? Votre accès à la formule Pro sera
+                interrompu.
+              </p>
+              <div className="flex items-center gap-2 mt-3">
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => start(() => cancelSubscription())}
+                  className="text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 px-4 py-2 rounded-lg disabled:opacity-60"
+                >
+                  {pending ? "Résiliation…" : "Confirmer la résiliation"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmCancel(false)}
+                  className="text-sm text-slate-600 hover:bg-slate-100 px-4 py-2 rounded-lg"
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
           )}
         </div>
       )}
