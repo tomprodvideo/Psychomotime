@@ -136,7 +136,8 @@ export interface MabcScore {
 }
 
 export interface BilanTests {
-  used?: string[]; // ids des tests utilisés
+  used?: string[]; // (déprécié) ancienne liste globale
+  bySection?: Record<string, string[]>; // tests sélectionnés par section
   mabc3_group?: 1 | 2 | 3 | null;
   mabc3?: Record<string, MabcScore>; // clé de ligne -> score
 }

@@ -59,10 +59,13 @@ export default async function BilanApercuPage({
   );
   const tests = b.tests ?? {};
   const profile = settings.profile ?? {};
-  const usedIds = tests.used ?? [];
-  const mabcUsed = usedIds.includes("mabc3");
+  const bySection = tests.bySection ?? {};
+  const legacyUsed = tests.used ?? [];
   const group = MABC_GROUPS.find((g) => g.group === tests.mabc3_group) ?? null;
   const scores = tests.mabc3 ?? {};
+  const mabcInSection = (sectionId: string) =>
+    (bySection[sectionId] ?? []).includes("mabc3") ||
+    legacyUsed.includes("mabc3");
 
   let patient: Patient | null = null;
   if (b.patient_id) {
@@ -83,14 +86,19 @@ export default async function BilanApercuPage({
 
   const author = settings.display_name ?? b.author ?? "Psychomotricien(ne)";
   const birth = patient?.birth_date;
-  const usedLabels = usedIds.length > 0;
+  const usedLabels =
+    Object.values(bySection).some((a) => a.length > 0) ||
+    legacyUsed.length > 0;
   const accent = profile.theme_color || "#2f8a82";
   // Médecin prescripteur : ancien champ du bilan, sinon depuis la fiche patient.
   const prescripteur =
     content.prescripteur || patient?.dossier?.prescripteur || "";
 
-  function mabcTables(blockKeys?: ("equilibre" | "oculo" | "dexterite")[]) {
-    if (!mabcUsed || !group || !blockKeys) return null;
+  function mabcTables(
+    sectionId: string,
+    blockKeys?: ("equilibre" | "oculo" | "dexterite")[],
+  ) {
+    if (!group || !blockKeys || !mabcInSection(sectionId)) return null;
     return blockKeys.map((bk) => (
       <MabcTablePrint
         key={bk}
@@ -266,16 +274,25 @@ export default async function BilanApercuPage({
             .filter((s) => s.id !== "anamnese" && s.id !== "conclusion")
             .map((s) => {
               const text = content[s.id]?.trim();
+              const sel = bySection[s.id] ?? [];
               const hasTables =
-                mabcUsed && group && (s.mabcBlocks?.length ?? 0) > 0;
-              if (!text && !hasTables && !hasExtras(s.id)) return null;
+                group &&
+                (s.mabcBlocks?.length ?? 0) > 0 &&
+                mabcInSection(s.id);
+              if (!text && !hasTables && !hasExtras(s.id) && sel.length === 0)
+                return null;
               return (
                 <section key={s.id} className="mb-5 break-inside-avoid">
                   <SectionTitle>{s.title}</SectionTitle>
+                  {sel.length > 0 && (
+                    <p className="text-[11px] italic text-slate-400 mb-1">
+                      Test(s) : {sel.map((t) => testLabel(t)).join(" · ")}
+                    </p>
+                  )}
                   {text && (
                     <p className="whitespace-pre-wrap text-justify">{text}</p>
                   )}
-                  {mabcTables(s.mabcBlocks)}
+                  {mabcTables(s.id, s.mabcBlocks)}
                   {sectionExtras(s.id)}
                 </section>
               );

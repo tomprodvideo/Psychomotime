@@ -9,7 +9,6 @@ import {
   ImagePlus,
   Loader2,
   Mic,
-  Plus,
   Save,
   Sparkles,
   Square,
@@ -30,7 +29,6 @@ import {
   MABC_GROUPS,
   PSYCHOMOTOR_TESTS,
   nsColor,
-  testLabel,
   type MabcRow,
 } from "@/lib/constants";
 import { ageFromBirth, frDate } from "@/lib/format";
@@ -40,23 +38,12 @@ import { reformulateText } from "../ai-actions";
 import { useDictation } from "./useDictation";
 import AdaptationTools from "./AdaptationTools";
 
-interface ExtraBlock {
-  id: string;
-  test: string;
-}
-
 function parseJSON<T>(s: unknown, fallback: T): T {
   try {
     return typeof s === "string" ? (JSON.parse(s) as T) : fallback;
   } catch {
     return fallback;
   }
-}
-
-function uid() {
-  return globalThis.crypto?.randomUUID
-    ? globalThis.crypto.randomUUID()
-    : `b${Date.now()}${Math.floor(Math.random() * 1e6)}`;
 }
 
 /** Redimensionne une image et renvoie un data-URL JPEG léger. */
@@ -112,9 +99,6 @@ export default function BilanEditor({
     delete c.__flags__;
     return c;
   });
-  const [blocks, setBlocks] = useState<Record<string, ExtraBlock[]>>(() =>
-    parseJSON(raw0.__blocks__, {}),
-  );
   const [images, setImages] = useState<Record<string, string[]>>(() =>
     parseJSON(raw0.__images__, {}),
   );
@@ -128,9 +112,11 @@ export default function BilanEditor({
     !!flags0.preconisations,
   );
 
-  // Tests
+  // Tests (sélection par section)
   const t0: BilanTests = bilan.tests ?? {};
-  const [used, setUsed] = useState<string[]>(t0.used ?? []);
+  const [bySection, setBySection] = useState<Record<string, string[]>>(
+    () => t0.bySection ?? {},
+  );
   const [mabcGroup, setMabcGroup] = useState<1 | 2 | 3 | null>(
     t0.mabc3_group ?? null,
   );
@@ -163,34 +149,21 @@ export default function BilanEditor({
     markDirty();
   };
 
-  const toggleTest = (id: string) => {
-    setUsed((u) => (u.includes(id) ? u.filter((x) => x !== id) : [...u, id]));
+  const toggleSectionTest = (sectionId: string, testId: string) => {
+    setBySection((b) => {
+      const cur = b[sectionId] ?? [];
+      return {
+        ...b,
+        [sectionId]: cur.includes(testId)
+          ? cur.filter((x) => x !== testId)
+          : [...cur, testId],
+      };
+    });
     markDirty();
   };
 
   const setScore = (key: string, field: "p" | "ns", value: string) => {
     setMabcScores((m) => ({ ...m, [key]: { ...m[key], [field]: value } }));
-    markDirty();
-  };
-
-  const addBlock = (sectionId: string, test: string) => {
-    if (!test) return;
-    setBlocks((b) => ({
-      ...b,
-      [sectionId]: [...(b[sectionId] ?? []), { id: uid(), test }],
-    }));
-    markDirty();
-  };
-  const removeBlock = (sectionId: string, blockId: string) => {
-    setBlocks((b) => ({
-      ...b,
-      [sectionId]: (b[sectionId] ?? []).filter((x) => x.id !== blockId),
-    }));
-    setContent((c) => {
-      const cp = { ...c };
-      delete cp[`${sectionId}::${blockId}`];
-      return cp;
-    });
     markDirty();
   };
 
@@ -265,7 +238,6 @@ export default function BilanEditor({
         "content",
         JSON.stringify({
           ...content,
-          __blocks__: JSON.stringify(blocks),
           __images__: JSON.stringify(images),
           __flags__: JSON.stringify({
             adaptations: adaptationsOn,
@@ -275,7 +247,11 @@ export default function BilanEditor({
       );
       fd.set(
         "tests",
-        JSON.stringify({ used, mabc3_group: mabcGroup, mabc3: mabcScores }),
+        JSON.stringify({
+          bySection,
+          mabc3_group: mabcGroup,
+          mabc3: mabcScores,
+        }),
       );
       await saveBilan(fd);
       setDirty(false);
@@ -283,12 +259,7 @@ export default function BilanEditor({
       setTimeout(() => setSavedAt(false), 2500);
     });
 
-  const mabcUsed = used.includes("mabc3");
   const group = MABC_GROUPS.find((g) => g.group === mabcGroup) ?? null;
-  const usedTestOptions = [
-    ...PSYCHOMOTOR_TESTS.filter((t) => used.includes(t.id)),
-    { id: "autre", label: "Autre (bloc libre)" },
-  ];
 
   /** Champ texte réutilisable (section principale ou bloc), avec dictée + IA. */
   function TextField({
@@ -392,23 +363,93 @@ export default function BilanEditor({
     );
   }
 
-  /** Blocs supplémentaires + photos d'une section. */
-  function SectionExtras({ sectionId }: { sectionId: string }) {
-    const bl = blocks[sectionId] ?? [];
+  /** Sélecteur de tests + tableaux M-ABC3 d'une section (domaines). */
+  function SectionTests({
+    sectionId,
+    mabcBlocks,
+  }: {
+    sectionId: string;
+    mabcBlocks?: ("equilibre" | "oculo" | "dexterite")[];
+  }) {
+    const sel = bySection[sectionId] ?? [];
+    const showMabc =
+      sel.includes("mabc3") && mabcBlocks && mabcBlocks.length > 0;
+    return (
+      <div className="mt-3 bg-slate-50/60 rounded-lg p-3">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-xs font-medium text-slate-500 mr-1">
+            Tests utilisés :
+          </span>
+          {PSYCHOMOTOR_TESTS.map((t) => {
+            const on = sel.includes(t.id);
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => toggleSectionTest(sectionId, t.id)}
+                className={`text-xs px-2.5 py-1 rounded-full border transition ${
+                  on
+                    ? "bg-brand-600 border-brand-600 text-white"
+                    : "bg-white border-slate-200 text-slate-600 hover:border-brand-300"
+                }`}
+              >
+                {on ? "✓ " : ""}
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {showMabc && (
+          <div className="mt-3 border-t border-slate-200 pt-3">
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <span className="text-xs font-medium text-slate-700">
+                M-ABC3 — groupe d&apos;âge :
+              </span>
+              {MABC_GROUPS.map((g) => (
+                <button
+                  key={g.group}
+                  type="button"
+                  onClick={() => {
+                    setMabcGroup(g.group);
+                    markDirty();
+                  }}
+                  className={`text-xs px-3 py-1.5 rounded-lg border transition ${
+                    mabcGroup === g.group
+                      ? "bg-brand-50 border-brand-400 text-brand-700 ring-1 ring-brand-200"
+                      : "border-slate-200 text-slate-500 hover:border-brand-300"
+                  }`}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
+            {group ? (
+              mabcBlocks!.map((bk) => (
+                <MabcTable
+                  key={bk}
+                  title={MABC_BLOCK_TITLES[bk]}
+                  rows={group.blocks[bk]}
+                  scores={mabcScores}
+                  onChange={setScore}
+                />
+              ))
+            ) : (
+              <p className="text-sm text-slate-400">
+                Choisissez un groupe d&apos;âge pour afficher les épreuves.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  /** Photos d'une section. */
+  function SectionPhotos({ sectionId }: { sectionId: string }) {
     const imgs = images[sectionId] ?? [];
     return (
       <div className="mt-3 space-y-3">
-        {bl.map((blk) => (
-          <TextField
-            key={blk.id}
-            fieldKey={`${sectionId}::${blk.id}`}
-            label={testLabel(blk.test)}
-            hint={`Observations — ${testLabel(blk.test)}`}
-            onRemove={() => removeBlock(sectionId, blk.id)}
-          />
-        ))}
-
-        {/* Photos */}
         {imgs.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {imgs.map((src, i) => (
@@ -430,40 +471,20 @@ export default function BilanEditor({
             ))}
           </div>
         )}
-
-        {/* Actions : ajouter bloc / photo */}
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            value=""
+        <label className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-lg cursor-pointer">
+          <ImagePlus className="h-3.5 w-3.5" />
+          Ajouter une photo
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
             onChange={(e) => {
-              addBlock(sectionId, e.target.value);
+              if (e.target.files) addImages(sectionId, e.target.files);
               e.target.value = "";
             }}
-            className="text-xs rounded-lg border border-slate-200 py-1.5 px-2 text-slate-600 outline-none focus:border-brand-400"
-          >
-            <option value="">+ Ajouter un bloc (test)…</option>
-            {usedTestOptions.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.label}
-              </option>
-            ))}
-          </select>
-
-          <label className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-lg cursor-pointer">
-            <ImagePlus className="h-3.5 w-3.5" />
-            Ajouter une photo
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              onChange={(e) => {
-                if (e.target.files) addImages(sectionId, e.target.files);
-                e.target.value = "";
-              }}
-            />
-          </label>
-        </div>
+          />
+        </label>
       </div>
     );
   }
@@ -559,75 +580,6 @@ export default function BilanEditor({
         </div>
       </div>
 
-      {/* Tests utilisés */}
-      <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 mb-5">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-brand-600 mb-3">
-          Tests utilisés
-        </h2>
-        <div className="flex flex-wrap gap-2">
-          {PSYCHOMOTOR_TESTS.map((test) => {
-            const on = used.includes(test.id);
-            return (
-              <button
-                key={test.id}
-                type="button"
-                onClick={() => toggleTest(test.id)}
-                className={`text-sm px-3 py-1.5 rounded-full border transition ${
-                  on
-                    ? "bg-brand-600 border-brand-600 text-white"
-                    : "bg-white border-slate-200 text-slate-600 hover:border-brand-300"
-                }`}
-              >
-                {on ? "✓ " : ""}
-                {test.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {mabcUsed && (
-          <div className="mt-5 border-t border-slate-100 pt-4">
-            <div className="flex flex-wrap items-center gap-3 mb-4">
-              <span className="text-sm font-medium text-slate-700">
-                M-ABC3 — groupe d&apos;âge :
-              </span>
-              {MABC_GROUPS.map((g) => (
-                <button
-                  key={g.group}
-                  type="button"
-                  onClick={() => {
-                    setMabcGroup(g.group);
-                    markDirty();
-                  }}
-                  className={`text-xs px-3 py-1.5 rounded-lg border transition ${
-                    mabcGroup === g.group
-                      ? "bg-brand-50 border-brand-400 text-brand-700 ring-1 ring-brand-200"
-                      : "border-slate-200 text-slate-500 hover:border-brand-300"
-                  }`}
-                >
-                  {g.label}
-                </button>
-              ))}
-            </div>
-
-            {!group ? (
-              <p className="text-sm text-slate-400">
-                Choisissez un groupe d&apos;âge : les tableaux apparaîtront dans
-                les sections « La motricité globale » et « La motricité fine »
-                ci-dessous.
-              </p>
-            ) : (
-              <p className="text-sm text-slate-500">
-                Groupe sélectionné. Remplissez les tableaux directement dans les
-                sections <strong>Motricité globale</strong> (équilibre &amp;
-                coordination oculo-manuelle) et{" "}
-                <strong>Motricité fine</strong> (dextérité) ci-dessous.
-              </p>
-            )}
-          </div>
-        )}
-      </div>
-
       {/* Sections rédigées */}
       <div className="space-y-6">
         {BILAN_TEMPLATE.map((grp) => (
@@ -644,20 +596,10 @@ export default function BilanEditor({
                     hint={s.hint}
                     rows={s.id === "anamnese" || s.id === "conclusion" ? 6 : 3}
                   />
-                  {mabcUsed && group && s.mabcBlocks && (
-                    <div className="mt-3">
-                      {s.mabcBlocks.map((bk) => (
-                        <MabcTable
-                          key={bk}
-                          title={MABC_BLOCK_TITLES[bk]}
-                          rows={group.blocks[bk]}
-                          scores={mabcScores}
-                          onChange={setScore}
-                        />
-                      ))}
-                    </div>
+                  {grp.group === "Domaines psychomoteurs" && (
+                    <SectionTests sectionId={s.id} mabcBlocks={s.mabcBlocks} />
                   )}
-                  <SectionExtras sectionId={s.id} />
+                  <SectionPhotos sectionId={s.id} />
                 </div>
               ))}
             </div>
