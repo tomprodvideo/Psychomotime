@@ -95,12 +95,23 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=…`}
     user.email ||
     "Mon compte";
 
+  const planLabel = access.isAdmin
+    ? "Administrateur"
+    : access.status === "active"
+      ? "Formule Pro · Active"
+      : access.status === "trialing"
+        ? "Essai"
+        : null;
+  const planActive = access.isAdmin || access.status === "active";
+
   return (
     <div className="md:flex min-h-screen">
       <Sidebar
         displayName={displayName}
         signOutAction={signOut}
         isAdmin={access.isAdmin}
+        planLabel={planLabel}
+        planActive={planActive}
       />
       <main className="flex-1 min-w-0">
         {access.trialDaysLeft !== null && (
