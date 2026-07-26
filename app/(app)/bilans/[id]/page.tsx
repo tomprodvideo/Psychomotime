@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getSettings } from "@/lib/data";
 import type { Bilan } from "@/lib/types";
 import BilanEditor from "./BilanEditor";
 
@@ -18,5 +19,8 @@ export default async function BilanEditPage({
 
   if (!data) notFound();
 
-  return <BilanEditor bilan={data as Bilan} />;
+  const settings = await getSettings();
+  const templates = settings.profile?.adaptation_templates ?? [];
+
+  return <BilanEditor bilan={data as Bilan} templates={templates} />;
 }

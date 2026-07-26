@@ -11,6 +11,13 @@ export interface Profile {
   business_phone?: string;
   legal_mentions?: string;
   theme_color?: string; // couleur d'accent des bilans (hex)
+  adaptation_templates?: AdaptationTemplate[]; // modèles d'adaptations réutilisables
+}
+
+export interface AdaptationTemplate {
+  id: string;
+  title: string;
+  text: string;
 }
 
 export interface Settings {

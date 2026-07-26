@@ -17,7 +17,12 @@ import {
   Undo2,
   X,
 } from "lucide-react";
-import type { Bilan, BilanTests, MabcScore } from "@/lib/types";
+import type {
+  AdaptationTemplate,
+  Bilan,
+  BilanTests,
+  MabcScore,
+} from "@/lib/types";
 import {
   BILAN_META,
   BILAN_TEMPLATE,
@@ -32,6 +37,7 @@ import ConfirmDeleteButton from "@/components/ConfirmDeleteButton";
 import { saveBilan, deleteBilan } from "../actions";
 import { reformulateText } from "../ai-actions";
 import { useDictation } from "./useDictation";
+import AdaptationTools from "./AdaptationTools";
 
 interface ExtraBlock {
   id: string;
@@ -81,7 +87,13 @@ function resizeImage(file: File, maxDim = 1200, quality = 0.82): Promise<string>
   });
 }
 
-export default function BilanEditor({ bilan }: { bilan: Bilan }) {
+export default function BilanEditor({
+  bilan,
+  templates,
+}: {
+  bilan: Bilan;
+  templates: AdaptationTemplate[];
+}) {
   const raw0 = bilan.content ?? {};
 
   const [title, setTitle] = useState(bilan.title);
@@ -137,6 +149,15 @@ export default function BilanEditor({ bilan }: { bilan: Bilan }) {
     setContent((c) => ({ ...c, [key]: value }));
     markDirty();
     if (undo?.id === key) setUndo(null);
+  };
+
+  const insertInto = (key: string, text: string) => {
+    setContent((c) => {
+      const prev = c[key] ?? "";
+      const sep = prev.trim() ? "\n" : "";
+      return { ...c, [key]: prev + sep + text };
+    });
+    markDirty();
   };
 
   const toggleTest = (id: string) => {
@@ -273,12 +294,14 @@ export default function BilanEditor({ bilan }: { bilan: Bilan }) {
     hint,
     rows = 3,
     onRemove,
+    extraActions,
   }: {
     fieldKey: string;
     label: string;
     hint?: string;
     rows?: number;
     onRemove?: () => void;
+    extraActions?: React.ReactNode;
   }) {
     const busy = aiBusy === fieldKey;
     const hasText = (content[fieldKey] ?? "").trim() !== "";
@@ -328,6 +351,7 @@ export default function BilanEditor({ bilan }: { bilan: Bilan }) {
               )}
               {busy ? "Reformulation…" : "Reformuler"}
             </button>
+            {extraActions}
             {onRemove && (
               <button
                 type="button"
@@ -645,6 +669,12 @@ export default function BilanEditor({ bilan }: { bilan: Bilan }) {
             label="Adaptations"
             hint="Adaptations à mettre en place au quotidien et en contexte scolaire…"
             rows={4}
+            extraActions={
+              <AdaptationTools
+                initial={templates}
+                onInsert={(text) => insertInto("adaptations", text)}
+              />
+            }
           />
         )}
 

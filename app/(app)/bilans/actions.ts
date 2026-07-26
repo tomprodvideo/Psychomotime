@@ -90,6 +90,35 @@ export async function saveBilan(formData: FormData) {
   revalidatePath("/bilans");
 }
 
+export async function saveAdaptationTemplates(
+  templates: { id: string; title: string; text: string }[],
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data: s } = await supabase
+    .from("settings")
+    .select("profile")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const profile = {
+    ...((s?.profile as Record<string, unknown>) ?? {}),
+    adaptation_templates: templates,
+  };
+
+  await supabase.from("settings").upsert({
+    user_id: user.id,
+    profile,
+    updated_at: new Date().toISOString(),
+  });
+
+  revalidatePath("/bilans");
+}
+
 export async function deleteBilan(formData: FormData) {
   const supabase = await createClient();
   const id = str(formData.get("id"));
