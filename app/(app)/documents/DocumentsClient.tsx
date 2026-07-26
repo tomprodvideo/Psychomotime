@@ -14,6 +14,18 @@ import {
   Upload,
   X,
 } from "lucide-react";
+
+function isPdf(d: { name: string; mime_type: string | null }) {
+  return (
+    d.mime_type === "application/pdf" || d.name.toLowerCase().endsWith(".pdf")
+  );
+}
+function isImage(d: { name: string; mime_type: string | null }) {
+  return (
+    (d.mime_type ?? "").startsWith("image/") ||
+    /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(d.name)
+  );
+}
 import { createClient } from "@/lib/supabase/client";
 import type { DocFolder, DocumentFile } from "@/lib/types";
 import { frDate } from "@/lib/format";
@@ -51,7 +63,23 @@ export default function DocumentsClient({
   const [renameVal, setRenameVal] = useState("");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [preview, setPreview] = useState<{
+    doc: DocumentFile;
+    url: string;
+  } | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+
+  async function openPreview(doc: DocumentFile) {
+    setError("");
+    setPreviewLoading(true);
+    const { data, error } = await supabase.storage
+      .from("documents")
+      .createSignedUrl(doc.storage_path, 300);
+    setPreviewLoading(false);
+    if (error || !data) return setError("Ouverture du fichier impossible.");
+    setPreview({ doc, url: data.signedUrl });
+  }
 
   const visibleDocs = documents.filter((d) => {
     if (selected === ALL) return true;
@@ -97,8 +125,13 @@ export default function DocumentsClient({
   async function handleUpload(files: FileList) {
     setError("");
     setUploading(true);
+    const MAX = 10 * 1024 * 1024; // 10 Mo
     try {
       for (const file of Array.from(files)) {
+        if (file.size > MAX) {
+          setError(`« ${file.name} » dépasse la limite de 10 Mo.`);
+          continue;
+        }
         const ext = file.name.includes(".")
           ? file.name.split(".").pop()
           : "bin";
@@ -280,17 +313,23 @@ export default function DocumentsClient({
                   key={d.id}
                   className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50"
                 >
-                  <div className="h-9 w-9 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center shrink-0">
-                    <FileText className="h-5 w-5" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-700 truncate">
-                      {d.name}
-                    </p>
-                    <p className="text-xs text-slate-400">
-                      {formatBytes(d.size)} · {frDate(d.created_at)}
-                    </p>
-                  </div>
+                  <button
+                    onClick={() => openPreview(d)}
+                    className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                    title="Ouvrir l'aperçu"
+                  >
+                    <div className="h-9 w-9 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center shrink-0">
+                      <FileText className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-700 truncate hover:text-brand-700">
+                        {d.name}
+                      </p>
+                      <p className="text-xs text-slate-400">
+                        {formatBytes(d.size)} · {frDate(d.created_at)}
+                      </p>
+                    </div>
+                  </button>
                   <button
                     onClick={() => download(d)}
                     className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded"
@@ -314,6 +353,69 @@ export default function DocumentsClient({
           <p className="text-xs text-slate-400 mt-2">Actualisation…</p>
         )}
       </div>
+
+      {/* Aperçu du fichier */}
+      {(preview || previewLoading) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+              <p className="text-sm font-medium text-slate-800 truncate">
+                {preview?.doc.name ?? "Chargement…"}
+              </p>
+              <div className="flex items-center gap-1">
+                {preview && (
+                  <button
+                    onClick={() => download(preview.doc)}
+                    className="p-1.5 text-slate-500 hover:text-brand-600"
+                    title="Télécharger"
+                  >
+                    <Download className="h-4 w-4" />
+                  </button>
+                )}
+                <button
+                  onClick={() => setPreview(null)}
+                  className="p-1.5 text-slate-400 hover:text-slate-600"
+                  title="Fermer"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 bg-slate-100 flex items-center justify-center overflow-auto">
+              {previewLoading || !preview ? (
+                <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+              ) : isPdf(preview.doc) ? (
+                <iframe
+                  src={preview.url}
+                  className="w-full h-full"
+                  title={preview.doc.name}
+                />
+              ) : isImage(preview.doc) ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={preview.url}
+                  alt={preview.doc.name}
+                  className="max-w-full max-h-full object-contain"
+                />
+              ) : (
+                <div className="text-center p-8">
+                  <FileText className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                  <p className="text-sm text-slate-500 mb-4">
+                    Aperçu non disponible pour ce type de fichier.
+                  </p>
+                  <button
+                    onClick={() => download(preview.doc)}
+                    className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg"
+                  >
+                    <Download className="h-4 w-4" />
+                    Télécharger
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

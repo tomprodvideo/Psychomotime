@@ -34,10 +34,10 @@ create policy "own documents" on public.documents for all
 create index if not exists idx_documents_user on public.documents(user_id);
 create index if not exists idx_doc_folders_user on public.doc_folders(user_id);
 
--- ---------- Bucket de stockage (privé) ----------
-insert into storage.buckets (id, name, public)
-  values ('documents', 'documents', false)
-  on conflict (id) do nothing;
+-- ---------- Bucket de stockage (privé, 10 Mo max/fichier) ----------
+insert into storage.buckets (id, name, public, file_size_limit)
+  values ('documents', 'documents', false, 10485760)
+  on conflict (id) do update set file_size_limit = 10485760;
 
 -- ---------- Sécurité du stockage : chacun gère uniquement ses fichiers ----------
 -- (chemin des fichiers : <user_id>/<fichier>)
