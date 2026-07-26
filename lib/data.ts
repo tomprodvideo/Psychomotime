@@ -62,11 +62,24 @@ export async function getAccess(): Promise<Access> {
     };
   }
 
-  let { data } = await supabase
+  const { data: initial, error } = await supabase
     .from("subscriptions")
     .select("*")
     .eq("user_id", user.id)
     .maybeSingle();
+
+  // Si la table n'existe pas encore (migration_004 non lancée), ne pas bloquer.
+  if (error) {
+    return {
+      active: true,
+      isAdmin: user.email === "tom.marcon@live.fr",
+      status: "trialing",
+      trialEnd: null,
+      trialDaysLeft: null,
+    };
+  }
+
+  let data = initial;
 
   // Filet de sécurité si la ligne n'existe pas encore.
   if (!data) {
