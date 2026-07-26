@@ -802,16 +802,19 @@ function MabcTable({
           <tbody>
             {rows.map((r) => (
               <tr key={r.key} className="border-t border-slate-100">
-                <td className="px-3 py-2 text-slate-700">{r.epreuve}</td>
-                <td className="px-2 py-1.5">
-                  <input
+                <td className="px-3 py-2 text-slate-700 align-top">
+                  {r.epreuve}
+                </td>
+                <td className="px-2 py-1.5 align-top">
+                  <textarea
                     value={scores[r.key]?.p ?? ""}
                     onChange={(e) => onChange(r.key, "p", e.target.value)}
                     placeholder={r.perfHint}
-                    className="w-full rounded border border-slate-200 py-1 px-2 text-sm outline-none focus:border-brand-400"
+                    rows={2}
+                    className="w-full rounded border border-slate-200 py-1 px-2 text-sm outline-none focus:border-brand-400 resize-y leading-snug"
                   />
                 </td>
-                <td className="px-2 py-1.5">
+                <td className="px-2 py-1.5 align-top">
                   <input
                     value={scores[r.key]?.ns ?? ""}
                     onChange={(e) => onChange(r.key, "ns", e.target.value)}
