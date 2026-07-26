@@ -1,5 +1,27 @@
 export type ChargeMode = "retrocession" | "loyer";
 
+export interface Subscription {
+  user_id: string;
+  email: string | null;
+  status: string; // trialing | active | inactive | past_due | canceled
+  is_admin: boolean;
+  manual_override: boolean;
+  trial_end: string | null;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  current_period_end: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Access {
+  active: boolean;
+  isAdmin: boolean;
+  status: string;
+  trialEnd: string | null;
+  trialDaysLeft: number | null;
+}
+
 export interface Profile {
   logo_url?: string; // image en base64 (data URL)
   address?: string;

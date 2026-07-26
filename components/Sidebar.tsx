@@ -9,6 +9,7 @@ import {
   Users,
   FileText,
   Settings as SettingsIcon,
+  ShieldCheck,
   LogOut,
   Menu,
   X,
@@ -26,10 +27,18 @@ const NAV = [
 export default function Sidebar({
   displayName,
   signOutAction,
+  isAdmin,
 }: {
   displayName: string;
   signOutAction: () => Promise<void>;
+  isAdmin?: boolean;
 }) {
+  const nav = isAdmin
+    ? [
+        ...NAV,
+        { href: "/admin", label: "Administration", icon: ShieldCheck },
+      ]
+    : NAV;
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -64,7 +73,7 @@ export default function Sidebar({
         </div>
 
         <nav className="flex flex-col gap-1 p-3 md:p-4 md:flex-1">
-          {NAV.map(({ href, label, icon: Icon, exact }) => {
+          {nav.map(({ href, label, icon: Icon, exact }) => {
             const active = isActive(href, exact);
             return (
               <Link
