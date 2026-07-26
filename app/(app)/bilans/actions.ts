@@ -9,8 +9,9 @@ function str(v: FormDataEntryValue | null): string | null {
   return s === "" ? null : s;
 }
 
-// Code d'erreur Postgres pour « colonne inexistante » (migration non appliquée).
-const UNDEFINED_COLUMN = "42703";
+// Colonne inexistante (migration non appliquée) : PGRST204 (écriture) ou 42703.
+const missingCol = (e: { code?: string } | null) =>
+  e?.code === "PGRST204" || e?.code === "42703";
 
 export async function createBilan(formData: FormData) {
   const supabase = await createClient();
@@ -31,7 +32,7 @@ export async function createBilan(formData: FormData) {
     .single();
 
   // Repli si la colonne "tests" n'existe pas encore (migration_003 non lancée).
-  if (error?.code === UNDEFINED_COLUMN) {
+  if (missingCol(error)) {
     const { tests: _t, ...rest } = payload;
     void _t;
     ({ data, error } = await supabase
@@ -80,7 +81,7 @@ export async function saveBilan(formData: FormData) {
   const { error } = await supabase.from("bilans").update(payload).eq("id", id);
 
   // Repli si la colonne "tests" n'existe pas encore (migration_003 non lancée).
-  if (error?.code === UNDEFINED_COLUMN) {
+  if (missingCol(error)) {
     const { tests: _t, ...rest } = payload;
     void _t;
     await supabase.from("bilans").update(rest).eq("id", id);

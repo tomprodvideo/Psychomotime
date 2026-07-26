@@ -44,11 +44,15 @@ export async function savePatient(formData: FormData) {
       : supabase.from("patients").insert(data);
 
   // Repli progressif si guardian/dossier n'existent pas encore (migrations 006/007).
+  // PostgREST renvoie PGRST204 (écriture) ou 42703 (colonne inconnue).
+  const missingCol = (e: { code?: string } | null) =>
+    e?.code === "PGRST204" || e?.code === "42703";
+
   let { error } = await run({ ...base, guardian, dossier });
-  if (error?.code === "42703") {
+  if (missingCol(error)) {
     ({ error } = await run({ ...base, guardian }));
   }
-  if (error?.code === "42703") {
+  if (missingCol(error)) {
     await run(base);
   }
 
