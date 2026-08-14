@@ -11,6 +11,7 @@ import {
   bilanFontCss,
 } from "@/lib/constants";
 import { updateSettings } from "./actions";
+import AdaptationTemplatesManager from "./AdaptationTemplatesManager";
 
 function TitlePreview({
   variant,
@@ -471,6 +472,12 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
             </p>
           </div>
         </div>
+      </Section>
+
+      <Section title="Modèles d'adaptations">
+        <AdaptationTemplatesManager
+          initial={settings.profile?.adaptation_templates ?? []}
+        />
       </Section>
       </div>
 

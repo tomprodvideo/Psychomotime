@@ -29,7 +29,16 @@ export async function updateSettings(formData: FormData) {
     return v === "" ? undefined : v;
   };
 
+  // Récupère le profil existant pour préserver les champs non gérés par ce
+  // formulaire (ex. adaptation_templates, enregistrés à part).
+  const { data: existing } = await supabase
+    .from("settings")
+    .select("profile")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
   const profile = {
+    ...((existing?.profile as Record<string, unknown>) ?? {}),
     logo_url: str("logo_url"),
     address: str("address"),
     postal_code: str("postal_code"),
