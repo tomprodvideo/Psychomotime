@@ -268,12 +268,17 @@ export default async function BilanApercuPage({
           {/* Anamnèse (narratif) */}
           {(content.anamnese?.trim() || hasExtras("anamnese")) && (
             <section className="mb-5 break-inside-avoid">
-              <h2
-                className="font-bold text-slate-900 text-[15px] text-center border-2 border-dashed rounded-lg py-2.5 px-4 mb-4"
-                style={{ borderColor: "var(--accent)" }}
-              >
-                L&apos;anamnèse
-              </h2>
+              <div className="mb-4">
+                <div className="border-t-2 border-dashed border-slate-400 mb-1.5" />
+                <div className="border border-slate-500 py-2 px-4 text-center">
+                  <span
+                    className="font-bold italic text-[15px]"
+                    style={{ color: "var(--accent)" }}
+                  >
+                    L&apos;anamnèse
+                  </span>
+                </div>
+              </div>
               {content.anamnese?.trim() && (
                 <p className="whitespace-pre-wrap text-justify">
                   {content.anamnese}
