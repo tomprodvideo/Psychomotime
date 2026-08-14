@@ -93,7 +93,6 @@ export default async function BilanApercuPage({
     legacyUsed.length > 0;
   const conclusionTop = !!profile.conclusion_top;
   const closingNote = profile.closing_note ?? DEFAULT_CLOSING_NOTE;
-  const conclusionHas = !!(content.conclusion?.trim() || hasExtras("conclusion"));
   const accent = profile.theme_color || "#2f8a82";
   const fontFamily = bilanFontCss(profile.bilan_font);
   const titleStyle = profile.bilan_title_style || "underline";
@@ -306,7 +305,6 @@ export default async function BilanApercuPage({
                   </p>
                 )}
                 {sectionExtras("conclusion")}
-                {signature}
               </section>
             )}
 
@@ -421,7 +419,6 @@ export default async function BilanApercuPage({
                 </p>
               )}
               {sectionExtras("conclusion")}
-              {signature}
             </section>
           )}
 
@@ -445,8 +442,8 @@ export default async function BilanApercuPage({
             </section>
           )}
 
-          {/* Signature de repli si aucune conclusion n'est renseignée */}
-          {!conclusionHas && <footer className="mt-10">{signature}</footer>}
+          {/* Signature en bas du bilan */}
+          <footer className="mt-10">{signature}</footer>
         </article>
       </div>
     </div>
