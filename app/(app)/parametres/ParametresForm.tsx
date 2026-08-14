@@ -8,6 +8,7 @@ import {
   BILAN_STYLE_PRESETS,
   BILAN_TITLE_STYLES,
   DEFAULT_ANAMNESE_NOTE,
+  DEFAULT_CLOSING_NOTE,
   bilanFontCss,
 } from "@/lib/constants";
 import { updateSettings } from "./actions";
@@ -463,7 +464,7 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
         </p>
       </Section>
 
-      <Section title="Position de la conclusion">
+      <Section title="Conclusion & signature">
         <label className="flex items-start gap-2 text-sm text-slate-700">
           <input
             type="checkbox"
@@ -476,8 +477,20 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
             encadré légèrement grisé au-dessus de l&apos;anamnèse.
           </span>
         </label>
-        <p className="text-xs text-slate-400 mt-2">
+        <p className="text-xs text-slate-400 mt-2 mb-4">
           Décoché, la conclusion reste à sa place habituelle, en bas du bilan.
+        </p>
+
+        <Label>Formule de fin (sous votre nom, dans la conclusion)</Label>
+        <textarea
+          name="closing_note"
+          rows={2}
+          defaultValue={settings.profile?.closing_note ?? DEFAULT_CLOSING_NOTE}
+          className={`${inputCls} resize-y`}
+        />
+        <p className="text-xs text-slate-400 mt-1">
+          Votre nom vient de l&apos;onglet Général. La signature s&apos;affiche
+          dans l&apos;encart de la conclusion.
         </p>
       </Section>
 

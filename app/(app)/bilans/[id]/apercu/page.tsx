@@ -10,6 +10,7 @@ import {
   BILAN_TEMPLATE,
   MABC_BLOCK_TITLES,
   MABC_GROUPS,
+  DEFAULT_CLOSING_NOTE,
   SCORE_INTERPRETATION,
   bilanFontCss,
   nsColor,
@@ -91,6 +92,8 @@ export default async function BilanApercuPage({
     Object.values(bySection).some((a) => a.length > 0) ||
     legacyUsed.length > 0;
   const conclusionTop = !!profile.conclusion_top;
+  const closingNote = profile.closing_note ?? DEFAULT_CLOSING_NOTE;
+  const conclusionHas = !!(content.conclusion?.trim() || hasExtras("conclusion"));
   const accent = profile.theme_color || "#2f8a82";
   const fontFamily = bilanFontCss(profile.bilan_font);
   const titleStyle = profile.bilan_title_style || "underline";
@@ -107,6 +110,16 @@ export default async function BilanApercuPage({
       : profile.anamnese_note_on
         ? profile.anamnese_note ?? ""
         : "";
+
+  // Signature (nom + formule de fin), placée dans l'encart de la conclusion.
+  const signature = (
+    <div className="mt-6 text-right text-[12px]">
+      <p className="font-semibold text-slate-900">{author}</p>
+      {closingNote.trim() && (
+        <p className="text-slate-500 whitespace-pre-wrap">{closingNote}</p>
+      )}
+    </div>
+  );
 
   function mabcTables(
     sectionId: string,
@@ -293,6 +306,7 @@ export default async function BilanApercuPage({
                   </p>
                 )}
                 {sectionExtras("conclusion")}
+                {signature}
               </section>
             )}
 
@@ -407,6 +421,7 @@ export default async function BilanApercuPage({
                 </p>
               )}
               {sectionExtras("conclusion")}
+              {signature}
             </section>
           )}
 
@@ -430,13 +445,8 @@ export default async function BilanApercuPage({
             </section>
           )}
 
-          {/* Signature */}
-          <footer className="mt-10 text-right text-[12px]">
-            <p className="font-semibold text-slate-900">{author}</p>
-            <p className="text-slate-500">
-              Je reste disponible pour toutes précisions concernant cet écrit.
-            </p>
-          </footer>
+          {/* Signature de repli si aucune conclusion n'est renseignée */}
+          {!conclusionHas && <footer className="mt-10">{signature}</footer>}
         </article>
       </div>
     </div>

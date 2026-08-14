@@ -113,6 +113,9 @@ export const BILAN_TITLE_STYLES = [
   { id: "plain", label: "Simples" },
 ];
 
+export const DEFAULT_CLOSING_NOTE =
+  "Je reste disponible pour toutes précisions concernant cet écrit.";
+
 export const DEFAULT_ANAMNESE_NOTE =
   "Le compte rendu suivant s'appuie sur des résultats obtenus à des tests standardisés ainsi que sur des observations cliniques. Les principaux tests de ce bilan sont le M-ABC (batterie d'évaluation du mouvement chez l'enfant), le BHK (Échelle d'évaluation rapide de l'écriture chez l'enfant) et la NP-MOT (batterie d'évaluations des fonctions neuro-psychomotrices de l'enfant de Laurence VAIVRE-DOURET), permettant de tracer le profil de développement psychomoteur de chaque enfant.";
 
