@@ -300,72 +300,6 @@ export default function BilanEditor({
 
   const group = MABC_GROUPS.find((g) => g.group === mabcGroup) ?? null;
 
-  /** Menu « Modèles » : insère un modèle dans le champ courant. Partagé. */
-  function TemplatesMenu({ onInsert }: { onInsert: (text: string) => void }) {
-    const [open, setOpen] = useState(false);
-    return (
-      <div className="relative">
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          title="Insérer un modèle"
-          className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-full transition"
-        >
-          Modèles
-          <ChevronDown className="h-3.5 w-3.5" />
-        </button>
-        {open && (
-          <>
-            <div
-              className="fixed inset-0 z-10"
-              onClick={() => setOpen(false)}
-            />
-            <div className="absolute right-0 z-20 mt-1 w-80 sm:w-96 bg-white border border-slate-200 rounded-lg shadow-lg">
-              <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
-                {templateList.length === 0 ? (
-                  <p className="text-xs text-slate-400 px-3 py-2">
-                    Aucun modèle. Cliquez sur « Gérer les modèles » pour en
-                    créer.
-                  </p>
-                ) : (
-                  templateList.map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => {
-                        onInsert(t.text);
-                        setOpen(false);
-                      }}
-                      className="block w-full text-left px-3 py-2.5 hover:bg-brand-50"
-                    >
-                      <p className="text-sm font-medium text-slate-700">
-                        {t.title || "Sans titre"}
-                      </p>
-                      <p className="text-xs text-slate-500 whitespace-pre-wrap mt-0.5 leading-relaxed line-clamp-3">
-                        {t.text}
-                      </p>
-                    </button>
-                  ))
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  openTplManage();
-                }}
-                className="flex items-center gap-1.5 w-full text-left px-3 py-2 text-xs font-medium text-brand-700 hover:bg-brand-50 border-t border-slate-100"
-              >
-                <Settings className="h-3.5 w-3.5" />
-                Gérer les modèles…
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    );
-  }
-
   /** Champ texte réutilisable (section principale ou bloc), avec dictée + IA. */
   function TextField({
     fieldKey,
@@ -430,7 +364,11 @@ export default function BilanEditor({
               )}
               {busy ? "Reformulation…" : "Reformuler"}
             </button>
-            <TemplatesMenu onInsert={(t) => insertInto(fieldKey, t)} />
+            <TemplatesMenu
+              templates={templateList}
+              onManage={openTplManage}
+              onInsert={(t) => insertInto(fieldKey, t)}
+            />
             {extraActions}
             {onRemove && (
               <button
@@ -705,26 +643,25 @@ export default function BilanEditor({
             <div className="bg-white rounded-xl border border-slate-100 shadow-sm divide-y divide-slate-100">
               {grp.sections.map((s) => (
                 <div key={s.id} className="p-4">
-                  <TextField
-                    fieldKey={s.id}
-                    label={s.title}
-                    hint={s.hint}
-                    rows={s.id === "anamnese" || s.id === "conclusion" ? 6 : 3}
-                  />
+                  {TextField({
+                    fieldKey: s.id,
+                    label: s.title,
+                    hint: s.hint,
+                    rows: s.id === "anamnese" || s.id === "conclusion" ? 6 : 3,
+                  })}
                   {s.id === "anamnese" && (
                     <div className="mt-3 border-t border-dashed border-slate-200 pt-3">
-                      <TextField
-                        fieldKey="anamnese_note"
-                        label="Texte de fin d'anamnèse (tests standardisés…)"
-                        hint="Ce texte s'affiche à la fin de l'anamnèse, séparé par un trait. Modifiable pour ce bilan."
-                        rows={4}
-                      />
+                      {TextField({
+                        fieldKey: "anamnese_note",
+                        label: "Texte de fin d'anamnèse (tests standardisés…)",
+                        hint: "Ce texte s'affiche à la fin de l'anamnèse, séparé par un trait. Modifiable pour ce bilan.",
+                        rows: 4,
+                      })}
                     </div>
                   )}
-                  {grp.group === "Domaines psychomoteurs" && (
-                    <SectionTests sectionId={s.id} mabcBlocks={s.mabcBlocks} />
-                  )}
-                  <SectionPhotos sectionId={s.id} />
+                  {grp.group === "Domaines psychomoteurs" &&
+                    SectionTests({ sectionId: s.id, mabcBlocks: s.mabcBlocks })}
+                  {SectionPhotos({ sectionId: s.id })}
                 </div>
               ))}
             </div>
@@ -750,14 +687,13 @@ export default function BilanEditor({
           />
           Ajouter un paragraphe « Adaptations »
         </label>
-        {adaptationsOn && (
-          <TextField
-            fieldKey="adaptations"
-            label="Adaptations"
-            hint="Adaptations à mettre en place au quotidien et en contexte scolaire…"
-            rows={4}
-          />
-        )}
+        {adaptationsOn &&
+          TextField({
+            fieldKey: "adaptations",
+            label: "Adaptations",
+            hint: "Adaptations à mettre en place au quotidien et en contexte scolaire…",
+            rows: 4,
+          })}
 
         <label className="flex items-center gap-2 text-sm text-slate-700">
           <input
@@ -771,14 +707,13 @@ export default function BilanEditor({
           />
           Ajouter un paragraphe « Préconisations »
         </label>
-        {preconisationsOn && (
-          <TextField
-            fieldKey="preconisations"
-            label="Préconisations"
-            hint="Préconisations, orientations, suivi conseillé…"
-            rows={4}
-          />
-        )}
+        {preconisationsOn &&
+          TextField({
+            fieldKey: "preconisations",
+            label: "Préconisations",
+            hint: "Préconisations, orientations, suivi conseillé…",
+            rows: 4,
+          })}
       </div>
 
       {/* Espace de sécurité sous le dernier bloc (barre d'actions fixe) */}
@@ -933,6 +868,76 @@ export default function BilanEditor({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Menu « Modèles » (composant stable, au niveau module → conserve le focus). */
+function TemplatesMenu({
+  templates,
+  onInsert,
+  onManage,
+}: {
+  templates: AdaptationTemplate[];
+  onInsert: (text: string) => void;
+  onManage: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        title="Insérer un modèle"
+        className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-full transition"
+      >
+        Modèles
+        <ChevronDown className="h-3.5 w-3.5" />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 z-20 mt-1 w-80 sm:w-96 bg-white border border-slate-200 rounded-lg shadow-lg">
+            <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
+              {templates.length === 0 ? (
+                <p className="text-xs text-slate-400 px-3 py-2">
+                  Aucun modèle. Cliquez sur « Gérer les modèles » pour en créer.
+                </p>
+              ) : (
+                templates.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => {
+                      onInsert(t.text);
+                      setOpen(false);
+                    }}
+                    className="block w-full text-left px-3 py-2.5 hover:bg-brand-50"
+                  >
+                    <p className="text-sm font-medium text-slate-700">
+                      {t.title || "Sans titre"}
+                    </p>
+                    <p className="text-xs text-slate-500 whitespace-pre-wrap mt-0.5 leading-relaxed line-clamp-3">
+                      {t.text}
+                    </p>
+                  </button>
+                ))
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onManage();
+              }}
+              className="flex items-center gap-1.5 w-full text-left px-3 py-2 text-xs font-medium text-brand-700 hover:bg-brand-50 border-t border-slate-100"
+            >
+              <Settings className="h-3.5 w-3.5" />
+              Gérer les modèles…
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
