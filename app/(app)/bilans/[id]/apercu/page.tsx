@@ -202,7 +202,7 @@ export default async function BilanApercuPage({
                 {profile.siret && <p>SIRET : {profile.siret}</p>}
               </div>
             </div>
-            <p className="text-[12px] text-slate-600 mt-4">
+            <p className="text-[12px] text-slate-600 mt-4 text-right">
               {profile.city ? `Au ${profile.city}, le ` : "Le "}
               {b.bilan_date ? frDate(b.bilan_date) : "…"}
             </p>
