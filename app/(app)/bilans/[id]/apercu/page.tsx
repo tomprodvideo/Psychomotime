@@ -371,7 +371,15 @@ export default async function BilanApercuPage({
                 </div>
               </div>
               <div className="mt-4 break-inside-avoid">
-                <GaussianCurve />
+                {profile.gaussian_curve_url ? (
+                  <img
+                    src={profile.gaussian_curve_url}
+                    alt="Courbe de Gauss"
+                    className="mx-auto max-h-80 w-auto object-contain"
+                  />
+                ) : (
+                  <GaussianCurve />
+                )}
               </div>
             </section>
           )}

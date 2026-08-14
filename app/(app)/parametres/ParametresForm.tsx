@@ -75,6 +75,9 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
   const [bilanTitleStyle, setBilanTitleStyle] = useState(
     settings.profile?.bilan_title_style ?? "underline",
   );
+  const [curve, setCurve] = useState(settings.profile?.gaussian_curve_url ?? "");
+  const [curveError, setCurveError] = useState("");
+  const [tab, setTab] = useState<"general" | "bilan" | "compta">("general");
 
   function handleLogo(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -89,6 +92,19 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
     reader.readAsDataURL(file);
   }
 
+  function handleCurve(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2_000_000) {
+      setCurveError("Image trop lourde (max 2 Mo). Réduisez-la puis réessayez.");
+      return;
+    }
+    setCurveError("");
+    const reader = new FileReader();
+    reader.onload = () => setCurve(String(reader.result));
+    reader.readAsDataURL(file);
+  }
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
@@ -99,8 +115,33 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
     });
   }
 
+  const tabs: { id: typeof tab; label: string }[] = [
+    { id: "general", label: "Général" },
+    { id: "bilan", label: "Bilan" },
+    { id: "compta", label: "Comptabilité" },
+  ];
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="flex gap-1 border-b border-slate-200">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setTab(t.id)}
+            className={`px-4 py-2.5 text-sm font-medium -mb-px border-b-2 transition ${
+              tab === t.id
+                ? "border-brand-600 text-brand-700"
+                : "border-transparent text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Onglet Général */}
+      <div className={tab === "general" ? "space-y-6" : "hidden"}>
       <Section title="Profil">
         <div>
           <Label>Votre nom (apparaît sur les bilans)</Label>
@@ -236,7 +277,10 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
           </div>
         </div>
       </Section>
+      </div>
 
+      {/* Onglet Bilan */}
+      <div className={tab === "bilan" ? "space-y-6" : "hidden"}>
       <Section title="Thème des bilans">
         <input type="hidden" name="theme_color" value={themeColor} />
         <p className="text-sm text-slate-500 -mt-2 mb-3">
@@ -378,6 +422,60 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
         </p>
       </Section>
 
+      <Section title="Courbe de Gauss">
+        <input type="hidden" name="gaussian_curve_url" value={curve} />
+        <p className="text-sm text-slate-500 -mt-2 mb-3">
+          Par défaut, une courbe est générée automatiquement. Vous pouvez la
+          remplacer par votre propre image (elle s&apos;affichera dans la partie
+          « Résultats chiffrés des tests » du bilan).
+        </p>
+        <div className="flex items-start gap-4">
+          <div className="h-28 w-44 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0">
+            {curve ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={curve}
+                alt="Courbe de Gauss"
+                className="max-h-full max-w-full object-contain"
+              />
+            ) : (
+              <span className="text-xs text-slate-400 text-center px-2">
+                Courbe automatique
+              </span>
+            )}
+          </div>
+          <div>
+            <label className="inline-block cursor-pointer text-sm font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 px-3 py-2 rounded-lg">
+              {curve ? "Changer l'image" : "Importer une image"}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/svg+xml"
+                onChange={handleCurve}
+                className="hidden"
+              />
+            </label>
+            {curve && (
+              <button
+                type="button"
+                onClick={() => setCurve("")}
+                className="ml-2 text-sm text-slate-500 hover:text-rose-600"
+              >
+                Rétablir la courbe automatique
+              </button>
+            )}
+            {curveError && (
+              <p className="text-xs text-rose-600 mt-1">{curveError}</p>
+            )}
+            <p className="text-xs text-slate-400 mt-1">
+              PNG, JPG ou SVG · max 2 Mo.
+            </p>
+          </div>
+        </div>
+      </Section>
+      </div>
+
+      {/* Onglet Comptabilité */}
+      <div className={tab === "compta" ? "space-y-6" : "hidden"}>
       <Section title="Charges du cabinet">
         <p className="text-sm text-slate-500 -mt-2 mb-3">
           Choisissez comment vos charges de local sont calculées dans la
@@ -440,6 +538,7 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
           </p>
         </div>
       </Section>
+      </div>
 
       <div className="flex items-center gap-3">
         <button

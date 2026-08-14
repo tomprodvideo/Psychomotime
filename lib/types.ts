@@ -38,6 +38,7 @@ export interface Profile {
   bilan_title_style?: string; // 'underline' | 'boxed' | 'plain'
   anamnese_note?: string; // texte par défaut après l'anamnèse
   anamnese_note_on?: boolean; // ajouter ce texte automatiquement
+  gaussian_curve_url?: string; // courbe de Gauss personnalisée (data URL)
   adaptation_templates?: AdaptationTemplate[]; // modèles d'adaptations réutilisables
 }
 
