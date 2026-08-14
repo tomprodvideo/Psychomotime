@@ -11,6 +11,7 @@ import {
   MABC_BLOCK_TITLES,
   MABC_GROUPS,
   SCORE_INTERPRETATION,
+  bilanFontCss,
   nsColor,
   testLabel,
   type MabcRow,
@@ -90,6 +91,8 @@ export default async function BilanApercuPage({
     Object.values(bySection).some((a) => a.length > 0) ||
     legacyUsed.length > 0;
   const accent = profile.theme_color || "#2f8a82";
+  const fontFamily = bilanFontCss(profile.bilan_font);
+  const titleStyle = profile.bilan_title_style || "underline";
   // Lieu du « Fait à … » : réglé dans le bilan, sinon ville du cabinet.
   const lieu = content.lieu || profile.city || "";
   // Médecin prescripteur : ancien champ du bilan, sinon depuis la fiche patient.
@@ -179,7 +182,12 @@ export default async function BilanApercuPage({
       <div className="py-8 px-4 print:p-0">
         <article
           className="print-area max-w-3xl mx-auto bg-white shadow-sm border border-slate-200 rounded-lg px-12 py-10 print:shadow-none print:border-0 text-[13px] leading-relaxed text-slate-800"
-          style={{ ["--accent" as string]: accent } as React.CSSProperties}
+          style={
+            {
+              ["--accent" as string]: accent,
+              fontFamily,
+            } as React.CSSProperties
+          }
         >
           {/* En-tête praticien */}
           <header className="mb-6">
@@ -268,16 +276,10 @@ export default async function BilanApercuPage({
           {/* Anamnèse (narratif) */}
           {(content.anamnese?.trim() || hasExtras("anamnese")) && (
             <section className="mb-5 break-inside-avoid">
-              <div className="mb-4">
-                <div className="border-t-2 border-dashed border-slate-400 mb-1.5" />
-                <div className="border border-slate-500 py-2 px-4 text-center">
-                  <span
-                    className="font-bold italic text-[15px]"
-                    style={{ color: "var(--accent)" }}
-                  >
-                    L&apos;anamnèse
-                  </span>
-                </div>
+              <div className="border border-slate-500 py-2 px-4 text-center mb-4">
+                <span className="font-bold italic text-[15px] text-slate-900">
+                  L&apos;anamnèse
+                </span>
               </div>
               {content.anamnese?.trim() && (
                 <p className="whitespace-pre-wrap text-justify">
@@ -302,7 +304,7 @@ export default async function BilanApercuPage({
                 return null;
               return (
                 <section key={s.id} className="mb-5 break-inside-avoid">
-                  <SectionTitle>{s.title}</SectionTitle>
+                  <SectionTitle variant={titleStyle}>{s.title}</SectionTitle>
                   {sel.length > 0 && (
                     <p className="text-[11px] italic text-slate-400 mb-1">
                       Test(s) : {sel.map((t) => testLabel(t)).join(" · ")}
@@ -320,7 +322,7 @@ export default async function BilanApercuPage({
           {/* Interprétation des scores */}
           {usedLabels && (
             <section className="mb-5 break-inside-avoid">
-              <SectionTitle>Résultats chiffrés des tests</SectionTitle>
+              <SectionTitle variant={titleStyle}>Résultats chiffrés des tests</SectionTitle>
               <p className="text-[12px] mb-2">{SCORE_INTERPRETATION.intro}</p>
               <div className="grid sm:grid-cols-2 gap-3 text-[12px]">
                 <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
@@ -353,7 +355,7 @@ export default async function BilanApercuPage({
           {/* Conclusion */}
           {(content.conclusion?.trim() || hasExtras("conclusion")) && (
             <section className="mb-6 break-inside-avoid">
-              <SectionTitle>Conclusion</SectionTitle>
+              <SectionTitle variant={titleStyle}>Conclusion</SectionTitle>
               {content.conclusion?.trim() && (
                 <p className="whitespace-pre-wrap text-justify">
                   {content.conclusion}
@@ -366,7 +368,7 @@ export default async function BilanApercuPage({
           {/* Adaptations */}
           {flags.adaptations && content.adaptations?.trim() && (
             <section className="mb-5 break-inside-avoid">
-              <SectionTitle>Adaptations</SectionTitle>
+              <SectionTitle variant={titleStyle}>Adaptations</SectionTitle>
               <p className="whitespace-pre-wrap text-justify">
                 {content.adaptations}
               </p>
@@ -376,7 +378,7 @@ export default async function BilanApercuPage({
           {/* Préconisations */}
           {flags.preconisations && content.preconisations?.trim() && (
             <section className="mb-6 break-inside-avoid">
-              <SectionTitle>Préconisations</SectionTitle>
+              <SectionTitle variant={titleStyle}>Préconisations</SectionTitle>
               <p className="whitespace-pre-wrap text-justify">
                 {content.preconisations}
               </p>
@@ -396,7 +398,33 @@ export default async function BilanApercuPage({
   );
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
+function SectionTitle({
+  children,
+  variant = "underline",
+}: {
+  children: React.ReactNode;
+  variant?: string;
+}) {
+  if (variant === "boxed") {
+    return (
+      <h2
+        className="font-bold text-[14px] mb-2 inline-block border-2 rounded-md py-1 px-3"
+        style={{ borderColor: "var(--accent)", color: "var(--accent)" }}
+      >
+        {children}
+      </h2>
+    );
+  }
+  if (variant === "plain") {
+    return (
+      <h2
+        className="font-bold text-[14px] mb-2"
+        style={{ color: "var(--accent)" }}
+      >
+        {children}
+      </h2>
+    );
+  }
   return (
     <h2
       className="font-bold text-slate-900 text-[14px] mb-2 pb-1 border-b-2 inline-block"

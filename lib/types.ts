@@ -34,6 +34,8 @@ export interface Profile {
   business_phone?: string;
   legal_mentions?: string;
   theme_color?: string; // couleur d'accent des bilans (hex)
+  bilan_font?: string; // 'sans' | 'serif'
+  bilan_title_style?: string; // 'underline' | 'boxed' | 'plain'
   adaptation_templates?: AdaptationTemplate[]; // modèles d'adaptations réutilisables
 }
 

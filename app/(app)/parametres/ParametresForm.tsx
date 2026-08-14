@@ -3,7 +3,47 @@
 import { useState, useTransition } from "react";
 import { Check } from "lucide-react";
 import type { Settings } from "@/lib/types";
+import {
+  BILAN_FONTS,
+  BILAN_STYLE_PRESETS,
+  BILAN_TITLE_STYLES,
+  bilanFontCss,
+} from "@/lib/constants";
 import { updateSettings } from "./actions";
+
+function TitlePreview({
+  variant,
+  color,
+  children,
+}: {
+  variant: string;
+  color: string;
+  children: React.ReactNode;
+}) {
+  if (variant === "boxed")
+    return (
+      <span
+        className="font-bold text-sm inline-block border-2 rounded-md py-1 px-3"
+        style={{ borderColor: color, color }}
+      >
+        {children}
+      </span>
+    );
+  if (variant === "plain")
+    return (
+      <span className="font-bold text-sm" style={{ color }}>
+        {children}
+      </span>
+    );
+  return (
+    <span
+      className="font-bold text-sm text-slate-900 inline-block border-b-2 pb-0.5"
+      style={{ borderColor: color }}
+    >
+      {children}
+    </span>
+  );
+}
 
 const DEFAULT_THEME = "#2f8a82";
 const THEME_PRESETS = [
@@ -27,6 +67,12 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
   const [logoError, setLogoError] = useState("");
   const [themeColor, setThemeColor] = useState(
     settings.profile?.theme_color ?? DEFAULT_THEME,
+  );
+  const [bilanFont, setBilanFont] = useState(
+    settings.profile?.bilan_font ?? "sans",
+  );
+  const [bilanTitleStyle, setBilanTitleStyle] = useState(
+    settings.profile?.bilan_title_style ?? "underline",
   );
 
   function handleLogo(e: React.ChangeEvent<HTMLInputElement>) {
@@ -228,6 +274,80 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
             Aperçu du titre de section
           </span>
         </p>
+      </Section>
+
+      <Section title="Style des bilans (police & titres)">
+        <input type="hidden" name="bilan_font" value={bilanFont} />
+        <input type="hidden" name="bilan_title_style" value={bilanTitleStyle} />
+
+        <p className="text-sm text-slate-500 -mt-2 mb-2">Modèles rapides :</p>
+        <div className="flex flex-wrap gap-2 mb-4">
+          {BILAN_STYLE_PRESETS.map((p) => {
+            const on = bilanFont === p.font && bilanTitleStyle === p.title;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => {
+                  setBilanFont(p.font);
+                  setBilanTitleStyle(p.title);
+                }}
+                className={`text-sm px-3 py-1.5 rounded-lg border transition ${
+                  on
+                    ? "border-brand-400 bg-brand-50 text-brand-700 ring-1 ring-brand-200"
+                    : "border-slate-200 text-slate-600 hover:border-brand-300"
+                }`}
+              >
+                {p.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-4 mb-4">
+          <div>
+            <Label>Police</Label>
+            <select
+              value={bilanFont}
+              onChange={(e) => setBilanFont(e.target.value)}
+              className={inputCls}
+            >
+              {BILAN_FONTS.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <Label>Titres de section</Label>
+            <select
+              value={bilanTitleStyle}
+              onChange={(e) => setBilanTitleStyle(e.target.value)}
+              className={inputCls}
+            >
+              {BILAN_TITLE_STYLES.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div
+          className="border border-slate-200 rounded-lg p-4 bg-slate-50"
+          style={{ fontFamily: bilanFontCss(bilanFont) }}
+        >
+          <p className="text-xs text-slate-400 mb-2">Aperçu</p>
+          <TitlePreview variant={bilanTitleStyle} color={themeColor}>
+            La motricité globale
+          </TitlePreview>
+          <p className="text-sm text-slate-700 mt-2">
+            Exemple de texte du bilan, affiché dans la police choisie pour vos
+            comptes rendus.
+          </p>
+        </div>
       </Section>
 
       <Section title="Charges du cabinet">

@@ -94,6 +94,33 @@ export const DOSSIER_GROUPS = Array.from(
 );
 
 /* ============================================================
+ *  STYLE DES BILANS (police, titres, modèles)
+ * ============================================================ */
+export const BILAN_FONTS = [
+  { id: "sans", label: "Moderne (sans-serif)" },
+  { id: "serif", label: "Classique (serif)" },
+];
+
+export function bilanFontCss(id?: string): string {
+  return id === "serif"
+    ? 'Georgia, "Times New Roman", serif'
+    : "var(--font-geist-sans), system-ui, sans-serif";
+}
+
+export const BILAN_TITLE_STYLES = [
+  { id: "underline", label: "Soulignés" },
+  { id: "boxed", label: "Encadrés" },
+  { id: "plain", label: "Simples" },
+];
+
+export const BILAN_STYLE_PRESETS = [
+  { id: "moderne", label: "Moderne", font: "sans", title: "underline" },
+  { id: "classique", label: "Classique", font: "serif", title: "underline" },
+  { id: "encadre", label: "Encadré", font: "serif", title: "boxed" },
+  { id: "epure", label: "Épuré", font: "sans", title: "plain" },
+];
+
+/* ============================================================
  *  BILAN PSYCHOMOTEUR
  * ============================================================ */
 

@@ -41,6 +41,8 @@ export async function updateSettings(formData: FormData) {
     business_phone: str("business_phone"),
     legal_mentions: str("legal_mentions"),
     theme_color: str("theme_color"),
+    bilan_font: str("bilan_font"),
+    bilan_title_style: str("bilan_title_style"),
   };
 
   await supabase.from("settings").upsert({
