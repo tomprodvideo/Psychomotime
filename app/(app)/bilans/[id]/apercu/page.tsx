@@ -302,10 +302,7 @@ export default async function BilanApercuPage({
               {sectionExtras("anamnese")}
               {anamneseNote.trim() && (
                 <div className="mt-4">
-                  <div
-                    className="w-24 border-t-2 mb-2"
-                    style={{ borderColor: "var(--accent)" }}
-                  />
+                  <div className="w-48 border-t-2 border-slate-900 mx-auto mb-3" />
                   <p className="whitespace-pre-wrap text-justify italic text-slate-700">
                     {anamneseNote}
                   </p>
