@@ -111,7 +111,7 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
 
         <div className="grid sm:grid-cols-2 gap-4">
           <div className="sm:col-span-2">
-            <Label>Adresse (cabinet)</Label>
+            <Label>Adresse (rue du cabinet)</Label>
             <input
               name="address"
               defaultValue={settings.profile?.address ?? ""}
@@ -119,7 +119,15 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
             />
           </div>
           <div>
-            <Label>Ville (en-tête « Au …, le »)</Label>
+            <Label>Code postal</Label>
+            <input
+              name="postal_code"
+              defaultValue={settings.profile?.postal_code ?? ""}
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <Label>Ville</Label>
             <input
               name="city"
               defaultValue={settings.profile?.city ?? ""}

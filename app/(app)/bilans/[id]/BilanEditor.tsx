@@ -577,6 +577,15 @@ export default function BilanEditor({
               />
             </div>
           ))}
+          <div>
+            <Label>Lieu (« Fait à… »)</Label>
+            <input
+              value={content.lieu ?? ""}
+              onChange={(e) => update("lieu", e.target.value)}
+              placeholder="Ex. Le Puy-en-Velay"
+              className={inputCls}
+            />
+          </div>
         </div>
       </div>
 

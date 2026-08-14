@@ -87,6 +87,13 @@ export default async function FacturePage({
                 {profile.address && (
                   <p className="whitespace-pre-line">{profile.address}</p>
                 )}
+                {(profile.postal_code || profile.city) && (
+                  <p>
+                    {[profile.postal_code, profile.city]
+                      .filter(Boolean)
+                      .join(" ")}
+                  </p>
+                )}
                 {profile.business_phone && <p>Tél. {profile.business_phone}</p>}
                 {profile.business_email && <p>{profile.business_email}</p>}
                 {profile.siret && <p>SIRET : {profile.siret}</p>}

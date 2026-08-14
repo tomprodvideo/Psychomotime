@@ -86,6 +86,13 @@ export default async function FichePatientPage({
                   profile.address
                     .split("\n")
                     .map((l, i) => <p key={i}>{l}</p>)}
+                {(profile.postal_code || profile.city) && (
+                  <p>
+                    {[profile.postal_code, profile.city]
+                      .filter(Boolean)
+                      .join(" ")}
+                  </p>
+                )}
                 {profile.business_phone && <p>{profile.business_phone}</p>}
                 {profile.business_email && <p>{profile.business_email}</p>}
                 {profile.rpps && <p>Numéro RPPS : {profile.rpps}</p>}

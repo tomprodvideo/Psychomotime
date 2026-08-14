@@ -90,6 +90,8 @@ export default async function BilanApercuPage({
     Object.values(bySection).some((a) => a.length > 0) ||
     legacyUsed.length > 0;
   const accent = profile.theme_color || "#2f8a82";
+  // Lieu du « Fait à … » : réglé dans le bilan, sinon ville du cabinet.
+  const lieu = content.lieu || profile.city || "";
   // Médecin prescripteur : ancien champ du bilan, sinon depuis la fiche patient.
   const prescripteur =
     content.prescripteur || patient?.dossier?.prescripteur || "";
@@ -196,6 +198,13 @@ export default async function BilanApercuPage({
                   profile.address
                     .split("\n")
                     .map((l, i) => <p key={i}>{l}</p>)}
+                {(profile.postal_code || profile.city) && (
+                  <p>
+                    {[profile.postal_code, profile.city]
+                      .filter(Boolean)
+                      .join(" ")}
+                  </p>
+                )}
                 {profile.business_phone && <p>{profile.business_phone}</p>}
                 {profile.business_email && <p>{profile.business_email}</p>}
                 {profile.rpps && <p>Numéro RPPS : {profile.rpps}</p>}
@@ -203,7 +212,7 @@ export default async function BilanApercuPage({
               </div>
             </div>
             <p className="text-[12px] text-slate-600 mt-4 text-right">
-              {profile.city ? `Au ${profile.city}, le ` : "Le "}
+              {lieu ? `Fait à ${lieu}, le ` : "Le "}
               {b.bilan_date ? frDate(b.bilan_date) : "…"}
             </p>
             <h1

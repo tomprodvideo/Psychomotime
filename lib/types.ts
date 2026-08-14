@@ -24,8 +24,9 @@ export interface Access {
 
 export interface Profile {
   logo_url?: string; // image en base64 (data URL)
-  address?: string;
-  city?: string; // ville (ex. "Le Puy-en-Velay") pour l'en-tête
+  address?: string; // rue
+  postal_code?: string; // code postal
+  city?: string; // ville
   siret?: string;
   adeli?: string;
   rpps?: string;
