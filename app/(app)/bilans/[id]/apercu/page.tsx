@@ -110,15 +110,17 @@ export default async function BilanApercuPage({
         ? profile.anamnese_note ?? ""
         : "";
 
-  // Signature (nom + formule de fin), placée dans l'encart de la conclusion.
+  // Signature (nom + qualité), en bas de page.
   const signature = (
     <div className="mt-6 text-right text-[12px]">
       <p className="font-semibold text-slate-900">{author}</p>
-      {closingNote.trim() && (
-        <p className="text-slate-500 whitespace-pre-wrap">{closingNote}</p>
-      )}
     </div>
   );
+
+  // Formule de fin (« Je reste disponible… »), placée dans la conclusion.
+  const closingLine = closingNote.trim() ? (
+    <p className="text-slate-500 whitespace-pre-wrap mt-3">{closingNote}</p>
+  ) : null;
 
   function mabcTables(
     sectionId: string,
@@ -305,6 +307,7 @@ export default async function BilanApercuPage({
                   </p>
                 )}
                 {sectionExtras("conclusion")}
+                {closingLine}
               </section>
             )}
 
@@ -419,6 +422,7 @@ export default async function BilanApercuPage({
                 </p>
               )}
               {sectionExtras("conclusion")}
+              {closingLine}
             </section>
           )}
 
