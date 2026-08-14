@@ -13,6 +13,43 @@ import {
 import { updateSettings } from "./actions";
 import AdaptationTemplatesManager from "./AdaptationTemplatesManager";
 
+/** Redimensionne une image raster et renvoie un data-URL JPEG léger.
+ *  Les SVG (déjà légers et vectoriels) sont conservés tels quels. */
+function resizeImage(file: File, maxDim = 1400, quality = 0.85): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("read"));
+    reader.onload = () => {
+      if (file.type === "image/svg+xml") {
+        resolve(String(reader.result));
+        return;
+      }
+      const img = new Image();
+      img.onerror = () => reject(new Error("img"));
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          const scale = maxDim / Math.max(width, height);
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("ctx"));
+        // Fond blanc (les courbes sont sur fond clair ; évite le noir du JPEG).
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.src = String(reader.result);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 function TitlePreview({
   variant,
   color,
@@ -93,17 +130,20 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
     reader.readAsDataURL(file);
   }
 
-  function handleCurve(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleCurve(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
-    if (file.size > 2_000_000) {
-      setCurveError("Image trop lourde (max 2 Mo). Réduisez-la puis réessayez.");
+    if (file.size > 10_000_000) {
+      setCurveError("Image trop lourde (max 10 Mo). Réduisez-la puis réessayez.");
       return;
     }
     setCurveError("");
-    const reader = new FileReader();
-    reader.onload = () => setCurve(String(reader.result));
-    reader.readAsDataURL(file);
+    try {
+      setCurve(await resizeImage(file));
+    } catch {
+      setCurveError("Image illisible. Essayez un autre fichier (PNG ou JPG).");
+    }
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -468,7 +508,7 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
               <p className="text-xs text-rose-600 mt-1">{curveError}</p>
             )}
             <p className="text-xs text-slate-400 mt-1">
-              PNG, JPG ou SVG · max 2 Mo.
+              PNG, JPG ou SVG. L&apos;image est automatiquement optimisée.
             </p>
           </div>
         </div>
