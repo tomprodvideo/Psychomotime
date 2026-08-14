@@ -98,6 +98,14 @@ export default async function BilanApercuPage({
   // Médecin prescripteur : ancien champ du bilan, sinon depuis la fiche patient.
   const prescripteur =
     content.prescripteur || patient?.dossier?.prescripteur || "";
+  // Texte de fin d'anamnèse : valeur propre au bilan, sinon modèle par défaut
+  // des paramètres s'il est activé.
+  const anamneseNote =
+    content.anamnese_note !== undefined
+      ? content.anamnese_note
+      : profile.anamnese_note_on
+        ? profile.anamnese_note ?? ""
+        : "";
 
   function mabcTables(
     sectionId: string,
@@ -274,7 +282,9 @@ export default async function BilanApercuPage({
           )}
 
           {/* Anamnèse (narratif) */}
-          {(content.anamnese?.trim() || hasExtras("anamnese")) && (
+          {(content.anamnese?.trim() ||
+            hasExtras("anamnese") ||
+            anamneseNote.trim()) && (
             <section className="mb-5 break-inside-avoid">
               <div
                 className="border-2 py-2 px-4 text-center mb-4"
@@ -290,6 +300,17 @@ export default async function BilanApercuPage({
                 </p>
               )}
               {sectionExtras("anamnese")}
+              {anamneseNote.trim() && (
+                <div className="mt-4">
+                  <div
+                    className="w-24 border-t-2 mb-2"
+                    style={{ borderColor: "var(--accent)" }}
+                  />
+                  <p className="whitespace-pre-wrap text-justify italic text-slate-700">
+                    {anamneseNote}
+                  </p>
+                </div>
+              )}
             </section>
           )}
 

@@ -43,6 +43,8 @@ export async function updateSettings(formData: FormData) {
     theme_color: str("theme_color"),
     bilan_font: str("bilan_font"),
     bilan_title_style: str("bilan_title_style"),
+    anamnese_note: str("anamnese_note"),
+    anamnese_note_on: formData.get("anamnese_note_on") === "on",
   };
 
   await supabase.from("settings").upsert({

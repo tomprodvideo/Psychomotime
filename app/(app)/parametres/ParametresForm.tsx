@@ -7,6 +7,7 @@ import {
   BILAN_FONTS,
   BILAN_STYLE_PRESETS,
   BILAN_TITLE_STYLES,
+  DEFAULT_ANAMNESE_NOTE,
   bilanFontCss,
 } from "@/lib/constants";
 import { updateSettings } from "./actions";
@@ -348,6 +349,33 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
             comptes rendus.
           </p>
         </div>
+      </Section>
+
+      <Section title="Texte de fin d'anamnèse">
+        <label className="flex items-start gap-2 text-sm text-slate-700 mb-3">
+          <input
+            type="checkbox"
+            name="anamnese_note_on"
+            defaultChecked={settings.profile?.anamnese_note_on ?? false}
+            className="h-4 w-4 mt-0.5 rounded border-slate-300 text-brand-600 focus:ring-brand-400"
+          />
+          <span>
+            Ajouter automatiquement ce texte à la fin de l&apos;anamnèse de
+            chaque nouveau bilan (il reste séparé par un petit trait et
+            modifiable dans chaque bilan).
+          </span>
+        </label>
+        <Label>Texte par défaut</Label>
+        <textarea
+          name="anamnese_note"
+          rows={6}
+          defaultValue={settings.profile?.anamnese_note ?? DEFAULT_ANAMNESE_NOTE}
+          className={`${inputCls} leading-relaxed resize-y`}
+        />
+        <p className="text-xs text-slate-400 mt-1">
+          Les tests cités (M-ABC, BHK, NP-MOT…) peuvent varier d&apos;un bilan à
+          l&apos;autre : ajustez-les directement dans le bilan concerné.
+        </p>
       </Section>
 
       <Section title="Charges du cabinet">

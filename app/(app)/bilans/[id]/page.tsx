@@ -38,6 +38,8 @@ export default async function BilanEditPage({
       bilan={bilan}
       templates={templates}
       patientBirthDate={patientBirthDate}
+      anamneseNoteDefault={settings.profile?.anamnese_note}
+      anamneseNoteOn={settings.profile?.anamnese_note_on}
     />
   );
 }

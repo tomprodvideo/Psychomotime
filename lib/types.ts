@@ -36,6 +36,8 @@ export interface Profile {
   theme_color?: string; // couleur d'accent des bilans (hex)
   bilan_font?: string; // 'sans' | 'serif'
   bilan_title_style?: string; // 'underline' | 'boxed' | 'plain'
+  anamnese_note?: string; // texte par défaut après l'anamnèse
+  anamnese_note_on?: boolean; // ajouter ce texte automatiquement
   adaptation_templates?: AdaptationTemplate[]; // modèles d'adaptations réutilisables
 }
 
