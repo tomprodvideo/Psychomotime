@@ -90,6 +90,7 @@ export default async function BilanApercuPage({
   const usedLabels =
     Object.values(bySection).some((a) => a.length > 0) ||
     legacyUsed.length > 0;
+  const conclusionTop = !!profile.conclusion_top;
   const accent = profile.theme_color || "#2f8a82";
   const fontFamily = bilanFontCss(profile.bilan_font);
   const titleStyle = profile.bilan_title_style || "underline";
@@ -281,6 +282,20 @@ export default async function BilanApercuPage({
             </div>
           )}
 
+          {/* Conclusion en tête (encadré grisé), si activée */}
+          {conclusionTop &&
+            (content.conclusion?.trim() || hasExtras("conclusion")) && (
+              <section className="mb-5 break-inside-avoid bg-slate-50 border border-slate-200 rounded-lg p-4">
+                <SectionTitle variant={titleStyle}>Conclusion</SectionTitle>
+                {content.conclusion?.trim() && (
+                  <p className="whitespace-pre-wrap text-justify">
+                    {content.conclusion}
+                  </p>
+                )}
+                {sectionExtras("conclusion")}
+              </section>
+            )}
+
           {/* Anamnèse (narratif) */}
           {(content.anamnese?.trim() ||
             hasExtras("anamnese") ||
@@ -381,8 +396,9 @@ export default async function BilanApercuPage({
             </section>
           )}
 
-          {/* Conclusion */}
-          {(content.conclusion?.trim() || hasExtras("conclusion")) && (
+          {/* Conclusion (en bas, sauf si affichée en tête) */}
+          {!conclusionTop &&
+            (content.conclusion?.trim() || hasExtras("conclusion")) && (
             <section className="mb-6 break-inside-avoid">
               <SectionTitle variant={titleStyle}>Conclusion</SectionTitle>
               {content.conclusion?.trim() && (

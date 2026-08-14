@@ -39,6 +39,7 @@ export interface Profile {
   anamnese_note?: string; // texte par défaut après l'anamnèse
   anamnese_note_on?: boolean; // ajouter ce texte automatiquement
   gaussian_curve_url?: string; // courbe de Gauss personnalisée (data URL)
+  conclusion_top?: boolean; // conclusion en tête (encadré grisé) au lieu du bas
   adaptation_templates?: AdaptationTemplate[]; // modèles d'adaptations réutilisables
 }
 

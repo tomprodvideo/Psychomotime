@@ -55,6 +55,7 @@ export async function updateSettings(formData: FormData) {
     anamnese_note: str("anamnese_note"),
     anamnese_note_on: formData.get("anamnese_note_on") === "on",
     gaussian_curve_url: str("gaussian_curve_url"),
+    conclusion_top: formData.get("conclusion_top") === "on",
   };
 
   await supabase.from("settings").upsert({

@@ -463,6 +463,24 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
         </p>
       </Section>
 
+      <Section title="Position de la conclusion">
+        <label className="flex items-start gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            name="conclusion_top"
+            defaultChecked={settings.profile?.conclusion_top ?? false}
+            className="h-4 w-4 mt-0.5 rounded border-slate-300 text-brand-600 focus:ring-brand-400"
+          />
+          <span>
+            Afficher la conclusion <strong>en tête du bilan</strong>, dans un
+            encadré légèrement grisé au-dessus de l&apos;anamnèse.
+          </span>
+        </label>
+        <p className="text-xs text-slate-400 mt-2">
+          Décoché, la conclusion reste à sa place habituelle, en bas du bilan.
+        </p>
+      </Section>
+
       <Section title="Courbe de Gauss">
         <input type="hidden" name="gaussian_curve_url" value={curve} />
         <p className="text-sm text-slate-500 -mt-2 mb-3">
