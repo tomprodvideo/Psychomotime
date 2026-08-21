@@ -10,6 +10,7 @@ import {
   ImagePlus,
   Loader2,
   Mic,
+  Plus,
   Save,
   Sparkles,
   Square,
@@ -21,6 +22,7 @@ import type {
   AdaptationFolder,
   AdaptationTemplate,
   Bilan,
+  BilanPreset,
   BilanSectionConfig,
   BilanTests,
   MabcScore,
@@ -35,7 +37,12 @@ import {
 } from "@/lib/constants";
 import { ageFromBirth, frDate } from "@/lib/format";
 import ConfirmDeleteButton from "@/components/ConfirmDeleteButton";
-import { saveBilan, deleteBilan } from "../actions";
+import {
+  saveBilan,
+  deleteBilan,
+  saveBilanPreset,
+  deleteBilanPreset,
+} from "../actions";
 import { reformulateText } from "../ai-actions";
 import { useDictation } from "./useDictation";
 
@@ -45,6 +52,12 @@ function parseJSON<T>(s: unknown, fallback: T): T {
   } catch {
     return fallback;
   }
+}
+
+function uid() {
+  return globalThis.crypto?.randomUUID
+    ? globalThis.crypto.randomUUID().slice(0, 8)
+    : `${Date.now()}${Math.floor(Math.random() * 1e4)}`;
 }
 
 /** Redimensionne une image et renvoie un data-URL JPEG léger. */
@@ -81,12 +94,14 @@ export default function BilanEditor({
   templates,
   folders,
   sections,
+  presets,
   patientBirthDate,
 }: {
   bilan: Bilan;
   templates: AdaptationTemplate[];
   folders?: AdaptationFolder[];
   sections: BilanSectionConfig[];
+  presets?: BilanPreset[];
   patientBirthDate?: string | null;
 }) {
   const raw0 = bilan.content ?? {};
@@ -129,6 +144,16 @@ export default function BilanEditor({
     t0.mabc3 ?? {},
   );
 
+  // Blocs ajoutés à la volée sous une section (titre libre + texte propre).
+  const [blocks, setBlocks] = useState<
+    Record<string, { id: string; title: string }[]>
+  >(() => parseJSON(raw0.__blocks__, {}));
+
+  // Modèles de bilan entiers (pré-remplis), enregistrés dans le profil.
+  const [presetList, setPresetList] = useState<BilanPreset[]>(presets ?? []);
+  const [presetMenuOpen, setPresetMenuOpen] = useState(false);
+  const [presetPending, startPreset] = useTransition();
+
   const [dirty, setDirty] = useState(false);
   const [savedAt, setSavedAt] = useState(false);
   const [pending, start] = useTransition();
@@ -157,6 +182,82 @@ export default function BilanEditor({
       return { ...c, [key]: prev + sep + text };
     });
     markDirty();
+  };
+
+  const addBlock = (sectionId: string) => {
+    setBlocks((b) => ({
+      ...b,
+      [sectionId]: [...(b[sectionId] ?? []), { id: uid(), title: "" }],
+    }));
+    markDirty();
+  };
+  const renameBlock = (sectionId: string, blockId: string, title: string) => {
+    setBlocks((b) => ({
+      ...b,
+      [sectionId]: (b[sectionId] ?? []).map((x) =>
+        x.id === blockId ? { ...x, title } : x,
+      ),
+    }));
+    markDirty();
+  };
+  const removeBlock = (sectionId: string, blockId: string) => {
+    setBlocks((b) => ({
+      ...b,
+      [sectionId]: (b[sectionId] ?? []).filter((x) => x.id !== blockId),
+    }));
+    setContent((c) => {
+      const next = { ...c };
+      delete next[`${sectionId}::${blockId}`];
+      return next;
+    });
+    markDirty();
+  };
+
+  // ----- Modèles de bilan entiers -----
+  const saveAsPreset = () => {
+    const name = window.prompt("Nom du modèle de bilan :");
+    if (!name?.trim()) return;
+    const snapshot = { ...content, __blocks__: JSON.stringify(blocks) };
+    const snapTests = {
+      bySection,
+      mabc3_group: mabcGroup,
+      mabc3: mabcScores,
+    };
+    startPreset(async () => {
+      const next = await saveBilanPreset(name.trim(), snapshot, snapTests);
+      if (next) setPresetList(next as BilanPreset[]);
+    });
+  };
+  const loadPreset = (p: BilanPreset) => {
+    if (
+      !window.confirm(
+        `Remplacer le contenu actuel par le modèle « ${p.name} » ?`,
+      )
+    )
+      return;
+    const c = { ...(p.content ?? {}) };
+    const bl = parseJSON<Record<string, { id: string; title: string }[]>>(
+      c.__blocks__,
+      {},
+    );
+    delete c.__blocks__;
+    delete c.__images__;
+    delete c.__flags__;
+    setContent(c);
+    setBlocks(bl);
+    const t = p.tests ?? {};
+    setBySection(t.bySection ?? {});
+    setMabcGroup(t.mabc3_group ?? null);
+    setMabcScores(t.mabc3 ?? {});
+    setPresetMenuOpen(false);
+    markDirty();
+  };
+  const deletePreset = (id: string) => {
+    if (!window.confirm("Supprimer ce modèle de bilan ?")) return;
+    startPreset(async () => {
+      const next = await deleteBilanPreset(id);
+      if (next) setPresetList(next as BilanPreset[]);
+    });
   };
 
   const toggleSectionTest = (sectionId: string, testId: string) => {
@@ -249,6 +350,7 @@ export default function BilanEditor({
         JSON.stringify({
           ...content,
           __images__: JSON.stringify(images),
+          __blocks__: JSON.stringify(blocks),
           __flags__: JSON.stringify({
             adaptations: adaptationsOn,
             preconisations: preconisationsOn,
@@ -504,6 +606,52 @@ export default function BilanEditor({
     );
   }
 
+  /** Blocs ajoutés à la volée (sous-titre libre + texte), remplissables par modèle. */
+  function SectionBlocks({ sectionId }: { sectionId: string }) {
+    const list = blocks[sectionId] ?? [];
+    return (
+      <div className="mt-3 space-y-3">
+        {list.map((bl) => (
+          <div
+            key={bl.id}
+            className="pl-3 border-l-2 border-brand-100 bg-slate-50/40 rounded-r-lg py-2 pr-2"
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <input
+                value={bl.title}
+                onChange={(e) => renameBlock(sectionId, bl.id, e.target.value)}
+                placeholder="Titre du bloc (sous-titre)"
+                className="flex-1 rounded-md border border-slate-200 py-1 px-2 text-sm font-medium italic text-slate-700 outline-none focus:border-brand-400"
+              />
+              <button
+                type="button"
+                onClick={() => removeBlock(sectionId, bl.id)}
+                title="Supprimer ce bloc"
+                className="p-1 text-slate-400 hover:text-rose-600"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+            {TextField({
+              fieldKey: `${sectionId}::${bl.id}`,
+              label: "",
+              hint: "Texte du bloc…",
+              rows: 3,
+            })}
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => addBlock(sectionId)}
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-lg"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Ajouter un bloc
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto pb-40">
       <div className="flex items-center justify-between mb-4">
@@ -584,6 +732,71 @@ export default function BilanEditor({
         </div>
       </div>
 
+      {/* Modèle de bilan entier */}
+      <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 mb-5 flex flex-wrap items-center gap-2">
+        <span className="text-xs font-semibold uppercase tracking-wider text-brand-600 mr-auto">
+          Modèle de bilan
+        </span>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setPresetMenuOpen((o) => !o)}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg"
+          >
+            Charger un modèle
+            <ChevronDown className="h-4 w-4" />
+          </button>
+          {presetMenuOpen && (
+            <>
+              <div
+                className="fixed inset-0 z-10"
+                onClick={() => setPresetMenuOpen(false)}
+              />
+              <div className="absolute right-0 z-20 mt-1 w-72 bg-white border border-slate-200 rounded-lg shadow-lg max-h-72 overflow-y-auto divide-y divide-slate-100">
+                {presetList.length === 0 ? (
+                  <p className="text-xs text-slate-400 px-3 py-2">
+                    Aucun modèle enregistré. Remplissez un bilan puis « Enregistrer
+                    comme modèle ».
+                  </p>
+                ) : (
+                  presetList.map((p) => (
+                    <div
+                      key={p.id}
+                      className="flex items-center gap-1 px-2 py-1.5 hover:bg-brand-50"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => loadPreset(p)}
+                        className="flex-1 text-left text-sm text-slate-700 px-1 truncate"
+                        title={p.name}
+                      >
+                        {p.name}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deletePreset(p.id)}
+                        className="p-1 text-slate-400 hover:text-rose-600 shrink-0"
+                        title="Supprimer ce modèle"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={saveAsPreset}
+          disabled={presetPending}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 px-3 py-1.5 rounded-lg disabled:opacity-60"
+        >
+          {presetPending ? "…" : "Enregistrer comme modèle"}
+        </button>
+      </div>
+
       {/* Informations */}
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 mb-5">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-brand-600 mb-3">
@@ -638,6 +851,7 @@ export default function BilanEditor({
                   })}
                   {s.domain &&
                     SectionTests({ sectionId: s.id, mabcBlocks: s.mabcBlocks })}
+                  {SectionBlocks({ sectionId: s.id })}
                   {SectionPhotos({ sectionId: s.id })}
                 </>
               )}

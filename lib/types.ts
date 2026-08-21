@@ -44,6 +44,15 @@ export interface Profile {
   adaptation_templates?: AdaptationTemplate[]; // modèles réutilisables
   adaptation_folders?: AdaptationFolder[]; // dossiers de modèles
   bilan_sections?: BilanSectionConfig[]; // trame du bilan personnalisée
+  bilan_presets?: BilanPreset[]; // modèles de bilan entiers pré-remplis
+}
+
+/** Un modèle de bilan entier (titres/sous-titres + textes pré-remplis + tests). */
+export interface BilanPreset {
+  id: string;
+  name: string;
+  content: Record<string, string>; // textes des sections/blocs (+ __blocks__)
+  tests?: BilanTests;
 }
 
 /** Un élément de la trame du bilan (grand titre ou sous-titre), éditable dans les Paramètres. */

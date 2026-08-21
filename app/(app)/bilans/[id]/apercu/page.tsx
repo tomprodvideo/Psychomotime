@@ -50,7 +50,9 @@ export default async function BilanApercuPage({
   if (!data) notFound();
   const b = data as Bilan;
   const content = b.content ?? {};
-  const blocks = parseJSON<Record<string, { id: string; test: string }[]>>(
+  const blocks = parseJSON<
+    Record<string, { id: string; title?: string; test?: string }[]>
+  >(
     content.__blocks__,
     {},
   );
@@ -167,11 +169,17 @@ export default async function BilanApercuPage({
       .map((x) => {
         const txt = content[`${sectionId}::${x.id}`]?.trim();
         if (!txt) return null;
+        const heading = x.title?.trim() || (x.test ? testLabel(x.test) : "");
         return (
           <div key={x.id} className="mt-2">
-            <p className="font-semibold text-slate-800">
-              {testLabel(x.test)} :
-            </p>
+            {heading && (
+              <h3
+                className="font-semibold italic text-[13px] mb-1"
+                style={{ color: "var(--accent)" }}
+              >
+                {heading}
+              </h3>
+            )}
             <p className="whitespace-pre-wrap text-justify">{txt}</p>
           </div>
         );

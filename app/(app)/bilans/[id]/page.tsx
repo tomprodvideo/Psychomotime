@@ -24,6 +24,7 @@ export default async function BilanEditPage({
   const settings = await getSettings();
   const templates = settings.profile?.adaptation_templates ?? [];
   const folders = settings.profile?.adaptation_folders ?? [];
+  const presets = settings.profile?.bilan_presets ?? [];
   const sections = resolveBilanSections(settings.profile);
 
   let patientBirthDate: string | null = null;
@@ -42,6 +43,7 @@ export default async function BilanEditPage({
       templates={templates}
       folders={folders}
       sections={sections}
+      presets={presets}
       patientBirthDate={patientBirthDate}
     />
   );
