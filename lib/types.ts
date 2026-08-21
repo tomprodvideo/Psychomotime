@@ -46,11 +46,13 @@ export interface Profile {
   bilan_sections?: BilanSectionConfig[]; // trame du bilan personnalisée
 }
 
-/** Une section (grand titre) de la trame du bilan, éditable dans les Paramètres. */
+/** Un élément de la trame du bilan (grand titre ou sous-titre), éditable dans les Paramètres. */
 export interface BilanSectionConfig {
   id: string; // clé stable (sert au stockage du contenu) — ne pas changer
-  title: string; // libellé du grand titre (éditable)
+  title: string; // libellé (éditable)
   hint?: string;
+  level?: "title" | "subtitle"; // grand titre (défaut) ou sous-titre
+  boxed?: boolean; // pour les titres : encadré ou non
   domain?: boolean; // affiche le sélecteur de tests + tableaux M-ABC
   mabcBlocks?: ("equilibre" | "oculo" | "dexterite")[];
   kind?: "text" | "scores"; // 'scores' = section auto (interprétation + courbe)

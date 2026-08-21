@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getSettings } from "@/lib/data";
-import type { Bilan, Patient } from "@/lib/types";
+import type { Bilan, BilanSectionConfig, Patient } from "@/lib/types";
 import {
   BILAN_META,
   MABC_BLOCK_TITLES,
@@ -101,6 +101,23 @@ export default async function BilanApercuPage({
   const accent = profile.theme_color || "#2f8a82";
   const fontFamily = bilanFontCss(profile.bilan_font);
   const titleStyle = profile.bilan_title_style || "boxed";
+  // Variante d'affichage d'un titre : sous-titre, encadré, souligné ou simple.
+  const headingVariant = (item: BilanSectionConfig) =>
+    item.level === "subtitle"
+      ? "subtitle"
+      : (item.boxed ?? titleStyle === "boxed")
+        ? "boxed"
+        : titleStyle === "underline"
+          ? "underline"
+          : "plain";
+  const conclusionItem = sections.find((s) => s.id === "conclusion");
+  const conclusionVariant = conclusionItem
+    ? headingVariant(conclusionItem)
+    : titleStyle;
+  const anamneseItem = sections.find((s) => s.id === "anamnese");
+  const anamneseVariant = anamneseItem
+    ? headingVariant(anamneseItem)
+    : "boxed";
   // Lieu du « Fait à … » : réglé dans le bilan, sinon ville du cabinet.
   const lieu = content.lieu || profile.city || "";
   // Médecin prescripteur : ancien champ du bilan, sinon depuis la fiche patient.
@@ -308,7 +325,7 @@ export default async function BilanApercuPage({
           {conclusionTop &&
             (content.conclusion?.trim() || hasExtras("conclusion")) && (
               <section className="mb-5 break-inside-avoid bg-slate-50 border border-slate-200 rounded-lg p-4">
-                <SectionTitle variant={titleStyle}>
+                <SectionTitle variant={conclusionVariant}>
                   {conclusionTitle}
                 </SectionTitle>
                 {content.conclusion?.trim() && (
@@ -326,17 +343,9 @@ export default async function BilanApercuPage({
             hasExtras("anamnese") ||
             anamneseNote.trim()) && (
             <section className="mb-5 break-inside-avoid">
-              <div
-                className="border rounded-sm py-2 px-4 text-center mb-4"
-                style={{ borderColor: "var(--accent)" }}
-              >
-                <span
-                  className="font-bold italic text-[15px]"
-                  style={{ color: "var(--accent)" }}
-                >
-                  {anamneseTitle}
-                </span>
-              </div>
+              <SectionTitle variant={anamneseVariant}>
+                {anamneseTitle}
+              </SectionTitle>
               {content.anamnese?.trim() && (
                 <p className="whitespace-pre-wrap text-justify">
                   {content.anamnese}
@@ -410,15 +419,15 @@ export default async function BilanApercuPage({
 
               const text = content[s.id]?.trim();
               const sel = bySection[s.id] ?? [];
-              const hasTables =
-                group &&
-                (s.mabcBlocks?.length ?? 0) > 0 &&
-                mabcInSection(s.id);
-              if (!text && !hasTables && !hasExtras(s.id) && sel.length === 0)
-                return null;
+              const isSub = s.level === "subtitle";
               return (
-                <section key={s.id} className="mb-5 break-inside-avoid">
-                  <SectionTitle variant={titleStyle}>{s.title}</SectionTitle>
+                <section
+                  key={s.id}
+                  className={`${isSub ? "mb-3" : "mb-5"} break-inside-avoid`}
+                >
+                  <SectionTitle variant={headingVariant(s)}>
+                    {s.title}
+                  </SectionTitle>
                   {sel.length > 0 && (
                     <p className="text-[11px] italic text-slate-400 mb-1">
                       Test(s) : {sel.map((t) => testLabel(t)).join(" · ")}
@@ -437,7 +446,9 @@ export default async function BilanApercuPage({
           {!conclusionTop &&
             (content.conclusion?.trim() || hasExtras("conclusion")) && (
             <section className="mb-6 break-inside-avoid">
-              <SectionTitle variant={titleStyle}>{conclusionTitle}</SectionTitle>
+              <SectionTitle variant={conclusionVariant}>
+                {conclusionTitle}
+              </SectionTitle>
               {content.conclusion?.trim() && (
                 <p className="whitespace-pre-wrap text-justify">
                   {content.conclusion}
@@ -493,10 +504,20 @@ function SectionTitle({
       </h2>
     );
   }
+  if (variant === "subtitle") {
+    return (
+      <h3
+        className="font-semibold italic text-[13px] mb-1.5 mt-1"
+        style={{ color: "var(--accent)" }}
+      >
+        {children}
+      </h3>
+    );
+  }
   if (variant === "plain") {
     return (
       <h2
-        className="font-bold text-[14px] mb-2"
+        className="font-bold italic text-[15px] mb-3 text-center"
         style={{ color: "var(--accent)" }}
       >
         {children}

@@ -345,6 +345,8 @@ export const DEFAULT_BILAN_SECTIONS: BilanSectionConfig[] = (() => {
       id: s.id,
       title: s.title,
       hint: s.hint,
+      level: "title" as const,
+      boxed: true,
       domain: g.group === "Domaines psychomoteurs" ? true : undefined,
       mabcBlocks: s.mabcBlocks,
       kind: "text" as const,
@@ -353,6 +355,8 @@ export const DEFAULT_BILAN_SECTIONS: BilanSectionConfig[] = (() => {
   const scores: BilanSectionConfig = {
     id: "resultats_chiffres",
     title: "Résultats chiffrés des tests",
+    level: "title",
+    boxed: true,
     kind: "scores",
   };
   const i = flat.findIndex((s) => s.id === "conclusion");

@@ -43,19 +43,39 @@ export default function BilanSectionsEditor({
       arr.map((s) => (s.id === id ? { ...s, domain: !s.domain } : s)),
     );
 
+  const toggleBoxed = (id: string) =>
+    setSections((arr) =>
+      arr.map((s) =>
+        s.id === id ? { ...s, boxed: !(s.boxed ?? true) } : s,
+      ),
+    );
+
   const remove = (id: string) =>
     setSections((arr) => arr.filter((s) => s.id !== id));
 
-  const add = () =>
+  const insertBeforeConclusion = (item: BilanSectionConfig) =>
     setSections((arr) => {
-      // Insère la nouvelle section avant la conclusion si possible.
-      const item: BilanSectionConfig = {
-        id: uid(),
-        title: "Nouvelle section",
-        kind: "text",
-      };
       const i = arr.findIndex((s) => s.id === "conclusion");
-      return i >= 0 ? [...arr.slice(0, i), item, ...arr.slice(i)] : [...arr, item];
+      return i >= 0
+        ? [...arr.slice(0, i), item, ...arr.slice(i)]
+        : [...arr, item];
+    });
+
+  const add = () =>
+    insertBeforeConclusion({
+      id: uid(),
+      title: "Nouvelle section",
+      level: "title",
+      boxed: true,
+      kind: "text",
+    });
+
+  const addSub = () =>
+    insertBeforeConclusion({
+      id: uid(),
+      title: "Nouveau sous-titre",
+      level: "subtitle",
+      kind: "text",
     });
 
   const reset = () =>
@@ -65,18 +85,24 @@ export default function BilanSectionsEditor({
     <div className="space-y-3">
       <input type="hidden" name="bilan_sections" value={JSON.stringify(sections)} />
       <p className="text-sm text-slate-500 -mt-2">
-        Ordre, noms et emplacements des grands titres du bilan. Le renommage et le
-        déplacement n&apos;affectent pas le contenu déjà saisi dans les bilans.
+        Ordre, noms et emplacements des titres et sous-titres du bilan. Le
+        renommage et le déplacement n&apos;affectent pas le contenu déjà saisi
+        dans les bilans.
       </p>
 
       <div className="space-y-2">
         {sections.map((s, i) => {
           const protectedItem = PROTECTED.has(s.id);
           const isScores = s.kind === "scores";
+          const isSub = s.level === "subtitle";
           return (
             <div
               key={s.id}
-              className="flex items-center gap-2 border border-slate-200 rounded-lg px-2 py-1.5 bg-white"
+              className={`flex items-center gap-2 border rounded-lg px-2 py-1.5 ${
+                isSub
+                  ? "ml-6 border-slate-100 bg-slate-50"
+                  : "border-slate-200 bg-white"
+              }`}
             >
               <div className="flex flex-col shrink-0">
                 <button
@@ -102,15 +128,38 @@ export default function BilanSectionsEditor({
               <input
                 value={s.title}
                 onChange={(e) => rename(s.id, e.target.value)}
-                placeholder="Titre de la section"
-                className="flex-1 rounded-md border border-slate-200 py-1.5 px-2 text-sm outline-none focus:border-brand-400"
+                placeholder={isSub ? "Sous-titre" : "Titre de la section"}
+                className={`flex-1 rounded-md border border-slate-200 py-1.5 px-2 outline-none focus:border-brand-400 ${
+                  isSub ? "text-[13px] italic" : "text-sm"
+                }`}
               />
+
+              {isSub && (
+                <span className="text-[10px] uppercase tracking-wide text-slate-400 shrink-0">
+                  sous-titre
+                </span>
+              )}
+
+              {!isSub && (
+                <label
+                  className="flex items-center gap-1 text-[11px] text-slate-500 shrink-0 cursor-pointer select-none px-1"
+                  title="Afficher ce titre dans un encadré"
+                >
+                  <input
+                    type="checkbox"
+                    checked={s.boxed ?? true}
+                    onChange={() => toggleBoxed(s.id)}
+                    className="h-3.5 w-3.5 rounded border-slate-300 text-brand-600 focus:ring-brand-400"
+                  />
+                  Encadré
+                </label>
+              )}
 
               {isScores ? (
                 <span className="text-[11px] text-slate-400 shrink-0 px-1">
                   auto
                 </span>
-              ) : (
+              ) : isSub ? null : (
                 <label
                   className="flex items-center gap-1 text-[11px] text-slate-500 shrink-0 cursor-pointer select-none px-1"
                   title="Afficher le sélecteur de tests et les tableaux M-ABC sous cette section"
@@ -142,14 +191,22 @@ export default function BilanSectionsEditor({
         })}
       </div>
 
-      <div className="flex items-center gap-2 pt-1">
+      <div className="flex flex-wrap items-center gap-2 pt-1">
         <button
           type="button"
           onClick={add}
           className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50 px-3 py-1.5 rounded-lg"
         >
           <Plus className="h-4 w-4" />
-          Ajouter une section
+          Ajouter un titre
+        </button>
+        <button
+          type="button"
+          onClick={addSub}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50 px-3 py-1.5 rounded-lg"
+        >
+          <Plus className="h-4 w-4" />
+          Ajouter un sous-titre
         </button>
         <button
           type="button"
@@ -161,9 +218,12 @@ export default function BilanSectionsEditor({
         </button>
       </div>
       <p className="text-xs text-slate-400">
-        Pense à cliquer sur « Enregistrer les paramètres » en bas de page pour
-        sauvegarder la trame. « L&apos;anamnèse », « Résultats chiffrés » et
-        « Conclusion » ont un rendu spécial et ne peuvent pas être supprimées.
+        Cochez « Encadré » pour afficher un titre dans un cadre. Les
+        <span className="italic"> sous-titres</span> s&apos;affichent en plus
+        petit, en italique coloré, et se trient/positionnent comme les titres.
+        Pensez à « Enregistrer les paramètres » en bas de page. «
+        L&apos;anamnèse », « Résultats chiffrés » et « Conclusion » ne peuvent
+        pas être supprimées.
       </p>
     </div>
   );

@@ -620,7 +620,14 @@ export default function BilanEditor({
         </h2>
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm divide-y divide-slate-100">
           {sections.map((s) => (
-            <div key={s.id} className="p-4">
+            <div
+              key={s.id}
+              className={`p-4 ${
+                s.level === "subtitle"
+                  ? "pl-8 border-l-2 border-brand-100 bg-slate-50/40"
+                  : ""
+              }`}
+            >
               {s.kind === "scores" ? (
                 <div>
                   <p className="text-sm font-medium text-slate-700">{s.title}</p>
