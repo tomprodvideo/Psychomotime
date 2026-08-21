@@ -95,7 +95,7 @@ export default async function BilanApercuPage({
   const closingNote = profile.closing_note ?? DEFAULT_CLOSING_NOTE;
   const accent = profile.theme_color || "#2f8a82";
   const fontFamily = bilanFontCss(profile.bilan_font);
-  const titleStyle = profile.bilan_title_style || "underline";
+  const titleStyle = profile.bilan_title_style || "boxed";
   // Lieu du « Fait à … » : réglé dans le bilan, sinon ville du cabinet.
   const lieu = content.lieu || profile.city || "";
   // Médecin prescripteur : ancien champ du bilan, sinon depuis la fiche patient.
@@ -247,7 +247,7 @@ export default async function BilanApercuPage({
               {b.bilan_date ? frDate(b.bilan_date) : "…"}
             </p>
             <h1
-              className="text-center text-lg font-bold tracking-wide mt-4"
+              className="text-center text-2xl font-semibold tracking-wide mt-6 mb-2"
               style={{ color: "var(--accent)" }}
             >
               COMPTE RENDU DU BILAN PSYCHOMOTEUR
@@ -259,7 +259,10 @@ export default async function BilanApercuPage({
             birth ||
             prescripteur ||
             BILAN_META.some((f) => content[f.id]?.trim())) && (
-            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-[12px] mb-5 break-inside-avoid">
+            <div
+              className="border-2 border-dashed rounded-lg p-4 text-[12px] mb-5 break-inside-avoid"
+              style={{ borderColor: "var(--accent)" }}
+            >
               <p>
                 <span className="text-slate-500">Enfant concerné : </span>
                 <strong>{b.patient_name || "—"}</strong>
@@ -317,10 +320,13 @@ export default async function BilanApercuPage({
             anamneseNote.trim()) && (
             <section className="mb-5 break-inside-avoid">
               <div
-                className="border-2 py-2 px-4 text-center mb-4"
+                className="border rounded-sm py-2 px-4 text-center mb-4"
                 style={{ borderColor: "var(--accent)" }}
               >
-                <span className="font-bold italic text-[15px] text-slate-900">
+                <span
+                  className="font-bold italic text-[15px]"
+                  style={{ color: "var(--accent)" }}
+                >
                   L&apos;anamnèse
                 </span>
               </div>
@@ -464,7 +470,7 @@ function SectionTitle({
   if (variant === "boxed") {
     return (
       <h2
-        className="font-bold text-[14px] mb-2 inline-block border-2 rounded-md py-1 px-3"
+        className="font-bold italic text-[15px] mb-3 border rounded-sm py-2 px-4 text-center"
         style={{ borderColor: "var(--accent)", color: "var(--accent)" }}
       >
         {children}

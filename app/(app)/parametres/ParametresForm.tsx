@@ -63,7 +63,7 @@ function TitlePreview({
   if (variant === "boxed")
     return (
       <span
-        className="font-bold text-sm inline-block border-2 rounded-md py-1 px-3"
+        className="block font-bold italic text-sm border rounded-sm py-1.5 px-4 text-center"
         style={{ borderColor: color, color }}
       >
         {children}
@@ -112,7 +112,7 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
     settings.profile?.bilan_font ?? "sans",
   );
   const [bilanTitleStyle, setBilanTitleStyle] = useState(
-    settings.profile?.bilan_title_style ?? "underline",
+    settings.profile?.bilan_title_style ?? "boxed",
   );
   const [curve, setCurve] = useState(settings.profile?.gaussian_curve_url ?? "");
   const [curveError, setCurveError] = useState("");
