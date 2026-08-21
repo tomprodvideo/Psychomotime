@@ -22,6 +22,7 @@ export default async function BilanEditPage({
 
   const settings = await getSettings();
   const templates = settings.profile?.adaptation_templates ?? [];
+  const folders = settings.profile?.adaptation_folders ?? [];
 
   let patientBirthDate: string | null = null;
   if (bilan.patient_id) {
@@ -37,6 +38,7 @@ export default async function BilanEditPage({
     <BilanEditor
       bilan={bilan}
       templates={templates}
+      folders={folders}
       patientBirthDate={patientBirthDate}
       anamneseNoteDefault={settings.profile?.anamnese_note}
       anamneseNoteOn={settings.profile?.anamnese_note_on}

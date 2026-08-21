@@ -10,9 +10,7 @@ import {
   ImagePlus,
   Loader2,
   Mic,
-  Plus,
   Save,
-  Settings,
   Sparkles,
   Square,
   Trash2,
@@ -20,6 +18,7 @@ import {
   X,
 } from "lucide-react";
 import type {
+  AdaptationFolder,
   AdaptationTemplate,
   Bilan,
   BilanTests,
@@ -36,7 +35,7 @@ import {
 } from "@/lib/constants";
 import { ageFromBirth, frDate } from "@/lib/format";
 import ConfirmDeleteButton from "@/components/ConfirmDeleteButton";
-import { saveBilan, deleteBilan, saveAdaptationTemplates } from "../actions";
+import { saveBilan, deleteBilan } from "../actions";
 import { reformulateText } from "../ai-actions";
 import { useDictation } from "./useDictation";
 
@@ -46,12 +45,6 @@ function parseJSON<T>(s: unknown, fallback: T): T {
   } catch {
     return fallback;
   }
-}
-
-function uid() {
-  return globalThis.crypto?.randomUUID
-    ? globalThis.crypto.randomUUID()
-    : `t${Date.now()}${Math.floor(Math.random() * 1e6)}`;
 }
 
 /** Redimensionne une image et renvoie un data-URL JPEG léger. */
@@ -86,12 +79,14 @@ function resizeImage(file: File, maxDim = 1200, quality = 0.82): Promise<string>
 export default function BilanEditor({
   bilan,
   templates,
+  folders,
   patientBirthDate,
   anamneseNoteDefault,
   anamneseNoteOn,
 }: {
   bilan: Bilan;
   templates: AdaptationTemplate[];
+  folders?: AdaptationFolder[];
   patientBirthDate?: string | null;
   anamneseNoteDefault?: string;
   anamneseNoteOn?: boolean;
@@ -149,27 +144,10 @@ export default function BilanEditor({
   const [aiError, setAiError] = useState<Record<string, string>>({});
   const [undo, setUndo] = useState<{ id: string; prev: string } | null>(null);
 
-  // Modèles réutilisables, partagés par tous les paragraphes.
-  const [templateList, setTemplateList] =
-    useState<AdaptationTemplate[]>(templates);
-  const [tplManageOpen, setTplManageOpen] = useState(false);
-  const [tplDraft, setTplDraft] = useState<AdaptationTemplate[]>(templates);
-  const [tplPending, startTpl] = useTransition();
-
-  const openTplManage = () => {
-    setTplDraft(templateList.map((t) => ({ ...t })));
-    setTplManageOpen(true);
-  };
-  const persistTemplates = () => {
-    const clean = tplDraft
-      .map((t) => ({ ...t, title: t.title.trim(), text: t.text.trim() }))
-      .filter((t) => t.title || t.text);
-    startTpl(async () => {
-      await saveAdaptationTemplates(clean);
-      setTemplateList(clean);
-      setTplManageOpen(false);
-    });
-  };
+  // Modèles réutilisables (gérés dans Paramètres › Bilan), partagés par tous
+  // les paragraphes et groupés par dossier dans le menu d'insertion.
+  const templateList = templates;
+  const folderList = folders ?? [];
 
   const markDirty = () => setDirty(true);
 
@@ -366,7 +344,7 @@ export default function BilanEditor({
             </button>
             <TemplatesMenu
               templates={templateList}
-              onManage={openTplManage}
+              folders={folderList}
               onInsert={(t) => insertInto(fieldKey, t)}
             />
             {extraActions}
@@ -719,106 +697,6 @@ export default function BilanEditor({
       {/* Espace de sécurité sous le dernier bloc (barre d'actions fixe) */}
       <div aria-hidden className="h-24" />
 
-      {/* Modale de gestion des modèles (partagée) */}
-      {tplManageOpen && (
-        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-slate-900/40 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg my-4">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h2 className="font-semibold text-slate-800">
-                Modèles réutilisables
-              </h2>
-              <button type="button" onClick={() => setTplManageOpen(false)}>
-                <X className="h-5 w-5 text-slate-400" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
-              <p className="text-xs text-slate-500 -mt-2">
-                Ces modèles sont insérables dans n&apos;importe quel paragraphe
-                du bilan. Ils sont aussi gérables depuis Paramètres › Bilan.
-              </p>
-              {tplDraft.length === 0 && (
-                <p className="text-sm text-slate-400">
-                  Aucun modèle. Ajoutez-en un ci-dessous.
-                </p>
-              )}
-              {tplDraft.map((t, i) => (
-                <div
-                  key={t.id}
-                  className="border border-slate-200 rounded-lg p-3 space-y-2"
-                >
-                  <div className="flex items-center gap-2">
-                    <input
-                      value={t.title}
-                      onChange={(e) =>
-                        setTplDraft((d) =>
-                          d.map((x, j) =>
-                            j === i ? { ...x, title: e.target.value } : x,
-                          ),
-                        )
-                      }
-                      placeholder="Titre du modèle (ex. Aménagements scolaires)"
-                      className="flex-1 rounded-lg border border-slate-200 py-1.5 px-2 text-sm font-medium outline-none focus:border-brand-400"
-                    />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setTplDraft((d) => d.filter((_, j) => j !== i))
-                      }
-                      className="p-1 text-slate-400 hover:text-rose-600"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <textarea
-                    value={t.text}
-                    onChange={(e) =>
-                      setTplDraft((d) =>
-                        d.map((x, j) =>
-                          j === i ? { ...x, text: e.target.value } : x,
-                        ),
-                      )
-                    }
-                    rows={3}
-                    placeholder="Texte du modèle…"
-                    className="w-full rounded-lg border border-slate-200 py-2 px-2 text-sm outline-none focus:border-brand-400 resize-y"
-                  />
-                </div>
-              ))}
-
-              <button
-                type="button"
-                onClick={() =>
-                  setTplDraft((d) => [...d, { id: uid(), title: "", text: "" }])
-                }
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50 px-3 py-1.5 rounded-lg"
-              >
-                <Plus className="h-4 w-4" />
-                Ajouter un modèle
-              </button>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setTplManageOpen(false)}
-                className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg"
-              >
-                Annuler
-              </button>
-              <button
-                type="button"
-                onClick={persistTemplates}
-                disabled={tplPending}
-                className="px-5 py-2 text-sm text-white bg-brand-600 hover:bg-brand-700 rounded-lg disabled:opacity-60"
-              >
-                {tplPending ? "Enregistrement…" : "Enregistrer les modèles"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Barre d'actions fixe */}
       <div className="fixed bottom-0 inset-x-0 md:left-64 bg-white/90 backdrop-blur border-t border-slate-200 px-4 py-3 no-print">
         <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
@@ -872,17 +750,46 @@ export default function BilanEditor({
   );
 }
 
-/** Menu « Modèles » (composant stable, au niveau module → conserve le focus). */
+/** Menu « Modèles » groupé par dossier (composant stable, au niveau module). */
 function TemplatesMenu({
   templates,
+  folders,
   onInsert,
-  onManage,
 }: {
   templates: AdaptationTemplate[];
+  folders: AdaptationFolder[];
   onInsert: (text: string) => void;
-  onManage: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const folderIds = new Set(folders.map((f) => f.id));
+  const general = templates.filter((t) => !t.folder || !folderIds.has(t.folder));
+  const groups = [
+    ...folders.map((f) => ({
+      name: f.name,
+      items: templates.filter((t) => t.folder === f.id),
+    })),
+    { name: "Général", items: general },
+  ].filter((g) => g.items.length > 0);
+
+  const item = (t: AdaptationTemplate) => (
+    <button
+      key={t.id}
+      type="button"
+      onClick={() => {
+        onInsert(t.text);
+        setOpen(false);
+      }}
+      className="block w-full text-left px-3 py-2 hover:bg-brand-50"
+    >
+      <p className="text-sm font-medium text-slate-700">
+        {t.title || "Sans titre"}
+      </p>
+      <p className="text-xs text-slate-500 whitespace-pre-wrap mt-0.5 leading-relaxed line-clamp-2">
+        {t.text}
+      </p>
+    </button>
+  );
+
   return (
     <div className="relative">
       <button
@@ -898,43 +805,25 @@ function TemplatesMenu({
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
           <div className="absolute right-0 z-20 mt-1 w-80 sm:w-96 bg-white border border-slate-200 rounded-lg shadow-lg">
-            <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
-              {templates.length === 0 ? (
+            <div className="max-h-80 overflow-y-auto">
+              {groups.length === 0 ? (
                 <p className="text-xs text-slate-400 px-3 py-2">
-                  Aucun modèle. Cliquez sur « Gérer les modèles » pour en créer.
+                  Aucun modèle. Créez-en dans Paramètres › Bilan.
                 </p>
               ) : (
-                templates.map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => {
-                      onInsert(t.text);
-                      setOpen(false);
-                    }}
-                    className="block w-full text-left px-3 py-2.5 hover:bg-brand-50"
-                  >
-                    <p className="text-sm font-medium text-slate-700">
-                      {t.title || "Sans titre"}
+                groups.map((g) => (
+                  <div key={g.name} className="border-b border-slate-100 last:border-0">
+                    <p className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                      {g.name}
                     </p>
-                    <p className="text-xs text-slate-500 whitespace-pre-wrap mt-0.5 leading-relaxed line-clamp-3">
-                      {t.text}
-                    </p>
-                  </button>
+                    {g.items.map(item)}
+                  </div>
                 ))
               )}
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false);
-                onManage();
-              }}
-              className="flex items-center gap-1.5 w-full text-left px-3 py-2 text-xs font-medium text-brand-700 hover:bg-brand-50 border-t border-slate-100"
-            >
-              <Settings className="h-3.5 w-3.5" />
-              Gérer les modèles…
-            </button>
+            <p className="px-3 py-2 text-[11px] text-slate-400 border-t border-slate-100">
+              Gérez vos dossiers et modèles dans Paramètres › Bilan.
+            </p>
           </div>
         </>
       )}

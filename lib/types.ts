@@ -41,13 +41,20 @@ export interface Profile {
   gaussian_curve_url?: string; // courbe de Gauss personnalisée (data URL)
   conclusion_top?: boolean; // conclusion en tête (encadré grisé) au lieu du bas
   closing_note?: string; // formule de fin sous la signature
-  adaptation_templates?: AdaptationTemplate[]; // modèles d'adaptations réutilisables
+  adaptation_templates?: AdaptationTemplate[]; // modèles réutilisables
+  adaptation_folders?: AdaptationFolder[]; // dossiers de modèles
+}
+
+export interface AdaptationFolder {
+  id: string;
+  name: string;
 }
 
 export interface AdaptationTemplate {
   id: string;
   title: string;
   text: string;
+  folder?: string | null; // id du dossier (AdaptationFolder), sinon « Général »
 }
 
 export interface Settings {

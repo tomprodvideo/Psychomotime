@@ -550,7 +550,8 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
         subtitle="Textes réutilisables insérables dans les bilans — cliquez pour déplier"
       >
         <AdaptationTemplatesManager
-          initial={settings.profile?.adaptation_templates ?? []}
+          initialTemplates={settings.profile?.adaptation_templates ?? []}
+          initialFolders={settings.profile?.adaptation_folders ?? []}
         />
       </CollapsibleSection>
       </div>

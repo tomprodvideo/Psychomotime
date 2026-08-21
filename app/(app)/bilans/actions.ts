@@ -91,8 +91,14 @@ export async function saveBilan(formData: FormData) {
   revalidatePath("/bilans");
 }
 
-export async function saveAdaptationTemplates(
-  templates: { id: string; title: string; text: string }[],
+export async function saveAdaptationLibrary(
+  templates: {
+    id: string;
+    title: string;
+    text: string;
+    folder?: string | null;
+  }[],
+  folders: { id: string; name: string }[],
 ) {
   const supabase = await createClient();
   const {
@@ -109,6 +115,7 @@ export async function saveAdaptationTemplates(
   const profile = {
     ...((s?.profile as Record<string, unknown>) ?? {}),
     adaptation_templates: templates,
+    adaptation_folders: folders,
   };
 
   await supabase.from("settings").upsert({
@@ -118,6 +125,7 @@ export async function saveAdaptationTemplates(
   });
 
   revalidatePath("/bilans");
+  revalidatePath("/parametres");
 }
 
 export async function deleteBilan(formData: FormData) {
