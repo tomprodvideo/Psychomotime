@@ -241,6 +241,12 @@ export const BILAN_TEMPLATE: BilanGroup[] = [
         long: true,
       },
       {
+        id: "tests_utilises",
+        title: "Tests psychomoteurs utilisés",
+        hint: "Tests standardisés et observations cliniques sur lesquels s'appuie le bilan (M-ABC 3, NP-MOT, BHK…).",
+        long: true,
+      },
+      {
         id: "comportement",
         title: "Comportement durant le bilan",
         hint: "Contact, coopération, attention, besoin de mouvement, réaction au chronomètre…",
