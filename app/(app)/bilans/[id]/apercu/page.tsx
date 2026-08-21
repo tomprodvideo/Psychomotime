@@ -123,14 +123,6 @@ export default async function BilanApercuPage({
   // Médecin prescripteur : ancien champ du bilan, sinon depuis la fiche patient.
   const prescripteur =
     content.prescripteur || patient?.dossier?.prescripteur || "";
-  // Texte de fin d'anamnèse : valeur propre au bilan, sinon modèle par défaut
-  // des paramètres s'il est activé.
-  const anamneseNote =
-    content.anamnese_note !== undefined
-      ? content.anamnese_note
-      : profile.anamnese_note_on
-        ? profile.anamnese_note ?? ""
-        : "";
 
   // Signature (nom + qualité), en bas de page.
   const signature = (
@@ -339,9 +331,7 @@ export default async function BilanApercuPage({
             )}
 
           {/* Anamnèse (narratif) */}
-          {(content.anamnese?.trim() ||
-            hasExtras("anamnese") ||
-            anamneseNote.trim()) && (
+          {(content.anamnese?.trim() || hasExtras("anamnese")) && (
             <section className="mb-5 break-inside-avoid">
               <SectionTitle variant={anamneseVariant}>
                 {anamneseTitle}
@@ -352,14 +342,6 @@ export default async function BilanApercuPage({
                 </p>
               )}
               {sectionExtras("anamnese")}
-              {anamneseNote.trim() && (
-                <div className="mt-4">
-                  <div className="w-48 border-t-2 border-slate-900 mx-auto mb-3" />
-                  <p className="whitespace-pre-wrap text-justify italic text-slate-700">
-                    {anamneseNote}
-                  </p>
-                </div>
-              )}
             </section>
           )}
 

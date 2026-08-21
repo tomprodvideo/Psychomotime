@@ -43,8 +43,6 @@ export default async function BilanEditPage({
       folders={folders}
       sections={sections}
       patientBirthDate={patientBirthDate}
-      anamneseNoteDefault={settings.profile?.anamnese_note}
-      anamneseNoteOn={settings.profile?.anamnese_note_on}
     />
   );
 }

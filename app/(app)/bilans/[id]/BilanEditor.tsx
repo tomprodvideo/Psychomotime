@@ -82,16 +82,12 @@ export default function BilanEditor({
   folders,
   sections,
   patientBirthDate,
-  anamneseNoteDefault,
-  anamneseNoteOn,
 }: {
   bilan: Bilan;
   templates: AdaptationTemplate[];
   folders?: AdaptationFolder[];
   sections: BilanSectionConfig[];
   patientBirthDate?: string | null;
-  anamneseNoteDefault?: string;
-  anamneseNoteOn?: boolean;
 }) {
   const raw0 = bilan.content ?? {};
 
@@ -106,11 +102,6 @@ export default function BilanEditor({
     delete c.__blocks__;
     delete c.__images__;
     delete c.__flags__;
-    // Pré-remplit le texte de fin d'anamnèse depuis le modèle des paramètres
-    // (uniquement pour un bilan qui n'en a pas encore et si l'option est active).
-    if (c.anamnese_note === undefined && anamneseNoteOn && anamneseNoteDefault) {
-      c.anamnese_note = anamneseNoteDefault;
-    }
     return c;
   });
   const [images, setImages] = useState<Record<string, string[]>>(() =>
@@ -645,16 +636,6 @@ export default function BilanEditor({
                     hint: s.hint,
                     rows: s.id === "anamnese" || s.id === "conclusion" ? 6 : 3,
                   })}
-                  {s.id === "anamnese" && (
-                    <div className="mt-3 border-t border-dashed border-slate-200 pt-3">
-                      {TextField({
-                        fieldKey: "anamnese_note",
-                        label: "Texte de fin d'anamnèse (tests standardisés…)",
-                        hint: "Ce texte s'affiche à la fin de l'anamnèse, séparé par un trait. Modifiable pour ce bilan.",
-                        rows: 4,
-                      })}
-                    </div>
-                  )}
                   {s.domain &&
                     SectionTests({ sectionId: s.id, mabcBlocks: s.mabcBlocks })}
                   {SectionPhotos({ sectionId: s.id })}
