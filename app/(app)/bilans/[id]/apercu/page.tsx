@@ -7,13 +7,13 @@ import { getSettings } from "@/lib/data";
 import type { Bilan, Patient } from "@/lib/types";
 import {
   BILAN_META,
-  BILAN_TEMPLATE,
   MABC_BLOCK_TITLES,
   MABC_GROUPS,
   DEFAULT_CLOSING_NOTE,
   SCORE_INTERPRETATION,
   bilanFontCss,
   nsColor,
+  resolveBilanSections,
   testLabel,
   type MabcRow,
 } from "@/lib/constants";
@@ -91,6 +91,11 @@ export default async function BilanApercuPage({
   const usedLabels =
     Object.values(bySection).some((a) => a.length > 0) ||
     legacyUsed.length > 0;
+  const sections = resolveBilanSections(profile);
+  const anamneseTitle =
+    sections.find((s) => s.id === "anamnese")?.title ?? "L'anamnèse";
+  const conclusionTitle =
+    sections.find((s) => s.id === "conclusion")?.title ?? "Conclusion";
   const conclusionTop = !!profile.conclusion_top;
   const closingNote = profile.closing_note ?? DEFAULT_CLOSING_NOTE;
   const accent = profile.theme_color || "#2f8a82";
@@ -303,7 +308,9 @@ export default async function BilanApercuPage({
           {conclusionTop &&
             (content.conclusion?.trim() || hasExtras("conclusion")) && (
               <section className="mb-5 break-inside-avoid bg-slate-50 border border-slate-200 rounded-lg p-4">
-                <SectionTitle variant={titleStyle}>Conclusion</SectionTitle>
+                <SectionTitle variant={titleStyle}>
+                  {conclusionTitle}
+                </SectionTitle>
                 {content.conclusion?.trim() && (
                   <p className="whitespace-pre-wrap text-justify">
                     {content.conclusion}
@@ -327,7 +334,7 @@ export default async function BilanApercuPage({
                   className="font-bold italic text-[15px]"
                   style={{ color: "var(--accent)" }}
                 >
-                  L&apos;anamnèse
+                  {anamneseTitle}
                 </span>
               </div>
               {content.anamnese?.trim() && (
@@ -347,10 +354,60 @@ export default async function BilanApercuPage({
             </section>
           )}
 
-          {/* Domaines + comportement */}
-          {BILAN_TEMPLATE.flatMap((g) => g.sections)
+          {/* Corps du bilan : trame personnalisable (hors anamnèse & conclusion) */}
+          {sections
             .filter((s) => s.id !== "anamnese" && s.id !== "conclusion")
             .map((s) => {
+              // Section auto « Résultats chiffrés des tests » (interprétation + courbe)
+              if (s.kind === "scores") {
+                if (!usedLabels) return null;
+                return (
+                  <section key={s.id} className="mb-5 break-inside-avoid">
+                    <SectionTitle variant={titleStyle}>{s.title}</SectionTitle>
+                    <p className="text-[12px] mb-2">
+                      {SCORE_INTERPRETATION.intro}
+                    </p>
+                    <div className="grid sm:grid-cols-2 gap-3 text-[12px]">
+                      <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                        <p className="font-semibold mb-1">
+                          Déviations standards (DS)
+                        </p>
+                        <ul className="list-disc pl-4 space-y-0.5">
+                          {SCORE_INTERPRETATION.ds.map((l, i) => (
+                            <li key={l} style={{ color: ZONE_TEXT[i] }}>
+                              {l}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                        <p className="font-semibold mb-1">
+                          Notes standards (NS)
+                        </p>
+                        <ul className="list-disc pl-4 space-y-0.5">
+                          {SCORE_INTERPRETATION.ns.map((l, i) => (
+                            <li key={l} style={{ color: ZONE_TEXT[i] }}>
+                              {l}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                    <div className="mt-4 break-inside-avoid">
+                      {profile.gaussian_curve_url ? (
+                        <img
+                          src={profile.gaussian_curve_url}
+                          alt="Courbe de Gauss"
+                          className="mx-auto max-h-80 w-auto object-contain"
+                        />
+                      ) : (
+                        <GaussianCurve />
+                      )}
+                    </div>
+                  </section>
+                );
+              }
+
               const text = content[s.id]?.trim();
               const sel = bySection[s.id] ?? [];
               const hasTables =
@@ -376,52 +433,11 @@ export default async function BilanApercuPage({
               );
             })}
 
-          {/* Interprétation des scores */}
-          {usedLabels && (
-            <section className="mb-5 break-inside-avoid">
-              <SectionTitle variant={titleStyle}>Résultats chiffrés des tests</SectionTitle>
-              <p className="text-[12px] mb-2">{SCORE_INTERPRETATION.intro}</p>
-              <div className="grid sm:grid-cols-2 gap-3 text-[12px]">
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
-                  <p className="font-semibold mb-1">Déviations standards (DS)</p>
-                  <ul className="list-disc pl-4 space-y-0.5">
-                    {SCORE_INTERPRETATION.ds.map((l, i) => (
-                      <li key={l} style={{ color: ZONE_TEXT[i] }}>
-                        {l}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
-                  <p className="font-semibold mb-1">Notes standards (NS)</p>
-                  <ul className="list-disc pl-4 space-y-0.5">
-                    {SCORE_INTERPRETATION.ns.map((l, i) => (
-                      <li key={l} style={{ color: ZONE_TEXT[i] }}>
-                        {l}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-              <div className="mt-4 break-inside-avoid">
-                {profile.gaussian_curve_url ? (
-                  <img
-                    src={profile.gaussian_curve_url}
-                    alt="Courbe de Gauss"
-                    className="mx-auto max-h-80 w-auto object-contain"
-                  />
-                ) : (
-                  <GaussianCurve />
-                )}
-              </div>
-            </section>
-          )}
-
           {/* Conclusion (en bas, sauf si affichée en tête) */}
           {!conclusionTop &&
             (content.conclusion?.trim() || hasExtras("conclusion")) && (
             <section className="mb-6 break-inside-avoid">
-              <SectionTitle variant={titleStyle}>Conclusion</SectionTitle>
+              <SectionTitle variant={titleStyle}>{conclusionTitle}</SectionTitle>
               {content.conclusion?.trim() && (
                 <p className="whitespace-pre-wrap text-justify">
                   {content.conclusion}

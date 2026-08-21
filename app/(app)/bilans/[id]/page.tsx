@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSettings } from "@/lib/data";
+import { resolveBilanSections } from "@/lib/constants";
 import type { Bilan } from "@/lib/types";
 import BilanEditor from "./BilanEditor";
 
@@ -23,6 +24,7 @@ export default async function BilanEditPage({
   const settings = await getSettings();
   const templates = settings.profile?.adaptation_templates ?? [];
   const folders = settings.profile?.adaptation_folders ?? [];
+  const sections = resolveBilanSections(settings.profile);
 
   let patientBirthDate: string | null = null;
   if (bilan.patient_id) {
@@ -39,6 +41,7 @@ export default async function BilanEditPage({
       bilan={bilan}
       templates={templates}
       folders={folders}
+      sections={sections}
       patientBirthDate={patientBirthDate}
       anamneseNoteDefault={settings.profile?.anamnese_note}
       anamneseNoteOn={settings.profile?.anamnese_note_on}

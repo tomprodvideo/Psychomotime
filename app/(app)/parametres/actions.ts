@@ -29,6 +29,16 @@ export async function updateSettings(formData: FormData) {
     return v === "" ? undefined : v;
   };
 
+  const parseJson = <T,>(k: string): T | undefined => {
+    const v = String(formData.get(k) ?? "").trim();
+    if (!v) return undefined;
+    try {
+      return JSON.parse(v) as T;
+    } catch {
+      return undefined;
+    }
+  };
+
   // Récupère le profil existant pour préserver les champs non gérés par ce
   // formulaire (ex. adaptation_templates, enregistrés à part).
   const { data: existing } = await supabase
@@ -57,6 +67,7 @@ export async function updateSettings(formData: FormData) {
     gaussian_curve_url: str("gaussian_curve_url"),
     conclusion_top: formData.get("conclusion_top") === "on",
     closing_note: str("closing_note"),
+    bilan_sections: parseJson("bilan_sections"),
   };
 
   await supabase.from("settings").upsert({

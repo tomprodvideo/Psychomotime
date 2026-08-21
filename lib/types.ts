@@ -43,6 +43,17 @@ export interface Profile {
   closing_note?: string; // formule de fin sous la signature
   adaptation_templates?: AdaptationTemplate[]; // modèles réutilisables
   adaptation_folders?: AdaptationFolder[]; // dossiers de modèles
+  bilan_sections?: BilanSectionConfig[]; // trame du bilan personnalisée
+}
+
+/** Une section (grand titre) de la trame du bilan, éditable dans les Paramètres. */
+export interface BilanSectionConfig {
+  id: string; // clé stable (sert au stockage du contenu) — ne pas changer
+  title: string; // libellé du grand titre (éditable)
+  hint?: string;
+  domain?: boolean; // affiche le sélecteur de tests + tableaux M-ABC
+  mabcBlocks?: ("equilibre" | "oculo" | "dexterite")[];
+  kind?: "text" | "scores"; // 'scores' = section auto (interprétation + courbe)
 }
 
 export interface AdaptationFolder {

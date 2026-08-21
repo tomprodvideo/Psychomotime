@@ -1,3 +1,5 @@
+import type { BilanSectionConfig } from "./types";
+
 export const MONTHS = [
   "janvier",
   "février",
@@ -335,6 +337,37 @@ export const BILAN_TEMPLATE: BilanGroup[] = [
 ];
 
 export const BILAN_SECTIONS = BILAN_TEMPLATE.flatMap((g) => g.sections);
+
+/** Trame par défaut, à plat (avec la section auto « Résultats chiffrés » avant la conclusion). */
+export const DEFAULT_BILAN_SECTIONS: BilanSectionConfig[] = (() => {
+  const flat: BilanSectionConfig[] = BILAN_TEMPLATE.flatMap((g) =>
+    g.sections.map((s) => ({
+      id: s.id,
+      title: s.title,
+      hint: s.hint,
+      domain: g.group === "Domaines psychomoteurs" ? true : undefined,
+      mabcBlocks: s.mabcBlocks,
+      kind: "text" as const,
+    })),
+  );
+  const scores: BilanSectionConfig = {
+    id: "resultats_chiffres",
+    title: "Résultats chiffrés des tests",
+    kind: "scores",
+  };
+  const i = flat.findIndex((s) => s.id === "conclusion");
+  return i >= 0
+    ? [...flat.slice(0, i), scores, ...flat.slice(i)]
+    : [...flat, scores];
+})();
+
+/** Trame effective : celle du profil si définie, sinon la trame par défaut. */
+export function resolveBilanSections(profile?: {
+  bilan_sections?: BilanSectionConfig[];
+} | null): BilanSectionConfig[] {
+  const s = profile?.bilan_sections;
+  return Array.isArray(s) && s.length ? s : DEFAULT_BILAN_SECTIONS;
+}
 
 /* ---------- Tests étalonnés ---------- */
 export interface PsychomotorTest {

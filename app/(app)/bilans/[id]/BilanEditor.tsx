@@ -21,12 +21,12 @@ import type {
   AdaptationFolder,
   AdaptationTemplate,
   Bilan,
+  BilanSectionConfig,
   BilanTests,
   MabcScore,
 } from "@/lib/types";
 import {
   BILAN_META,
-  BILAN_TEMPLATE,
   MABC_BLOCK_TITLES,
   MABC_GROUPS,
   PSYCHOMOTOR_TESTS,
@@ -80,6 +80,7 @@ export default function BilanEditor({
   bilan,
   templates,
   folders,
+  sections,
   patientBirthDate,
   anamneseNoteDefault,
   anamneseNoteOn,
@@ -87,6 +88,7 @@ export default function BilanEditor({
   bilan: Bilan;
   templates: AdaptationTemplate[];
   folders?: AdaptationFolder[];
+  sections: BilanSectionConfig[];
   patientBirthDate?: string | null;
   anamneseNoteDefault?: string;
   anamneseNoteOn?: boolean;
@@ -611,16 +613,25 @@ export default function BilanEditor({
         </div>
       </div>
 
-      {/* Sections rédigées */}
-      <div className="space-y-6">
-        {BILAN_TEMPLATE.map((grp) => (
-          <div key={grp.group}>
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-brand-600 mb-2 px-1">
-              {grp.group}
-            </h2>
-            <div className="bg-white rounded-xl border border-slate-100 shadow-sm divide-y divide-slate-100">
-              {grp.sections.map((s) => (
-                <div key={s.id} className="p-4">
+      {/* Sections rédigées (trame personnalisable dans Paramètres › Bilan) */}
+      <div>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-brand-600 mb-2 px-1">
+          Sections du bilan
+        </h2>
+        <div className="bg-white rounded-xl border border-slate-100 shadow-sm divide-y divide-slate-100">
+          {sections.map((s) => (
+            <div key={s.id} className="p-4">
+              {s.kind === "scores" ? (
+                <div>
+                  <p className="text-sm font-medium text-slate-700">{s.title}</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Section générée automatiquement (interprétation des scores +
+                    courbe de Gauss). Elle apparaît dès qu&apos;un test est
+                    renseigné — rien à saisir ici.
+                  </p>
+                </div>
+              ) : (
+                <>
                   {TextField({
                     fieldKey: s.id,
                     label: s.title,
@@ -637,14 +648,14 @@ export default function BilanEditor({
                       })}
                     </div>
                   )}
-                  {grp.group === "Domaines psychomoteurs" &&
+                  {s.domain &&
                     SectionTests({ sectionId: s.id, mabcBlocks: s.mabcBlocks })}
                   {SectionPhotos({ sectionId: s.id })}
-                </div>
-              ))}
+                </>
+              )}
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* Paragraphes optionnels après la conclusion */}

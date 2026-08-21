@@ -13,6 +13,7 @@ import {
 } from "@/lib/constants";
 import { updateSettings } from "./actions";
 import AdaptationTemplatesManager from "./AdaptationTemplatesManager";
+import BilanSectionsEditor from "./BilanSectionsEditor";
 
 /** Redimensionne une image raster et renvoie un data-URL JPEG léger.
  *  Les SVG (déjà légers et vectoriels) sont conservés tels quels. */
@@ -323,6 +324,13 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
 
       {/* Onglet Bilan */}
       <div className={tab === "bilan" ? "space-y-6" : "hidden"}>
+      <CollapsibleSection
+        title="Trame du bilan (titres & ordre)"
+        subtitle="Réordonner, renommer, ajouter ou retirer des grands titres — cliquez pour déplier"
+      >
+        <BilanSectionsEditor initial={settings.profile?.bilan_sections} />
+      </CollapsibleSection>
+
       <Section title="Thème des bilans">
         <input type="hidden" name="theme_color" value={themeColor} />
         <p className="text-sm text-slate-500 -mt-2 mb-3">
