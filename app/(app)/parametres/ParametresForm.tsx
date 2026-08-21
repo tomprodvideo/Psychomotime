@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import type { Settings } from "@/lib/types";
 import {
   BILAN_FONTS,
@@ -545,11 +545,14 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
         </div>
       </Section>
 
-      <Section title="Modèles d'adaptations">
+      <CollapsibleSection
+        title="Modèles d'adaptations"
+        subtitle="Textes réutilisables insérables dans les bilans — cliquez pour déplier"
+      >
         <AdaptationTemplatesManager
           initial={settings.profile?.adaptation_templates ?? []}
         />
-      </Section>
+      </CollapsibleSection>
       </div>
 
       {/* Onglet Comptabilité */}
@@ -673,6 +676,45 @@ function Section({
     <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
       <h2 className="font-semibold text-slate-800 mb-4">{title}</h2>
       {children}
+    </div>
+  );
+}
+
+/** Section repliable : le contenu reste monté (état conservé) mais masqué. */
+function CollapsibleSection({
+  title,
+  subtitle,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="bg-white rounded-xl border border-slate-100 shadow-sm">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left"
+      >
+        <span>
+          <span className="font-semibold text-slate-800">{title}</span>
+          {subtitle && (
+            <span className="block text-xs text-slate-400 mt-0.5">
+              {subtitle}
+            </span>
+          )}
+        </span>
+        <ChevronDown
+          className={`h-5 w-5 text-slate-400 shrink-0 transition-transform ${
+            open ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+      <div className={open ? "px-5 pb-5" : "hidden"}>{children}</div>
     </div>
   );
 }
