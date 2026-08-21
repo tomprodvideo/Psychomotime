@@ -97,14 +97,76 @@ export const DOSSIER_GROUPS = Array.from(
  *  STYLE DES BILANS (police, titres, modèles)
  * ============================================================ */
 export const BILAN_FONTS = [
-  { id: "sans", label: "Moderne (sans-serif)" },
-  { id: "serif", label: "Classique (serif)" },
+  {
+    id: "sans",
+    label: "Moderne (sans-serif)",
+    css: "var(--font-geist-sans), system-ui, sans-serif",
+  },
+  {
+    id: "serif",
+    label: "Classique (serif)",
+    css: 'Georgia, "Times New Roman", serif',
+  },
+  {
+    id: "helvetica",
+    label: "Helvetica / Arial",
+    css: '"Helvetica Neue", Helvetica, Arial, sans-serif',
+  },
+  {
+    id: "times",
+    label: "Times New Roman",
+    css: '"Times New Roman", Times, serif',
+  },
+  {
+    id: "palatino",
+    label: "Palatino",
+    css: '"Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif',
+  },
+  {
+    id: "garamond",
+    label: "Garamond",
+    css: 'Garamond, "EB Garamond", "Apple Garamond", Georgia, serif',
+  },
+  {
+    id: "baskerville",
+    label: "Baskerville",
+    css: 'Baskerville, "Baskerville Old Face", Georgia, serif',
+  },
+  {
+    id: "cambria",
+    label: "Cambria",
+    css: 'Cambria, "Hoefler Text", Georgia, serif',
+  },
+  {
+    id: "verdana",
+    label: "Verdana",
+    css: "Verdana, Geneva, sans-serif",
+  },
+  {
+    id: "trebuchet",
+    label: "Trebuchet",
+    css: '"Trebuchet MS", "Segoe UI", Tahoma, sans-serif',
+  },
+  {
+    id: "avenir",
+    label: "Avenir",
+    css: 'Avenir, "Avenir Next", "Century Gothic", system-ui, sans-serif',
+  },
+  {
+    id: "optima",
+    label: "Optima",
+    css: 'Optima, Candara, "Segoe UI", system-ui, sans-serif',
+  },
+  {
+    id: "gillsans",
+    label: "Gill Sans",
+    css: '"Gill Sans", "Gill Sans MT", Calibri, system-ui, sans-serif',
+  },
 ];
 
 export function bilanFontCss(id?: string): string {
-  return id === "serif"
-    ? 'Georgia, "Times New Roman", serif'
-    : "var(--font-geist-sans), system-ui, sans-serif";
+  const f = BILAN_FONTS.find((x) => x.id === id);
+  return f?.css ?? BILAN_FONTS[0].css;
 }
 
 export const BILAN_TITLE_STYLES = [
@@ -124,6 +186,8 @@ export const BILAN_STYLE_PRESETS = [
   { id: "classique", label: "Classique", font: "serif", title: "underline" },
   { id: "encadre", label: "Encadré", font: "serif", title: "boxed" },
   { id: "epure", label: "Épuré", font: "sans", title: "plain" },
+  { id: "elegant", label: "Élégant", font: "garamond", title: "plain" },
+  { id: "institutionnel", label: "Institutionnel", font: "times", title: "underline" },
 ];
 
 /* ============================================================
