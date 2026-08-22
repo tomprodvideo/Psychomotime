@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import {
   Calculator,
   Check,
-  ChevronDown,
   FileText,
   User,
   UserCog,
@@ -128,6 +127,9 @@ export default function ParametresForm({
   >("general");
   // Apparence par type de bilan (thème, typo, conclusion, signature, courbe).
   const [bilanSubTab, setBilanSubTab] = useState<BilanType>("psychomoteur");
+  const [bilanSection, setBilanSection] = useState<
+    "apparence" | "trame" | "conclusion" | "courbe" | "modeles"
+  >("apparence");
   const [bilanCfg, setBilanCfg] = useState(() => ({
     psychomoteur: getBilanConfig(settings.profile, "psychomoteur"),
     sensoriel: getBilanConfig(settings.profile, "sensoriel"),
@@ -411,7 +413,11 @@ export default function ParametresForm({
             <button
               key={bt.id}
               type="button"
-              onClick={() => setBilanSubTab(bt.id)}
+              onClick={() => {
+                setBilanSubTab(bt.id);
+                if (bt.id === "sensoriel" && bilanSection === "courbe")
+                  setBilanSection("apparence");
+              }}
               className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition ${
                 active
                   ? "bg-white text-brand-700 shadow-sm"
@@ -424,8 +430,38 @@ export default function ParametresForm({
         })}
       </div>
 
-      <CategoryHeader>Apparence</CategoryHeader>
+      {/* Sous-menu du type de bilan */}
+      <div className="flex flex-wrap gap-1.5">
+        {(
+          [
+            { id: "apparence", label: "Apparence" },
+            { id: "trame", label: "Trame" },
+            { id: "conclusion", label: "Conclusion & signature" },
+            { id: "modeles", label: "Bibliothèque" },
+            ...(bilanSubTab === "psychomoteur"
+              ? [{ id: "courbe", label: "Courbe de Gauss" }]
+              : []),
+          ] as { id: typeof bilanSection; label: string }[]
+        ).map((sm) => {
+          const on = bilanSection === sm.id;
+          return (
+            <button
+              key={sm.id}
+              type="button"
+              onClick={() => setBilanSection(sm.id)}
+              className={`text-sm px-3 py-1.5 rounded-full border transition ${
+                on
+                  ? "border-brand-400 bg-brand-50 text-brand-700"
+                  : "border-slate-200 text-slate-600 hover:border-brand-300"
+              }`}
+            >
+              {sm.label}
+            </button>
+          );
+        })}
+      </div>
 
+      <div className={bilanSection === "apparence" ? "space-y-6" : "hidden"}>
       <Section title="Thème du bilan">
         <p className="text-sm text-slate-500 -mt-2 mb-3">
           Couleur d&apos;accent des titres de ce type de bilan.
@@ -535,13 +571,14 @@ export default function ParametresForm({
           </p>
         </div>
       </Section>
+      </div>
 
-      <CategoryHeader>Structure &amp; contenu</CategoryHeader>
-
-      <CollapsibleSection
-        title="Trame (titres & ordre)"
-        subtitle="Réordonner, renommer, ajouter ou retirer les titres de ce type de bilan"
-      >
+      <div className={bilanSection === "trame" ? "space-y-6" : "hidden"}>
+      <Section title="Trame (titres & ordre)">
+        <p className="text-sm text-slate-500 -mt-2 mb-3">
+          Réordonner, renommer, ajouter ou retirer les titres de ce type de
+          bilan.
+        </p>
         <div className={bilanSubTab === "psychomoteur" ? "" : "hidden"}>
           <BilanSectionsEditor
             initial={settings.profile?.bilan_sections}
@@ -556,8 +593,10 @@ export default function ParametresForm({
             defaultSections={DEFAULT_SENSORY_SECTIONS}
           />
         </div>
-      </CollapsibleSection>
+      </Section>
+      </div>
 
+      <div className={bilanSection === "conclusion" ? "space-y-6" : "hidden"}>
       <Section title="Conclusion & signature">
         <label className="flex items-start gap-2 text-sm text-slate-700">
           <input
@@ -633,7 +672,9 @@ export default function ParametresForm({
           </div>
         </div>
       </Section>
+      </div>
 
+      <div className={bilanSection === "courbe" ? "space-y-6" : "hidden"}>
       {bilanSubTab === "psychomoteur" && (
         <Section title="Courbe de Gauss">
           <p className="text-sm text-slate-500 -mt-2 mb-3">
@@ -688,13 +729,10 @@ export default function ParametresForm({
           </div>
         </Section>
       )}
+      </div>
 
-      <CategoryHeader>Modèles</CategoryHeader>
-
-      <CollapsibleSection
-        title="Bibliothèque de modèles"
-        subtitle="Textes types insérables dans les bilans — cliquez pour déplier"
-      >
+      <div className={bilanSection === "modeles" ? "space-y-6" : "hidden"}>
+      <Section title="Bibliothèque de modèles">
         <div className={bilanSubTab === "psychomoteur" ? "" : "hidden"}>
           <AdaptationTemplatesManager
             type="psychomoteur"
@@ -713,7 +751,8 @@ export default function ParametresForm({
             }
           />
         </div>
-      </CollapsibleSection>
+      </Section>
+      </div>
       </div>
 
       {/* Onglet Comptabilité */}
@@ -856,45 +895,6 @@ function Section({
         {title}
       </h2>
       {children}
-    </div>
-  );
-}
-
-/** Section repliable : le contenu reste monté (état conservé) mais masqué. */
-function CollapsibleSection({
-  title,
-  subtitle,
-  defaultOpen = false,
-  children,
-}: {
-  title: string;
-  subtitle?: string;
-  defaultOpen?: boolean;
-  children: React.ReactNode;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between gap-3 px-5 sm:px-6 py-4 text-left"
-      >
-        <span>
-          <span className="font-semibold text-slate-800">{title}</span>
-          {subtitle && (
-            <span className="block text-xs text-slate-400 mt-0.5">
-              {subtitle}
-            </span>
-          )}
-        </span>
-        <ChevronDown
-          className={`h-5 w-5 text-slate-400 shrink-0 transition-transform ${
-            open ? "rotate-180" : ""
-          }`}
-        />
-      </button>
-      <div className={open ? "px-5 sm:px-6 pb-5" : "hidden"}>{children}</div>
     </div>
   );
 }
