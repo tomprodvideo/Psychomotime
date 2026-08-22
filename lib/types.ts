@@ -42,8 +42,10 @@ export interface Profile {
   conclusion_top?: boolean; // conclusion en tête (encadré grisé) au lieu du bas
   closing_note?: string; // formule de fin sous la signature
   signature_url?: string; // image de signature (data URL)
-  adaptation_templates?: AdaptationTemplate[]; // modèles réutilisables
-  adaptation_folders?: AdaptationFolder[]; // dossiers de modèles
+  adaptation_templates?: AdaptationTemplate[]; // modèles (bilan psychomoteur)
+  adaptation_folders?: AdaptationFolder[]; // dossiers (bilan psychomoteur)
+  adaptation_templates_sensoriel?: AdaptationTemplate[]; // modèles (bilan sensoriel)
+  adaptation_folders_sensoriel?: AdaptationFolder[]; // dossiers (bilan sensoriel)
   bilan_sections?: BilanSectionConfig[]; // trame du bilan psychomoteur
   bilan_sections_sensoriel?: BilanSectionConfig[]; // trame du bilan sensoriel
 }

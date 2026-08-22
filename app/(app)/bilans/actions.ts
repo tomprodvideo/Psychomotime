@@ -103,6 +103,7 @@ export async function saveAdaptationLibrary(
     folder?: string | null;
   }[],
   folders: { id: string; name: string }[],
+  type: "psychomoteur" | "sensoriel" = "psychomoteur",
 ) {
   const supabase = await createClient();
   const {
@@ -116,10 +117,18 @@ export async function saveAdaptationLibrary(
     .eq("user_id", user.id)
     .maybeSingle();
 
+  const tKey =
+    type === "sensoriel"
+      ? "adaptation_templates_sensoriel"
+      : "adaptation_templates";
+  const fKey =
+    type === "sensoriel"
+      ? "adaptation_folders_sensoriel"
+      : "adaptation_folders";
   const profile = {
     ...((s?.profile as Record<string, unknown>) ?? {}),
-    adaptation_templates: templates,
-    adaptation_folders: folders,
+    [tKey]: templates,
+    [fKey]: folders,
   };
 
   await supabase.from("settings").upsert({

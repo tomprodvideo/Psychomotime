@@ -142,6 +142,7 @@ export default function ParametresForm({
     "general" | "bilan" | "modeles" | "compta" | "compte"
   >("general");
   const [trameType, setTrameType] = useState<BilanType>("psychomoteur");
+  const [mdlType, setMdlType] = useState<BilanType>("psychomoteur");
 
   function handleLogo(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -690,10 +691,43 @@ export default function ParametresForm({
       {/* Onglet Modèles */}
       <div className={tab === "modeles" ? "space-y-6" : "hidden"}>
         <Section title="Bibliothèque de modèles">
-          <AdaptationTemplatesManager
-            initialTemplates={settings.profile?.adaptation_templates ?? []}
-            initialFolders={settings.profile?.adaptation_folders ?? []}
-          />
+          <div className="flex gap-1 p-1 bg-slate-100 rounded-lg mb-4">
+            {BILAN_TYPES.map((bt) => {
+              const active = mdlType === bt.id;
+              return (
+                <button
+                  key={bt.id}
+                  type="button"
+                  onClick={() => setMdlType(bt.id)}
+                  className={`flex-1 px-3 py-1.5 text-sm font-medium rounded-md transition ${
+                    active
+                      ? "bg-white text-brand-700 shadow-sm"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  {bt.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className={mdlType === "psychomoteur" ? "" : "hidden"}>
+            <AdaptationTemplatesManager
+              type="psychomoteur"
+              initialTemplates={settings.profile?.adaptation_templates ?? []}
+              initialFolders={settings.profile?.adaptation_folders ?? []}
+            />
+          </div>
+          <div className={mdlType === "sensoriel" ? "" : "hidden"}>
+            <AdaptationTemplatesManager
+              type="sensoriel"
+              initialTemplates={
+                settings.profile?.adaptation_templates_sensoriel ?? []
+              }
+              initialFolders={
+                settings.profile?.adaptation_folders_sensoriel ?? []
+              }
+            />
+          </div>
         </Section>
       </div>
 

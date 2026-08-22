@@ -22,9 +22,11 @@ const GENERAL = "__general__";
 export default function AdaptationTemplatesManager({
   initialTemplates,
   initialFolders,
+  type = "psychomoteur",
 }: {
   initialTemplates: AdaptationTemplate[];
   initialFolders: AdaptationFolder[];
+  type?: "psychomoteur" | "sensoriel";
 }) {
   const [folders, setFolders] = useState<AdaptationFolder[]>(
     initialFolders.map((f) => ({ ...f })),
@@ -93,7 +95,7 @@ export default function AdaptationTemplatesManager({
       }))
       .filter((t) => t.title || t.text);
     start(async () => {
-      await saveAdaptationLibrary(cleanTemplates, cleanFolders);
+      await saveAdaptationLibrary(cleanTemplates, cleanFolders, type);
       setFolders(cleanFolders);
       setTemplates(cleanTemplates);
       setSaved(true);
