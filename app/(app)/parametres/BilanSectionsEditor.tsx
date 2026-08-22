@@ -82,6 +82,21 @@ export default function BilanSectionsEditor({
       kind: "text",
     });
 
+  // Ajoute un sous-titre à la fin du groupe du titre situé à `index`
+  // (après ses sous-titres déjà présents, avant le titre suivant).
+  const addSubTo = (index: number) =>
+    setSections((arr) => {
+      let at = index + 1;
+      while (at < arr.length && arr[at].level === "subtitle") at++;
+      const item: BilanSectionConfig = {
+        id: uid(),
+        title: "Nouveau sous-titre",
+        level: "subtitle",
+        kind: "text",
+      };
+      return [...arr.slice(0, at), item, ...arr.slice(at)];
+    });
+
   const reset = () => setSections(defaultSections.map((s) => ({ ...s })));
 
   return (
@@ -175,6 +190,18 @@ export default function BilanSectionsEditor({
                   />
                   Tests
                 </label>
+              )}
+
+              {!isSub && (
+                <button
+                  type="button"
+                  onClick={() => addSubTo(i)}
+                  className="inline-flex items-center gap-0.5 text-[11px] font-medium text-brand-600 hover:bg-brand-50 px-1.5 py-1 rounded shrink-0"
+                  title="Ajouter un sous-titre sous ce titre"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  ss-titre
+                </button>
               )}
 
               {protectedItem ? (
