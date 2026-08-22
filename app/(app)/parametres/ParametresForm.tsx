@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, ChevronDown } from "lucide-react";
+import {
+  Calculator,
+  Check,
+  ChevronDown,
+  FileText,
+  FolderOpen,
+  User,
+} from "lucide-react";
 import type { Settings } from "@/lib/types";
 import {
   BILAN_FONTS,
@@ -120,7 +127,9 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
     settings.profile?.signature_url ?? "",
   );
   const [signatureError, setSignatureError] = useState("");
-  const [tab, setTab] = useState<"general" | "bilan" | "compta">("general");
+  const [tab, setTab] = useState<
+    "general" | "bilan" | "modeles" | "compta"
+  >("general");
 
   function handleLogo(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -176,30 +185,59 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
     });
   }
 
-  const tabs: { id: typeof tab; label: string }[] = [
-    { id: "general", label: "Général" },
-    { id: "bilan", label: "Bilan" },
-    { id: "compta", label: "Comptabilité" },
+  const tabs = [
+    {
+      id: "general" as const,
+      label: "Profil",
+      icon: User,
+      intro: "Votre identité et vos coordonnées professionnelles.",
+    },
+    {
+      id: "bilan" as const,
+      label: "Bilans",
+      icon: FileText,
+      intro: "Apparence et structure de vos comptes rendus.",
+    },
+    {
+      id: "modeles" as const,
+      label: "Modèles",
+      icon: FolderOpen,
+      intro: "Vos textes types, rangés par dossier et insérables en un clic.",
+    },
+    {
+      id: "compta" as const,
+      label: "Comptabilité",
+      icon: Calculator,
+      intro: "Charges du cabinet et cotisations.",
+    },
   ];
+  const activeTab = tabs.find((t) => t.id === tab)!;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="flex gap-1 border-b border-slate-200">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={`px-4 py-2.5 text-sm font-medium -mb-px border-b-2 transition ${
-              tab === t.id
-                ? "border-brand-600 text-brand-700"
-                : "border-transparent text-slate-500 hover:text-slate-800"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+      <div className="flex flex-wrap gap-1 p-1 bg-slate-100 rounded-xl">
+        {tabs.map((t) => {
+          const Icon = t.icon;
+          const active = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={`flex-1 min-w-[110px] inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition ${
+                active
+                  ? "bg-white text-brand-700 shadow-sm"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              {t.label}
+            </button>
+          );
+        })}
       </div>
+
+      <p className="text-sm text-slate-500 -mt-2 px-1">{activeTab.intro}</p>
 
       {/* Onglet Général */}
       <div className={tab === "general" ? "space-y-6" : "hidden"}>
@@ -589,15 +627,16 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
         </div>
       </Section>
 
-      <CollapsibleSection
-        title="Modèles"
-        subtitle="Textes réutilisables insérables dans les bilans — cliquez pour déplier"
-      >
-        <AdaptationTemplatesManager
-          initialTemplates={settings.profile?.adaptation_templates ?? []}
-          initialFolders={settings.profile?.adaptation_folders ?? []}
-        />
-      </CollapsibleSection>
+      </div>
+
+      {/* Onglet Modèles */}
+      <div className={tab === "modeles" ? "space-y-6" : "hidden"}>
+        <Section title="Bibliothèque de modèles">
+          <AdaptationTemplatesManager
+            initialTemplates={settings.profile?.adaptation_templates ?? []}
+            initialFolders={settings.profile?.adaptation_folders ?? []}
+          />
+        </Section>
       </div>
 
       {/* Onglet Comptabilité */}
@@ -718,8 +757,10 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
-      <h2 className="font-semibold text-slate-800 mb-4">{title}</h2>
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:p-6">
+      <h2 className="font-semibold text-slate-800 text-[15px] mb-4 pb-3 border-b border-slate-100">
+        {title}
+      </h2>
       {children}
     </div>
   );
@@ -739,11 +780,11 @@ function CollapsibleSection({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="bg-white rounded-xl border border-slate-100 shadow-sm">
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left"
+        className="w-full flex items-center justify-between gap-3 px-5 sm:px-6 py-4 text-left"
       >
         <span>
           <span className="font-semibold text-slate-800">{title}</span>
@@ -759,7 +800,7 @@ function CollapsibleSection({
           }`}
         />
       </button>
-      <div className={open ? "px-5 pb-5" : "hidden"}>{children}</div>
+      <div className={open ? "px-5 sm:px-6 pb-5" : "hidden"}>{children}</div>
     </div>
   );
 }

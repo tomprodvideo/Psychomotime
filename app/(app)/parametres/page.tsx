@@ -9,10 +9,10 @@ export default async function ParametresPage() {
   const access = await getAccess();
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-2xl mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto">
       <PageHeader
         title="Paramètres"
-        subtitle="Personnalisez les calculs de votre comptabilité"
+        subtitle="Profil, apparence des bilans, modèles et comptabilité"
       />
       <div className="mb-6">
         <SubscriptionCard
