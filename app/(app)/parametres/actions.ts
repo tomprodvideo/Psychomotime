@@ -65,6 +65,7 @@ export async function updateSettings(formData: FormData) {
     gaussian_curve_url: str("gaussian_curve_url"),
     conclusion_top: formData.get("conclusion_top") === "on",
     closing_note: str("closing_note"),
+    signature_url: str("signature_url"),
     bilan_sections: parseJson("bilan_sections"),
   };
 

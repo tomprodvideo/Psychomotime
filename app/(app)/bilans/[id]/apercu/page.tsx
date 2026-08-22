@@ -126,17 +126,24 @@ export default async function BilanApercuPage({
   const prescripteur =
     content.prescripteur || patient?.dossier?.prescripteur || "";
 
-  // Signature (nom + qualité), en bas de page.
-  const signature = (
-    <div className="mt-6 text-right text-[12px]">
-      <p className="font-semibold text-slate-900">{author}</p>
-    </div>
-  );
-
   // Formule de fin (« Je reste disponible… »), placée dans la conclusion.
   const closingLine = closingNote.trim() ? (
     <p className="text-slate-500 whitespace-pre-wrap mt-3">{closingNote}</p>
   ) : null;
+
+  // Nom + signature, affichés sous la formule de fin, dans la conclusion.
+  const signatureBlock = (
+    <div className="mt-6 text-right text-[12px]">
+      <p className="font-semibold text-slate-900">{author}</p>
+      {profile.signature_url && (
+        <img
+          src={profile.signature_url}
+          alt="Signature"
+          className="inline-block max-h-20 w-auto object-contain mt-1"
+        />
+      )}
+    </div>
+  );
 
   function mabcTables(
     sectionId: string,
@@ -323,7 +330,10 @@ export default async function BilanApercuPage({
 
           {/* Conclusion en tête (encadré grisé), si activée */}
           {conclusionTop &&
-            (content.conclusion?.trim() || hasExtras("conclusion")) && (
+            (content.conclusion?.trim() ||
+              hasExtras("conclusion") ||
+              closingNote.trim() ||
+              profile.signature_url) && (
               <section className="mb-5 break-inside-avoid bg-slate-50 border border-slate-200 rounded-lg p-4">
                 <SectionTitle variant={conclusionVariant}>
                   {conclusionTitle}
@@ -335,6 +345,7 @@ export default async function BilanApercuPage({
                 )}
                 {sectionExtras("conclusion")}
                 {closingLine}
+                {signatureBlock}
               </section>
             )}
 
@@ -434,7 +445,10 @@ export default async function BilanApercuPage({
 
           {/* Conclusion (en bas, sauf si affichée en tête) */}
           {!conclusionTop &&
-            (content.conclusion?.trim() || hasExtras("conclusion")) && (
+            (content.conclusion?.trim() ||
+              hasExtras("conclusion") ||
+              closingNote.trim() ||
+              profile.signature_url) && (
             <section className="mb-6 break-inside-avoid">
               <SectionTitle variant={conclusionVariant}>
                 {conclusionTitle}
@@ -446,6 +460,7 @@ export default async function BilanApercuPage({
               )}
               {sectionExtras("conclusion")}
               {closingLine}
+              {signatureBlock}
             </section>
           )}
 
@@ -469,8 +484,6 @@ export default async function BilanApercuPage({
             </section>
           )}
 
-          {/* Signature en bas du bilan */}
-          <footer className="mt-10">{signature}</footer>
         </article>
       </div>
     </div>

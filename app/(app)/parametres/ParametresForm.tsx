@@ -116,6 +116,10 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
   );
   const [curve, setCurve] = useState(settings.profile?.gaussian_curve_url ?? "");
   const [curveError, setCurveError] = useState("");
+  const [signature, setSignature] = useState(
+    settings.profile?.signature_url ?? "",
+  );
+  const [signatureError, setSignatureError] = useState("");
   const [tab, setTab] = useState<"general" | "bilan" | "compta">("general");
 
   function handleLogo(e: React.ChangeEvent<HTMLInputElement>) {
@@ -145,6 +149,21 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
     } catch {
       setCurveError("Image illisible. Essayez un autre fichier (PNG ou JPG).");
     }
+  }
+
+  function handleSignature(e: React.ChangeEvent<HTMLInputElement>) {
+    // Lecture directe (préserve la transparence PNG d'une signature).
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (file.size > 2_000_000) {
+      setSignatureError("Image trop lourde (max 2 Mo). Réduisez-la puis réessayez.");
+      return;
+    }
+    setSignatureError("");
+    const reader = new FileReader();
+    reader.onload = () => setSignature(String(reader.result));
+    reader.readAsDataURL(file);
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -461,17 +480,62 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
           Décoché, la conclusion reste à sa place habituelle, en bas du bilan.
         </p>
 
-        <Label>Formule de fin (sous votre nom, dans la conclusion)</Label>
+        <Label>Formule de fin (dans la conclusion)</Label>
         <textarea
           name="closing_note"
           rows={2}
           defaultValue={settings.profile?.closing_note ?? DEFAULT_CLOSING_NOTE}
           className={`${inputCls} resize-y`}
         />
-        <p className="text-xs text-slate-400 mt-1">
-          Votre nom vient de l&apos;onglet Général. La signature s&apos;affiche
-          dans l&apos;encart de la conclusion.
+        <p className="text-xs text-slate-400 mt-1 mb-4">
+          Votre nom vient de l&apos;onglet Général. Il s&apos;affiche sous cette
+          formule, suivi de votre signature.
         </p>
+
+        <input type="hidden" name="signature_url" value={signature} />
+        <Label>Signature (image)</Label>
+        <div className="flex items-start gap-4 mt-1">
+          <div className="h-20 w-44 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0">
+            {signature ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={signature}
+                alt="Signature"
+                className="max-h-full max-w-full object-contain"
+              />
+            ) : (
+              <span className="text-xs text-slate-400 text-center px-2">
+                Aucune signature
+              </span>
+            )}
+          </div>
+          <div>
+            <label className="inline-block cursor-pointer text-sm font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 px-3 py-2 rounded-lg">
+              {signature ? "Changer la signature" : "Importer une signature"}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/svg+xml"
+                onChange={handleSignature}
+                className="hidden"
+              />
+            </label>
+            {signature && (
+              <button
+                type="button"
+                onClick={() => setSignature("")}
+                className="ml-2 text-sm text-slate-500 hover:text-rose-600"
+              >
+                Retirer
+              </button>
+            )}
+            {signatureError && (
+              <p className="text-xs text-rose-600 mt-1">{signatureError}</p>
+            )}
+            <p className="text-xs text-slate-400 mt-1">
+              PNG (fond transparent conseillé), JPG ou SVG · max 2 Mo.
+            </p>
+          </div>
+        </div>
       </Section>
 
       <Section title="Courbe de Gauss">

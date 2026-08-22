@@ -41,6 +41,7 @@ export interface Profile {
   gaussian_curve_url?: string; // courbe de Gauss personnalisée (data URL)
   conclusion_top?: boolean; // conclusion en tête (encadré grisé) au lieu du bas
   closing_note?: string; // formule de fin sous la signature
+  signature_url?: string; // image de signature (data URL)
   adaptation_templates?: AdaptationTemplate[]; // modèles réutilisables
   adaptation_folders?: AdaptationFolder[]; // dossiers de modèles
   bilan_sections?: BilanSectionConfig[]; // trame du bilan personnalisée
