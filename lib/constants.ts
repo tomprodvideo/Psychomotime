@@ -365,10 +365,206 @@ export const DEFAULT_BILAN_SECTIONS: BilanSectionConfig[] = (() => {
     : [...flat, scores];
 })();
 
-/** Trame effective : celle du profil si définie, sinon la trame par défaut. */
-export function resolveBilanSections(profile?: {
-  bilan_sections?: BilanSectionConfig[];
-} | null): BilanSectionConfig[] {
+/* ============================================================
+ *  TYPES DE BILAN (psychomoteur / sensoriel)
+ * ============================================================ */
+export type BilanType = "psychomoteur" | "sensoriel";
+
+export const BILAN_TYPES: { id: BilanType; label: string; hint: string }[] = [
+  {
+    id: "psychomoteur",
+    label: "Bilan psychomoteur",
+    hint: "Motricité, tonus, latéralité, spatial/temporel, attention…",
+  },
+  {
+    id: "sensoriel",
+    label: "Bilan sensoriel",
+    hint: "Profil sensoriel de Dunn 2 : modulation et traitement sensoriel.",
+  },
+];
+
+/** Trame par défaut du bilan sensoriel (Profil Sensoriel de Dunn 2). */
+export const DEFAULT_SENSORY_SECTIONS: BilanSectionConfig[] = [
+  {
+    id: "anamnese",
+    title: "L'anamnèse",
+    hint: "Histoire de l'enfant + histoire sensorielle : alimentation, sommeil, habillage/hygiène, réactions au bruit, à la lumière, au toucher…",
+    level: "title",
+    boxed: true,
+    kind: "text",
+  },
+  {
+    id: "s_motif",
+    title: "Motif de la demande",
+    hint: "Plaintes et particularités sensorielles rapportées.",
+    level: "title",
+    boxed: true,
+    kind: "text",
+  },
+  {
+    id: "s_outils",
+    title: "Outils & passation",
+    hint: "Profil Sensoriel de Dunn 2 (questionnaire parent/enseignant), observations cliniques…",
+    level: "title",
+    boxed: true,
+    kind: "text",
+  },
+  {
+    id: "s_comportement",
+    title: "Comportement durant l'évaluation",
+    level: "title",
+    boxed: true,
+    kind: "text",
+  },
+  {
+    id: "s_systemes",
+    title: "Analyse par système sensoriel",
+    level: "title",
+    boxed: true,
+    kind: "text",
+  },
+  { id: "s_tactile", title: "Système tactile", level: "subtitle", kind: "text" },
+  {
+    id: "s_vestibulaire",
+    title: "Système vestibulaire (mouvement)",
+    level: "subtitle",
+    kind: "text",
+  },
+  {
+    id: "s_proprio",
+    title: "Système proprioceptif (position/force)",
+    level: "subtitle",
+    kind: "text",
+  },
+  { id: "s_visuel", title: "Système visuel", level: "subtitle", kind: "text" },
+  { id: "s_auditif", title: "Système auditif", level: "subtitle", kind: "text" },
+  {
+    id: "s_gustolf",
+    title: "Système gustatif & olfactif",
+    level: "subtitle",
+    kind: "text",
+  },
+  {
+    id: "s_intero",
+    title: "Interoception (signaux internes)",
+    level: "subtitle",
+    kind: "text",
+  },
+  {
+    id: "s_dunn",
+    title: "Profil de Dunn (4 quadrants)",
+    level: "title",
+    boxed: true,
+    kind: "text",
+  },
+  {
+    id: "s_recherche",
+    title: "Recherche sensorielle",
+    level: "subtitle",
+    kind: "text",
+  },
+  {
+    id: "s_enregistrement",
+    title: "Faible enregistrement",
+    level: "subtitle",
+    kind: "text",
+  },
+  {
+    id: "s_sensibilite",
+    title: "Sensibilité sensorielle",
+    level: "subtitle",
+    kind: "text",
+  },
+  {
+    id: "s_evitement",
+    title: "Évitement sensoriel",
+    level: "subtitle",
+    kind: "text",
+  },
+  {
+    id: "s_retentissement",
+    title: "Retentissement au quotidien",
+    level: "title",
+    boxed: true,
+    kind: "text",
+  },
+  { id: "s_repas", title: "Repas", level: "subtitle", kind: "text" },
+  { id: "s_sommeil", title: "Sommeil", level: "subtitle", kind: "text" },
+  {
+    id: "s_habillage",
+    title: "Habillage & hygiène",
+    level: "subtitle",
+    kind: "text",
+  },
+  {
+    id: "s_ecole",
+    title: "École & apprentissages",
+    level: "subtitle",
+    kind: "text",
+  },
+  { id: "s_jeu", title: "Jeu & relations", level: "subtitle", kind: "text" },
+  {
+    id: "s_emotions",
+    title: "Régulation émotionnelle",
+    level: "subtitle",
+    kind: "text",
+  },
+  {
+    id: "resultats_chiffres",
+    title: "Résultats chiffrés (Profil de Dunn)",
+    level: "title",
+    boxed: true,
+    kind: "scores",
+  },
+  {
+    id: "conclusion",
+    title: "Conclusion",
+    level: "title",
+    boxed: true,
+    kind: "text",
+  },
+];
+
+/** Interprétation du Profil Sensoriel de Dunn 2 (affiché dans « Résultats chiffrés »). */
+export const DUNN_QUADRANTS = [
+  {
+    label: "Recherche sensorielle",
+    desc: "Seuil haut, réponse active : recherche des sensations intenses.",
+  },
+  {
+    label: "Faible enregistrement",
+    desc: "Seuil haut, réponse passive : ne remarque pas les stimuli, paraît passif.",
+  },
+  {
+    label: "Sensibilité sensorielle",
+    desc: "Seuil bas, réponse passive : remarque tout, se laisse distraire.",
+  },
+  {
+    label: "Évitement sensoriel",
+    desc: "Seuil bas, réponse active : dérangé par les stimuli, se retire ou contrôle.",
+  },
+];
+
+export const DUNN_BANDS = [
+  "Beaucoup moins que la plupart des autres",
+  "Moins que la plupart des autres",
+  "Juste comme la plupart des autres",
+  "Plus que la plupart des autres",
+  "Beaucoup plus que la plupart des autres",
+];
+
+/** Trame effective : celle du profil pour ce type de bilan, sinon la trame par défaut. */
+export function resolveBilanSections(
+  profile?: {
+    bilan_sections?: BilanSectionConfig[];
+    bilan_sections_sensoriel?: BilanSectionConfig[];
+  } | null,
+  type: BilanType = "psychomoteur",
+): BilanSectionConfig[] {
+  if (type === "sensoriel") {
+    const s = profile?.bilan_sections_sensoriel;
+    return Array.isArray(s) && s.length ? s : DEFAULT_SENSORY_SECTIONS;
+  }
   const s = profile?.bilan_sections;
   return Array.isArray(s) && s.length ? s : DEFAULT_BILAN_SECTIONS;
 }

@@ -10,6 +10,8 @@ import {
   MABC_BLOCK_TITLES,
   MABC_GROUPS,
   DEFAULT_CLOSING_NOTE,
+  DUNN_BANDS,
+  DUNN_QUADRANTS,
   SCORE_INTERPRETATION,
   bilanFontCss,
   nsColor,
@@ -93,7 +95,9 @@ export default async function BilanApercuPage({
   const usedLabels =
     Object.values(bySection).some((a) => a.length > 0) ||
     legacyUsed.length > 0;
-  const sections = resolveBilanSections(profile);
+  const bilanType =
+    content.__type__ === "sensoriel" ? "sensoriel" : "psychomoteur";
+  const sections = resolveBilanSections(profile, bilanType);
   const anamneseTitle =
     sections.find((s) => s.id === "anamnese")?.title ?? "L'anamnèse";
   const conclusionTitle =
@@ -368,8 +372,47 @@ export default async function BilanApercuPage({
           {sections
             .filter((s) => s.id !== "anamnese" && s.id !== "conclusion")
             .map((s) => {
-              // Section auto « Résultats chiffrés des tests » (interprétation + courbe)
+              // Section auto « Résultats chiffrés »
               if (s.kind === "scores") {
+                // Bilan sensoriel : interprétation du Profil de Dunn 2.
+                if (bilanType === "sensoriel") {
+                  return (
+                    <section key={s.id} className="mb-5 break-inside-avoid">
+                      <SectionTitle variant={headingVariant(s)}>
+                        {s.title}
+                      </SectionTitle>
+                      <p className="text-[12px] mb-2">
+                        Le Profil Sensoriel de Dunn 2 situe l&apos;enfant par
+                        rapport à ses pairs selon quatre profils (quadrants),
+                        d&apos;après le seuil neurologique et le type de réponse
+                        comportementale.
+                      </p>
+                      <div className="grid sm:grid-cols-2 gap-3 text-[12px]">
+                        {DUNN_QUADRANTS.map((q) => (
+                          <div
+                            key={q.label}
+                            className="bg-slate-50 border border-slate-200 rounded-lg p-3"
+                          >
+                            <p
+                              className="font-semibold mb-1"
+                              style={{ color: "var(--accent)" }}
+                            >
+                              {q.label}
+                            </p>
+                            <p className="text-slate-600">{q.desc}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-[12px] mt-3">
+                        <span className="font-semibold">
+                          Interprétation des scores :{" "}
+                        </span>
+                        {DUNN_BANDS.join(" · ")}.
+                      </p>
+                    </section>
+                  );
+                }
+                // Bilan psychomoteur : interprétation DS/NS + courbe de Gauss.
                 if (!usedLabels) return null;
                 return (
                   <section key={s.id} className="mb-5 break-inside-avoid">

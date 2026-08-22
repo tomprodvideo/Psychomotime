@@ -613,6 +613,17 @@ export default function BilanEditor({
 
       {/* En-tête éditable */}
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 mb-5">
+        <span
+          className={`inline-block text-[10px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded mb-2 ${
+            raw0.__type__ === "sensoriel"
+              ? "bg-indigo-50 text-indigo-600"
+              : "bg-teal-50 text-teal-700"
+          }`}
+        >
+          {raw0.__type__ === "sensoriel"
+            ? "Bilan sensoriel"
+            : "Bilan psychomoteur"}
+        </span>
         <input
           value={title}
           onChange={(e) => {

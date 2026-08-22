@@ -44,7 +44,8 @@ export interface Profile {
   signature_url?: string; // image de signature (data URL)
   adaptation_templates?: AdaptationTemplate[]; // modèles réutilisables
   adaptation_folders?: AdaptationFolder[]; // dossiers de modèles
-  bilan_sections?: BilanSectionConfig[]; // trame du bilan personnalisée
+  bilan_sections?: BilanSectionConfig[]; // trame du bilan psychomoteur
+  bilan_sections_sensoriel?: BilanSectionConfig[]; // trame du bilan sensoriel
 }
 
 /** Un élément de la trame du bilan (grand titre ou sous-titre), éditable dans les Paramètres. */

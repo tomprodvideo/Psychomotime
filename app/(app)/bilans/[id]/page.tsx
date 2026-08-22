@@ -21,10 +21,13 @@ export default async function BilanEditPage({
   if (!data) notFound();
   const bilan = data as Bilan;
 
+  const bilanType =
+    bilan.content?.__type__ === "sensoriel" ? "sensoriel" : "psychomoteur";
+
   const settings = await getSettings();
   const templates = settings.profile?.adaptation_templates ?? [];
   const folders = settings.profile?.adaptation_folders ?? [];
-  const sections = resolveBilanSections(settings.profile);
+  const sections = resolveBilanSections(settings.profile, bilanType);
 
   let patientBirthDate: string | null = null;
   if (bilan.patient_id) {

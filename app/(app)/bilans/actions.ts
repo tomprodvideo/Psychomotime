@@ -15,13 +15,17 @@ const missingCol = (e: { code?: string } | null) =>
 
 export async function createBilan(formData: FormData) {
   const supabase = await createClient();
+  const type =
+    String(formData.get("bilan_type") ?? "") === "sensoriel"
+      ? "sensoriel"
+      : "psychomoteur";
   const payload = {
     patient_id: str(formData.get("patient_id")),
     patient_name: String(formData.get("patient_name") ?? "").trim(),
     title: str(formData.get("title")) ?? "Bilan psychomoteur",
     bilan_date: str(formData.get("bilan_date")),
     author: str(formData.get("author")),
-    content: {},
+    content: { __type__: type },
     tests: {},
   };
 

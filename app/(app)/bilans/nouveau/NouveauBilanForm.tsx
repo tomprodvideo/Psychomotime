@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Patient } from "@/lib/types";
+import { BILAN_TYPES, type BilanType } from "@/lib/constants";
 import { ageFromBirth, frDate } from "@/lib/format";
 import { createBilan } from "../actions";
 
@@ -23,12 +24,43 @@ export default function NouveauBilanForm({
   const [patientName, setPatientName] = useState(
     initial ? `${initial.first_name} ${initial.last_name}`.trim() : "",
   );
+  const [type, setType] = useState<BilanType>("psychomoteur");
+  const [title, setTitle] = useState("Bilan psychomoteur");
 
   const selected = patients.find((p) => p.id === patientId);
 
   return (
     <form action={createBilan} className="space-y-5">
       <input type="hidden" name="patient_id" value={patientId} />
+      <input type="hidden" name="bilan_type" value={type} />
+
+      {/* Type de bilan */}
+      <div>
+        <Label>Type de bilan</Label>
+        <div className="grid sm:grid-cols-2 gap-3">
+          {BILAN_TYPES.map((bt) => {
+            const active = type === bt.id;
+            return (
+              <button
+                key={bt.id}
+                type="button"
+                onClick={() => {
+                  setType(bt.id);
+                  setTitle(bt.label);
+                }}
+                className={`text-left rounded-xl border p-3 transition ${
+                  active
+                    ? "border-brand-500 bg-brand-50 ring-2 ring-brand-100"
+                    : "border-slate-200 hover:border-brand-300"
+                }`}
+              >
+                <p className="font-medium text-slate-800 text-sm">{bt.label}</p>
+                <p className="text-xs text-slate-500 mt-0.5">{bt.hint}</p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {/* En-tête patient */}
       {selected && (
@@ -87,7 +119,8 @@ export default function NouveauBilanForm({
           <Label>Titre du bilan</Label>
           <input
             name="title"
-            defaultValue="Bilan psychomoteur"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
             className={inputCls}
           />
         </div>

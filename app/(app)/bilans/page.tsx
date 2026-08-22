@@ -17,8 +17,8 @@ export default async function BilansPage() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
       <PageHeader
-        title="Bilans psychomoteurs"
-        subtitle={`${bilans.length} bilan${bilans.length > 1 ? "s" : ""}`}
+        title="Bilans"
+        subtitle={`${bilans.length} bilan${bilans.length > 1 ? "s" : ""} · psychomoteur & sensoriel`}
       >
         <PrimaryLink href="/bilans/nouveau">
           <FileText className="h-4 w-4" />
@@ -42,7 +42,9 @@ export default async function BilansPage() {
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {bilans.map((b) => (
+          {bilans.map((b) => {
+            const sensoriel = b.content?.__type__ === "sensoriel";
+            return (
             <Link
               key={b.id}
               href={`/bilans/${b.id}`}
@@ -65,12 +67,24 @@ export default async function BilansPage() {
               <p className="font-medium text-slate-800 group-hover:text-brand-700">
                 {b.patient_name || "Sans patient"}
               </p>
-              <p className="text-sm text-slate-500">{b.title}</p>
+              <div className="flex items-center gap-1.5">
+                <span
+                  className={`text-[10px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded ${
+                    sensoriel
+                      ? "bg-indigo-50 text-indigo-600"
+                      : "bg-teal-50 text-teal-700"
+                  }`}
+                >
+                  {sensoriel ? "Sensoriel" : "Psychomoteur"}
+                </span>
+                <p className="text-sm text-slate-500 truncate">{b.title}</p>
+              </div>
               <p className="text-xs text-slate-400 mt-auto pt-2">
                 {b.bilan_date ? frDate(b.bilan_date) : "Date non définie"}
               </p>
             </Link>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

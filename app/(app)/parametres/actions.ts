@@ -67,6 +67,7 @@ export async function updateSettings(formData: FormData) {
     closing_note: str("closing_note"),
     signature_url: str("signature_url"),
     bilan_sections: parseJson("bilan_sections"),
+    bilan_sections_sensoriel: parseJson("bilan_sections_sensoriel"),
   };
 
   await supabase.from("settings").upsert({

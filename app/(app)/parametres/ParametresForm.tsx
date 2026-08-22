@@ -15,8 +15,12 @@ import {
   BILAN_FONTS,
   BILAN_STYLE_PRESETS,
   BILAN_TITLE_STYLES,
+  BILAN_TYPES,
+  DEFAULT_BILAN_SECTIONS,
   DEFAULT_CLOSING_NOTE,
+  DEFAULT_SENSORY_SECTIONS,
   bilanFontCss,
+  type BilanType,
 } from "@/lib/constants";
 import { updateSettings } from "./actions";
 import AdaptationTemplatesManager from "./AdaptationTemplatesManager";
@@ -137,6 +141,7 @@ export default function ParametresForm({
   const [tab, setTab] = useState<
     "general" | "bilan" | "modeles" | "compta" | "compte"
   >("general");
+  const [trameType, setTrameType] = useState<BilanType>("psychomoteur");
 
   function handleLogo(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -516,10 +521,42 @@ export default function ParametresForm({
       <CategoryHeader>Structure &amp; contenu</CategoryHeader>
 
       <CollapsibleSection
-        title="Trame du bilan (titres & ordre)"
-        subtitle="Réordonner, renommer, ajouter ou retirer des grands titres — cliquez pour déplier"
+        title="Trame des bilans (titres & ordre)"
+        subtitle="Réordonner, renommer, ajouter ou retirer des titres — une trame par type de bilan"
       >
-        <BilanSectionsEditor initial={settings.profile?.bilan_sections} />
+        <div className="flex gap-1 p-1 bg-slate-100 rounded-lg mb-4">
+          {BILAN_TYPES.map((bt) => {
+            const active = trameType === bt.id;
+            return (
+              <button
+                key={bt.id}
+                type="button"
+                onClick={() => setTrameType(bt.id)}
+                className={`flex-1 px-3 py-1.5 text-sm font-medium rounded-md transition ${
+                  active
+                    ? "bg-white text-brand-700 shadow-sm"
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                {bt.label}
+              </button>
+            );
+          })}
+        </div>
+        <div className={trameType === "psychomoteur" ? "" : "hidden"}>
+          <BilanSectionsEditor
+            initial={settings.profile?.bilan_sections}
+            name="bilan_sections"
+            defaultSections={DEFAULT_BILAN_SECTIONS}
+          />
+        </div>
+        <div className={trameType === "sensoriel" ? "" : "hidden"}>
+          <BilanSectionsEditor
+            initial={settings.profile?.bilan_sections_sensoriel}
+            name="bilan_sections_sensoriel"
+            defaultSections={DEFAULT_SENSORY_SECTIONS}
+          />
+        </div>
       </CollapsibleSection>
 
       <Section title="Conclusion & signature">

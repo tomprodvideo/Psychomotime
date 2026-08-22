@@ -16,11 +16,15 @@ const PROTECTED = new Set(["anamnese", "conclusion", "resultats_chiffres"]);
 
 export default function BilanSectionsEditor({
   initial,
+  name = "bilan_sections",
+  defaultSections = DEFAULT_BILAN_SECTIONS,
 }: {
   initial?: BilanSectionConfig[];
+  name?: string;
+  defaultSections?: BilanSectionConfig[];
 }) {
   const [sections, setSections] = useState<BilanSectionConfig[]>(() =>
-    (initial && initial.length ? initial : DEFAULT_BILAN_SECTIONS).map((s) => ({
+    (initial && initial.length ? initial : defaultSections).map((s) => ({
       ...s,
     })),
   );
@@ -78,12 +82,11 @@ export default function BilanSectionsEditor({
       kind: "text",
     });
 
-  const reset = () =>
-    setSections(DEFAULT_BILAN_SECTIONS.map((s) => ({ ...s })));
+  const reset = () => setSections(defaultSections.map((s) => ({ ...s })));
 
   return (
     <div className="space-y-3">
-      <input type="hidden" name="bilan_sections" value={JSON.stringify(sections)} />
+      <input type="hidden" name={name} value={JSON.stringify(sections)} />
       <p className="text-sm text-slate-500 -mt-2">
         Ordre, noms et emplacements des titres et sous-titres du bilan. Le
         renommage et le déplacement n&apos;affectent pas le contenu déjà saisi
