@@ -6,7 +6,6 @@ import {
   Check,
   ChevronDown,
   FileText,
-  FolderOpen,
   User,
   UserCog,
 } from "lucide-react";
@@ -17,9 +16,9 @@ import {
   BILAN_TITLE_STYLES,
   BILAN_TYPES,
   DEFAULT_BILAN_SECTIONS,
-  DEFAULT_CLOSING_NOTE,
   DEFAULT_SENSORY_SECTIONS,
   bilanFontCss,
+  getBilanConfig,
   type BilanType,
 } from "@/lib/constants";
 import { updateSettings } from "./actions";
@@ -97,7 +96,6 @@ function TitlePreview({
   );
 }
 
-const DEFAULT_THEME = "#2f8a82";
 const THEME_PRESETS = [
   { name: "Bleu-vert (défaut)", value: "#2f8a82" },
   { name: "Émeraude", value: "#059669" },
@@ -123,26 +121,23 @@ export default function ParametresForm({
   const [saved, setSaved] = useState(false);
   const [logo, setLogo] = useState(settings.profile?.logo_url ?? "");
   const [logoError, setLogoError] = useState("");
-  const [themeColor, setThemeColor] = useState(
-    settings.profile?.theme_color ?? DEFAULT_THEME,
-  );
-  const [bilanFont, setBilanFont] = useState(
-    settings.profile?.bilan_font ?? "sans",
-  );
-  const [bilanTitleStyle, setBilanTitleStyle] = useState(
-    settings.profile?.bilan_title_style ?? "boxed",
-  );
-  const [curve, setCurve] = useState(settings.profile?.gaussian_curve_url ?? "");
   const [curveError, setCurveError] = useState("");
-  const [signature, setSignature] = useState(
-    settings.profile?.signature_url ?? "",
-  );
   const [signatureError, setSignatureError] = useState("");
   const [tab, setTab] = useState<
-    "general" | "bilan" | "modeles" | "compta" | "compte"
+    "general" | "bilan" | "compta" | "compte"
   >("general");
-  const [trameType, setTrameType] = useState<BilanType>("psychomoteur");
-  const [mdlType, setMdlType] = useState<BilanType>("psychomoteur");
+  // Apparence par type de bilan (thème, typo, conclusion, signature, courbe).
+  const [bilanSubTab, setBilanSubTab] = useState<BilanType>("psychomoteur");
+  const [bilanCfg, setBilanCfg] = useState(() => ({
+    psychomoteur: getBilanConfig(settings.profile, "psychomoteur"),
+    sensoriel: getBilanConfig(settings.profile, "sensoriel"),
+  }));
+  const cfg = bilanCfg[bilanSubTab];
+  const setCfg = (patch: Partial<typeof cfg>) =>
+    setBilanCfg((c) => ({
+      ...c,
+      [bilanSubTab]: { ...c[bilanSubTab], ...patch },
+    }));
 
   function handleLogo(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -167,7 +162,7 @@ export default function ParametresForm({
     }
     setCurveError("");
     try {
-      setCurve(await resizeImage(file));
+      setCfg({ gaussian_curve_url: await resizeImage(file) });
     } catch {
       setCurveError("Image illisible. Essayez un autre fichier (PNG ou JPG).");
     }
@@ -184,7 +179,7 @@ export default function ParametresForm({
     }
     setSignatureError("");
     const reader = new FileReader();
-    reader.onload = () => setSignature(String(reader.result));
+    reader.onload = () => setCfg({ signature_url: String(reader.result) });
     reader.readAsDataURL(file);
   }
 
@@ -209,13 +204,8 @@ export default function ParametresForm({
       id: "bilan" as const,
       label: "Bilans",
       icon: FileText,
-      intro: "Apparence et structure de vos comptes rendus.",
-    },
-    {
-      id: "modeles" as const,
-      label: "Modèles",
-      icon: FolderOpen,
-      intro: "Vos textes types, rangés par dossier et insérables en un clic.",
+      intro:
+        "Choisissez un type de bilan, puis personnalisez son apparence, sa trame et ses modèles.",
     },
     {
       id: "compta" as const,
@@ -403,12 +393,42 @@ export default function ParametresForm({
 
       {/* Onglet Bilan */}
       <div className={tab === "bilan" ? "space-y-6" : "hidden"}>
+      <input
+        type="hidden"
+        name="bilan_settings_psychomoteur"
+        value={JSON.stringify(bilanCfg.psychomoteur)}
+      />
+      <input
+        type="hidden"
+        name="bilan_settings_sensoriel"
+        value={JSON.stringify(bilanCfg.sensoriel)}
+      />
+
+      <div className="flex gap-1 p-1 bg-slate-100 rounded-lg">
+        {BILAN_TYPES.map((bt) => {
+          const active = bilanSubTab === bt.id;
+          return (
+            <button
+              key={bt.id}
+              type="button"
+              onClick={() => setBilanSubTab(bt.id)}
+              className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition ${
+                active
+                  ? "bg-white text-brand-700 shadow-sm"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              {bt.label}
+            </button>
+          );
+        })}
+      </div>
+
       <CategoryHeader>Apparence</CategoryHeader>
 
-      <Section title="Thème des bilans">
-        <input type="hidden" name="theme_color" value={themeColor} />
+      <Section title="Thème du bilan">
         <p className="text-sm text-slate-500 -mt-2 mb-3">
-          Couleur d&apos;accent des titres dans vos comptes rendus de bilan.
+          Couleur d&apos;accent des titres de ce type de bilan.
         </p>
         <div className="flex flex-wrap items-center gap-2 mb-4">
           {THEME_PRESETS.map((c) => (
@@ -416,9 +436,9 @@ export default function ParametresForm({
               key={c.value}
               type="button"
               title={c.name}
-              onClick={() => setThemeColor(c.value)}
+              onClick={() => setCfg({ theme_color: c.value })}
               className={`h-8 w-8 rounded-full border-2 border-white transition ${
-                themeColor.toLowerCase() === c.value.toLowerCase()
+                cfg.theme_color.toLowerCase() === c.value.toLowerCase()
                   ? "ring-2 ring-offset-2 ring-slate-400"
                   : ""
               }`}
@@ -429,8 +449,8 @@ export default function ParametresForm({
             Personnalisée
             <input
               type="color"
-              value={themeColor}
-              onChange={(e) => setThemeColor(e.target.value)}
+              value={cfg.theme_color}
+              onChange={(e) => setCfg({ theme_color: e.target.value })}
               className="h-6 w-8 cursor-pointer border-0 bg-transparent p-0"
             />
           </label>
@@ -438,29 +458,26 @@ export default function ParametresForm({
         <p className="text-sm">
           <span
             className="font-bold text-slate-800 border-b-2 pb-0.5"
-            style={{ borderColor: themeColor }}
+            style={{ borderColor: cfg.theme_color }}
           >
             Aperçu du titre de section
           </span>
         </p>
       </Section>
 
-      <Section title="Style des bilans (police & titres)">
-        <input type="hidden" name="bilan_font" value={bilanFont} />
-        <input type="hidden" name="bilan_title_style" value={bilanTitleStyle} />
-
+      <Section title="Style (police & titres)">
         <p className="text-sm text-slate-500 -mt-2 mb-2">Modèles rapides :</p>
         <div className="flex flex-wrap gap-2 mb-4">
           {BILAN_STYLE_PRESETS.map((p) => {
-            const on = bilanFont === p.font && bilanTitleStyle === p.title;
+            const on =
+              cfg.bilan_font === p.font && cfg.bilan_title_style === p.title;
             return (
               <button
                 key={p.id}
                 type="button"
-                onClick={() => {
-                  setBilanFont(p.font);
-                  setBilanTitleStyle(p.title);
-                }}
+                onClick={() =>
+                  setCfg({ bilan_font: p.font, bilan_title_style: p.title })
+                }
                 className={`text-sm px-3 py-1.5 rounded-lg border transition ${
                   on
                     ? "border-brand-400 bg-brand-50 text-brand-700 ring-1 ring-brand-200"
@@ -477,8 +494,8 @@ export default function ParametresForm({
           <div>
             <Label>Police</Label>
             <select
-              value={bilanFont}
-              onChange={(e) => setBilanFont(e.target.value)}
+              value={cfg.bilan_font}
+              onChange={(e) => setCfg({ bilan_font: e.target.value })}
               className={inputCls}
             >
               {BILAN_FONTS.map((f) => (
@@ -491,8 +508,8 @@ export default function ParametresForm({
           <div>
             <Label>Titres de section</Label>
             <select
-              value={bilanTitleStyle}
-              onChange={(e) => setBilanTitleStyle(e.target.value)}
+              value={cfg.bilan_title_style}
+              onChange={(e) => setCfg({ bilan_title_style: e.target.value })}
               className={inputCls}
             >
               {BILAN_TITLE_STYLES.map((t) => (
@@ -506,10 +523,10 @@ export default function ParametresForm({
 
         <div
           className="border border-slate-200 rounded-lg p-4 bg-slate-50"
-          style={{ fontFamily: bilanFontCss(bilanFont) }}
+          style={{ fontFamily: bilanFontCss(cfg.bilan_font) }}
         >
           <p className="text-xs text-slate-400 mb-2">Aperçu</p>
-          <TitlePreview variant={bilanTitleStyle} color={themeColor}>
+          <TitlePreview variant={cfg.bilan_title_style} color={cfg.theme_color}>
             La motricité globale
           </TitlePreview>
           <p className="text-sm text-slate-700 mt-2">
@@ -522,36 +539,17 @@ export default function ParametresForm({
       <CategoryHeader>Structure &amp; contenu</CategoryHeader>
 
       <CollapsibleSection
-        title="Trame des bilans (titres & ordre)"
-        subtitle="Réordonner, renommer, ajouter ou retirer des titres — une trame par type de bilan"
+        title="Trame (titres & ordre)"
+        subtitle="Réordonner, renommer, ajouter ou retirer les titres de ce type de bilan"
       >
-        <div className="flex gap-1 p-1 bg-slate-100 rounded-lg mb-4">
-          {BILAN_TYPES.map((bt) => {
-            const active = trameType === bt.id;
-            return (
-              <button
-                key={bt.id}
-                type="button"
-                onClick={() => setTrameType(bt.id)}
-                className={`flex-1 px-3 py-1.5 text-sm font-medium rounded-md transition ${
-                  active
-                    ? "bg-white text-brand-700 shadow-sm"
-                    : "text-slate-500 hover:text-slate-800"
-                }`}
-              >
-                {bt.label}
-              </button>
-            );
-          })}
-        </div>
-        <div className={trameType === "psychomoteur" ? "" : "hidden"}>
+        <div className={bilanSubTab === "psychomoteur" ? "" : "hidden"}>
           <BilanSectionsEditor
             initial={settings.profile?.bilan_sections}
             name="bilan_sections"
             defaultSections={DEFAULT_BILAN_SECTIONS}
           />
         </div>
-        <div className={trameType === "sensoriel" ? "" : "hidden"}>
+        <div className={bilanSubTab === "sensoriel" ? "" : "hidden"}>
           <BilanSectionsEditor
             initial={settings.profile?.bilan_sections_sensoriel}
             name="bilan_sections_sensoriel"
@@ -564,8 +562,8 @@ export default function ParametresForm({
         <label className="flex items-start gap-2 text-sm text-slate-700">
           <input
             type="checkbox"
-            name="conclusion_top"
-            defaultChecked={settings.profile?.conclusion_top ?? false}
+            checked={cfg.conclusion_top}
+            onChange={(e) => setCfg({ conclusion_top: e.target.checked })}
             className="h-4 w-4 mt-0.5 rounded border-slate-300 text-brand-600 focus:ring-brand-400"
           />
           <span>
@@ -579,9 +577,9 @@ export default function ParametresForm({
 
         <Label>Formule de fin (dans la conclusion)</Label>
         <textarea
-          name="closing_note"
           rows={2}
-          defaultValue={settings.profile?.closing_note ?? DEFAULT_CLOSING_NOTE}
+          value={cfg.closing_note}
+          onChange={(e) => setCfg({ closing_note: e.target.value })}
           className={`${inputCls} resize-y`}
         />
         <p className="text-xs text-slate-400 mt-1 mb-4">
@@ -589,14 +587,13 @@ export default function ParametresForm({
           formule, suivi de votre signature.
         </p>
 
-        <input type="hidden" name="signature_url" value={signature} />
         <Label>Signature (image)</Label>
         <div className="flex items-start gap-4 mt-1">
           <div className="h-20 w-44 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0">
-            {signature ? (
+            {cfg.signature_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={signature}
+                src={cfg.signature_url}
                 alt="Signature"
                 className="max-h-full max-w-full object-contain"
               />
@@ -608,7 +605,9 @@ export default function ParametresForm({
           </div>
           <div>
             <label className="inline-block cursor-pointer text-sm font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 px-3 py-2 rounded-lg">
-              {signature ? "Changer la signature" : "Importer une signature"}
+              {cfg.signature_url
+                ? "Changer la signature"
+                : "Importer une signature"}
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/svg+xml"
@@ -616,10 +615,10 @@ export default function ParametresForm({
                 className="hidden"
               />
             </label>
-            {signature && (
+            {cfg.signature_url && (
               <button
                 type="button"
-                onClick={() => setSignature("")}
+                onClick={() => setCfg({ signature_url: "" })}
                 className="ml-2 text-sm text-slate-500 hover:text-rose-600"
               >
                 Retirer
@@ -635,100 +634,86 @@ export default function ParametresForm({
         </div>
       </Section>
 
-      <Section title="Courbe de Gauss">
-        <input type="hidden" name="gaussian_curve_url" value={curve} />
-        <p className="text-sm text-slate-500 -mt-2 mb-3">
-          Par défaut, une courbe est générée automatiquement. Vous pouvez la
-          remplacer par votre propre image (elle s&apos;affichera dans la partie
-          « Résultats chiffrés des tests » du bilan).
-        </p>
-        <div className="flex items-start gap-4">
-          <div className="h-28 w-44 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0">
-            {curve ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={curve}
-                alt="Courbe de Gauss"
-                className="max-h-full max-w-full object-contain"
-              />
-            ) : (
-              <span className="text-xs text-slate-400 text-center px-2">
-                Courbe automatique
-              </span>
-            )}
-          </div>
-          <div>
-            <label className="inline-block cursor-pointer text-sm font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 px-3 py-2 rounded-lg">
-              {curve ? "Changer l'image" : "Importer une image"}
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/svg+xml"
-                onChange={handleCurve}
-                className="hidden"
-              />
-            </label>
-            {curve && (
-              <button
-                type="button"
-                onClick={() => setCurve("")}
-                className="ml-2 text-sm text-slate-500 hover:text-rose-600"
-              >
-                Rétablir la courbe automatique
-              </button>
-            )}
-            {curveError && (
-              <p className="text-xs text-rose-600 mt-1">{curveError}</p>
-            )}
-            <p className="text-xs text-slate-400 mt-1">
-              PNG, JPG ou SVG. L&apos;image est automatiquement optimisée.
-            </p>
-          </div>
-        </div>
-      </Section>
-
-      </div>
-
-      {/* Onglet Modèles */}
-      <div className={tab === "modeles" ? "space-y-6" : "hidden"}>
-        <Section title="Bibliothèque de modèles">
-          <div className="flex gap-1 p-1 bg-slate-100 rounded-lg mb-4">
-            {BILAN_TYPES.map((bt) => {
-              const active = mdlType === bt.id;
-              return (
+      {bilanSubTab === "psychomoteur" && (
+        <Section title="Courbe de Gauss">
+          <p className="text-sm text-slate-500 -mt-2 mb-3">
+            Par défaut, une courbe est générée automatiquement. Vous pouvez la
+            remplacer par votre propre image (elle s&apos;affichera dans la
+            partie « Résultats chiffrés des tests » du bilan). Propre au bilan
+            psychomoteur.
+          </p>
+          <div className="flex items-start gap-4">
+            <div className="h-28 w-44 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0">
+              {cfg.gaussian_curve_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={cfg.gaussian_curve_url}
+                  alt="Courbe de Gauss"
+                  className="max-h-full max-w-full object-contain"
+                />
+              ) : (
+                <span className="text-xs text-slate-400 text-center px-2">
+                  Courbe automatique
+                </span>
+              )}
+            </div>
+            <div>
+              <label className="inline-block cursor-pointer text-sm font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 px-3 py-2 rounded-lg">
+                {cfg.gaussian_curve_url
+                  ? "Changer l'image"
+                  : "Importer une image"}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/svg+xml"
+                  onChange={handleCurve}
+                  className="hidden"
+                />
+              </label>
+              {cfg.gaussian_curve_url && (
                 <button
-                  key={bt.id}
                   type="button"
-                  onClick={() => setMdlType(bt.id)}
-                  className={`flex-1 px-3 py-1.5 text-sm font-medium rounded-md transition ${
-                    active
-                      ? "bg-white text-brand-700 shadow-sm"
-                      : "text-slate-500 hover:text-slate-800"
-                  }`}
+                  onClick={() => setCfg({ gaussian_curve_url: "" })}
+                  className="ml-2 text-sm text-slate-500 hover:text-rose-600"
                 >
-                  {bt.label}
+                  Rétablir la courbe automatique
                 </button>
-              );
-            })}
-          </div>
-          <div className={mdlType === "psychomoteur" ? "" : "hidden"}>
-            <AdaptationTemplatesManager
-              type="psychomoteur"
-              initialTemplates={settings.profile?.adaptation_templates ?? []}
-              initialFolders={settings.profile?.adaptation_folders ?? []}
-            />
-          </div>
-          <div className={mdlType === "sensoriel" ? "" : "hidden"}>
-            <AdaptationTemplatesManager
-              type="sensoriel"
-              initialTemplates={
-                settings.profile?.adaptation_templates_sensoriel ?? []
-              }
-              initialFolders={
-                settings.profile?.adaptation_folders_sensoriel ?? []
-              }
-            />
+              )}
+              {curveError && (
+                <p className="text-xs text-rose-600 mt-1">{curveError}</p>
+              )}
+              <p className="text-xs text-slate-400 mt-1">
+                PNG, JPG ou SVG. L&apos;image est automatiquement optimisée.
+              </p>
+            </div>
           </div>
         </Section>
+      )}
+
+      <CategoryHeader>Modèles</CategoryHeader>
+
+      <CollapsibleSection
+        title="Bibliothèque de modèles"
+        subtitle="Textes types insérables dans les bilans — cliquez pour déplier"
+      >
+        <div className={bilanSubTab === "psychomoteur" ? "" : "hidden"}>
+          <AdaptationTemplatesManager
+            type="psychomoteur"
+            initialTemplates={settings.profile?.adaptation_templates ?? []}
+            initialFolders={settings.profile?.adaptation_folders ?? []}
+          />
+        </div>
+        <div className={bilanSubTab === "sensoriel" ? "" : "hidden"}>
+          <AdaptationTemplatesManager
+            type="sensoriel"
+            initialTemplates={
+              settings.profile?.adaptation_templates_sensoriel ?? []
+            }
+            initialFolders={
+              settings.profile?.adaptation_folders_sensoriel ?? []
+            }
+          />
+        </div>
+      </CollapsibleSection>
       </div>
 
       {/* Onglet Comptabilité */}

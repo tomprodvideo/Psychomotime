@@ -1,4 +1,4 @@
-import type { BilanSectionConfig } from "./types";
+import type { BilanSectionConfig, Profile } from "./types";
 
 export const MONTHS = [
   "janvier",
@@ -395,6 +395,29 @@ export function bilanHeading(type: BilanType): string {
     BILAN_TYPES.find((t) => t.id === type)?.heading ??
     "COMPTE RENDU DU BILAN PSYCHOMOTEUR"
   );
+}
+
+export const DEFAULT_BILAN_THEME = "#2f8a82";
+
+/** Réglages d'apparence effectifs pour un type de bilan (par type, sinon global, sinon défaut). */
+export function getBilanConfig(
+  profile: Profile | null | undefined,
+  type: BilanType,
+) {
+  const g = (profile ?? {}) as unknown as Record<string, unknown>;
+  const per = (profile?.bilan_settings?.[type] ??
+    {}) as unknown as Record<string, unknown>;
+  const pick = <T,>(k: string, fallback: T): T =>
+    (per[k] as T) ?? (g[k] as T) ?? fallback;
+  return {
+    theme_color: pick("theme_color", DEFAULT_BILAN_THEME),
+    bilan_font: pick("bilan_font", "sans"),
+    bilan_title_style: pick("bilan_title_style", "boxed"),
+    closing_note: pick("closing_note", DEFAULT_CLOSING_NOTE),
+    conclusion_top: pick("conclusion_top", false),
+    signature_url: pick("signature_url", ""),
+    gaussian_curve_url: pick("gaussian_curve_url", ""),
+  };
 }
 
 /** Trame par défaut du bilan sensoriel (Profil Sensoriel de Dunn 2). */

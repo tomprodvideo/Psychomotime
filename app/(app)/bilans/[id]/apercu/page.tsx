@@ -9,12 +9,12 @@ import {
   BILAN_META,
   MABC_BLOCK_TITLES,
   MABC_GROUPS,
-  DEFAULT_CLOSING_NOTE,
   DUNN_BANDS,
   DUNN_TABLES,
   SCORE_INTERPRETATION,
   bilanFontCss,
   bilanHeading,
+  getBilanConfig,
   nsColor,
   resolveBilanSections,
   testLabel,
@@ -104,11 +104,12 @@ export default async function BilanApercuPage({
     sections.find((s) => s.id === "anamnese")?.title ?? "L'anamnèse";
   const conclusionTitle =
     sections.find((s) => s.id === "conclusion")?.title ?? "Conclusion";
-  const conclusionTop = !!profile.conclusion_top;
-  const closingNote = profile.closing_note ?? DEFAULT_CLOSING_NOTE;
-  const accent = profile.theme_color || "#2f8a82";
-  const fontFamily = bilanFontCss(profile.bilan_font);
-  const titleStyle = profile.bilan_title_style || "boxed";
+  const cfg = getBilanConfig(profile, bilanType);
+  const conclusionTop = !!cfg.conclusion_top;
+  const closingNote = cfg.closing_note;
+  const accent = cfg.theme_color;
+  const fontFamily = bilanFontCss(cfg.bilan_font);
+  const titleStyle = cfg.bilan_title_style;
   // Variante d'affichage d'un titre : sous-titre, encadré, souligné ou simple.
   const headingVariant = (item: BilanSectionConfig) =>
     item.level === "subtitle"
@@ -141,9 +142,9 @@ export default async function BilanApercuPage({
   const signatureBlock = (
     <div className="mt-6 text-right text-[12px]">
       <p className="font-semibold text-slate-900">{author}</p>
-      {profile.signature_url && (
+      {cfg.signature_url && (
         <img
-          src={profile.signature_url}
+          src={cfg.signature_url}
           alt="Signature"
           className="inline-block max-h-20 w-auto object-contain mt-1"
         />
@@ -339,7 +340,7 @@ export default async function BilanApercuPage({
             (content.conclusion?.trim() ||
               hasExtras("conclusion") ||
               closingNote.trim() ||
-              profile.signature_url) && (
+              cfg.signature_url) && (
               <section className="mb-5 break-inside-avoid bg-slate-50 border border-slate-200 rounded-lg p-4">
                 <SectionTitle variant={conclusionVariant}>
                   {conclusionTitle}
@@ -480,9 +481,9 @@ export default async function BilanApercuPage({
                       </div>
                     </div>
                     <div className="mt-4 break-inside-avoid">
-                      {profile.gaussian_curve_url ? (
+                      {cfg.gaussian_curve_url ? (
                         <img
-                          src={profile.gaussian_curve_url}
+                          src={cfg.gaussian_curve_url}
                           alt="Courbe de Gauss"
                           className="mx-auto max-h-80 w-auto object-contain"
                         />
@@ -524,7 +525,7 @@ export default async function BilanApercuPage({
             (content.conclusion?.trim() ||
               hasExtras("conclusion") ||
               closingNote.trim() ||
-              profile.signature_url) && (
+              cfg.signature_url) && (
             <section className="mb-6 break-inside-avoid">
               <SectionTitle variant={conclusionVariant}>
                 {conclusionTitle}

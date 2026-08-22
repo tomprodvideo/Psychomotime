@@ -47,8 +47,21 @@ export async function updateSettings(formData: FormData) {
     .eq("user_id", user.id)
     .maybeSingle();
 
+  const existingProfile = (existing?.profile as Record<string, unknown>) ?? {};
+
+  // Réglages d'apparence par type de bilan (thème, typo, conclusion, signature, courbe).
+  const perType =
+    (existingProfile.bilan_settings as Record<string, unknown>) ?? {};
+  const psy = parseJson("bilan_settings_psychomoteur");
+  const sen = parseJson("bilan_settings_sensoriel");
+  const bilan_settings = {
+    ...perType,
+    ...(psy ? { psychomoteur: psy } : {}),
+    ...(sen ? { sensoriel: sen } : {}),
+  };
+
   const profile = {
-    ...((existing?.profile as Record<string, unknown>) ?? {}),
+    ...existingProfile,
     logo_url: str("logo_url"),
     address: str("address"),
     postal_code: str("postal_code"),
@@ -59,13 +72,7 @@ export async function updateSettings(formData: FormData) {
     business_email: str("business_email"),
     business_phone: str("business_phone"),
     legal_mentions: str("legal_mentions"),
-    theme_color: str("theme_color"),
-    bilan_font: str("bilan_font"),
-    bilan_title_style: str("bilan_title_style"),
-    gaussian_curve_url: str("gaussian_curve_url"),
-    conclusion_top: formData.get("conclusion_top") === "on",
-    closing_note: str("closing_note"),
-    signature_url: str("signature_url"),
+    bilan_settings,
     bilan_sections: parseJson("bilan_sections"),
     bilan_sections_sensoriel: parseJson("bilan_sections_sensoriel"),
   };

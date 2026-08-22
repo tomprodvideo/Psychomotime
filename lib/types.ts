@@ -48,6 +48,18 @@ export interface Profile {
   adaptation_folders_sensoriel?: AdaptationFolder[]; // dossiers (bilan sensoriel)
   bilan_sections?: BilanSectionConfig[]; // trame du bilan psychomoteur
   bilan_sections_sensoriel?: BilanSectionConfig[]; // trame du bilan sensoriel
+  bilan_settings?: Partial<Record<"psychomoteur" | "sensoriel", BilanTypeSettings>>; // apparence par type
+}
+
+/** Réglages d'apparence propres à un type de bilan. */
+export interface BilanTypeSettings {
+  theme_color?: string;
+  bilan_font?: string;
+  bilan_title_style?: string;
+  closing_note?: string;
+  conclusion_top?: boolean;
+  signature_url?: string;
+  gaussian_curve_url?: string; // psychomoteur uniquement
 }
 
 /** Un élément de la trame du bilan (grand titre ou sous-titre), éditable dans les Paramètres. */
