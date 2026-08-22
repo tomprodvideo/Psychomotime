@@ -30,6 +30,8 @@ import type {
 } from "@/lib/types";
 import {
   BILAN_META,
+  DUNN_BANDS,
+  DUNN_TABLES,
   MABC_BLOCK_TITLES,
   MABC_GROUPS,
   PSYCHOMOTOR_TESTS,
@@ -137,6 +139,11 @@ export default function BilanEditor({
   const [mabcScores, setMabcScores] = useState<Record<string, MabcScore>>(
     t0.mabc3 ?? {},
   );
+  const bilanType =
+    raw0.__type__ === "sensoriel" ? "sensoriel" : "psychomoteur";
+  const [dunnScores, setDunnScores] = useState<Record<string, number>>(
+    () => t0.dunn ?? {},
+  );
 
   // Blocs ajoutés à la volée sous une section (titre libre + texte propre).
   const [blocks, setBlocks] = useState<
@@ -217,6 +224,11 @@ export default function BilanEditor({
 
   const setScore = (key: string, field: "p" | "ns", value: string) => {
     setMabcScores((m) => ({ ...m, [key]: { ...m[key], [field]: value } }));
+    markDirty();
+  };
+
+  const setDunn = (rowKey: string, col: number) => {
+    setDunnScores((d) => ({ ...d, [rowKey]: col }));
     markDirty();
   };
 
@@ -305,6 +317,7 @@ export default function BilanEditor({
           bySection,
           mabc3_group: mabcGroup,
           mabc3: mabcScores,
+          dunn: dunnScores,
         }),
       );
       await saveBilan(fd);
@@ -722,12 +735,76 @@ export default function BilanEditor({
             >
               {s.kind === "scores" ? (
                 <div>
-                  <p className="text-sm font-medium text-slate-700">{s.title}</p>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Section générée automatiquement (interprétation des scores +
-                    courbe de Gauss). Elle apparaît dès qu&apos;un test est
-                    renseigné — rien à saisir ici.
+                  <p className="text-sm font-medium text-slate-700 mb-2">
+                    {s.title}
                   </p>
+                  {bilanType === "sensoriel" ? (
+                    DUNN_TABLES.map((tbl) => (
+                      <div key={tbl.key} className="mb-4">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
+                          {tbl.title}
+                        </p>
+                        <div className="overflow-x-auto rounded-lg border border-slate-200">
+                          <table className="w-full text-xs min-w-[580px]">
+                            <thead>
+                              <tr className="bg-slate-100 text-slate-500">
+                                <th className="px-2 py-1.5 text-left font-semibold">
+                                  Par rapport à la moyenne
+                                </th>
+                                {DUNN_BANDS.map((band) => (
+                                  <th
+                                    key={band}
+                                    className="px-1 py-1.5 text-center font-medium w-[15%]"
+                                  >
+                                    {band}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {tbl.rows.map((r) => (
+                                <tr
+                                  key={r.key}
+                                  className="border-t border-slate-100"
+                                >
+                                  <td className="px-2 py-1.5 align-top">
+                                    <span className="font-medium text-slate-700">
+                                      {r.label}
+                                    </span>
+                                    {r.desc && (
+                                      <span className="block text-slate-400 text-[10px] leading-tight">
+                                        {r.desc}
+                                      </span>
+                                    )}
+                                  </td>
+                                  {DUNN_BANDS.map((_, i) => (
+                                    <td
+                                      key={i}
+                                      className="px-1 py-1.5 text-center"
+                                    >
+                                      <input
+                                        type="radio"
+                                        name={`dunn_${r.key}`}
+                                        checked={dunnScores[r.key] === i}
+                                        onChange={() => setDunn(r.key, i)}
+                                        className="h-4 w-4 text-brand-600 focus:ring-brand-400 cursor-pointer"
+                                      />
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-slate-400">
+                      Section générée automatiquement (interprétation des scores +
+                      courbe de Gauss). Elle apparaît dès qu&apos;un test est
+                      renseigné — rien à saisir ici.
+                    </p>
+                  )}
                 </div>
               ) : (
                 <>

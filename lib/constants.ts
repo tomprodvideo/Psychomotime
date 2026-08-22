@@ -370,151 +370,84 @@ export const DEFAULT_BILAN_SECTIONS: BilanSectionConfig[] = (() => {
  * ============================================================ */
 export type BilanType = "psychomoteur" | "sensoriel";
 
-export const BILAN_TYPES: { id: BilanType; label: string; hint: string }[] = [
+export const BILAN_TYPES: {
+  id: BilanType;
+  label: string;
+  hint: string;
+  heading: string;
+}[] = [
   {
     id: "psychomoteur",
     label: "Bilan psychomoteur",
     hint: "Motricité, tonus, latéralité, spatial/temporel, attention…",
+    heading: "COMPTE RENDU DU BILAN PSYCHOMOTEUR",
   },
   {
     id: "sensoriel",
     label: "Bilan sensoriel",
     hint: "Profil sensoriel de Dunn 2 : modulation et traitement sensoriel.",
+    heading: "COMPTE RENDU DU PROFIL SENSORIEL DUNN 2",
   },
 ];
+
+export function bilanHeading(type: BilanType): string {
+  return (
+    BILAN_TYPES.find((t) => t.id === type)?.heading ??
+    "COMPTE RENDU DU BILAN PSYCHOMOTEUR"
+  );
+}
 
 /** Trame par défaut du bilan sensoriel (Profil Sensoriel de Dunn 2). */
 export const DEFAULT_SENSORY_SECTIONS: BilanSectionConfig[] = [
   {
-    id: "anamnese",
-    title: "L'anamnèse",
-    hint: "Histoire de l'enfant + histoire sensorielle : alimentation, sommeil, habillage/hygiène, réactions au bruit, à la lumière, au toucher…",
+    id: "s_intro",
+    title: "Présentation",
+    hint: "Le profil sensoriel de Dunn 2 a été rempli par … . Cet outil permet d'analyser comment l'enfant réagit aux stimulations de son environnement et comment cela peut influencer son quotidien.",
     level: "title",
-    boxed: true,
-    kind: "text",
-  },
-  {
-    id: "s_motif",
-    title: "Motif de la demande",
-    hint: "Plaintes et particularités sensorielles rapportées.",
-    level: "title",
-    boxed: true,
-    kind: "text",
-  },
-  {
-    id: "s_outils",
-    title: "Outils & passation",
-    hint: "Profil Sensoriel de Dunn 2 (questionnaire parent/enseignant), observations cliniques…",
-    level: "title",
-    boxed: true,
-    kind: "text",
-  },
-  {
-    id: "s_comportement",
-    title: "Comportement durant l'évaluation",
-    level: "title",
-    boxed: true,
-    kind: "text",
-  },
-  {
-    id: "s_systemes",
-    title: "Analyse par système sensoriel",
-    level: "title",
-    boxed: true,
-    kind: "text",
-  },
-  { id: "s_tactile", title: "Système tactile", level: "subtitle", kind: "text" },
-  {
-    id: "s_vestibulaire",
-    title: "Système vestibulaire (mouvement)",
-    level: "subtitle",
-    kind: "text",
-  },
-  {
-    id: "s_proprio",
-    title: "Système proprioceptif (position/force)",
-    level: "subtitle",
-    kind: "text",
-  },
-  { id: "s_visuel", title: "Système visuel", level: "subtitle", kind: "text" },
-  { id: "s_auditif", title: "Système auditif", level: "subtitle", kind: "text" },
-  {
-    id: "s_gustolf",
-    title: "Système gustatif & olfactif",
-    level: "subtitle",
-    kind: "text",
-  },
-  {
-    id: "s_intero",
-    title: "Interoception (signaux internes)",
-    level: "subtitle",
-    kind: "text",
-  },
-  {
-    id: "s_dunn",
-    title: "Profil de Dunn (4 quadrants)",
-    level: "title",
-    boxed: true,
-    kind: "text",
-  },
-  {
-    id: "s_recherche",
-    title: "Recherche sensorielle",
-    level: "subtitle",
-    kind: "text",
-  },
-  {
-    id: "s_enregistrement",
-    title: "Faible enregistrement",
-    level: "subtitle",
-    kind: "text",
-  },
-  {
-    id: "s_sensibilite",
-    title: "Sensibilité sensorielle",
-    level: "subtitle",
-    kind: "text",
-  },
-  {
-    id: "s_evitement",
-    title: "Évitement sensoriel",
-    level: "subtitle",
-    kind: "text",
-  },
-  {
-    id: "s_retentissement",
-    title: "Retentissement au quotidien",
-    level: "title",
-    boxed: true,
-    kind: "text",
-  },
-  { id: "s_repas", title: "Repas", level: "subtitle", kind: "text" },
-  { id: "s_sommeil", title: "Sommeil", level: "subtitle", kind: "text" },
-  {
-    id: "s_habillage",
-    title: "Habillage & hygiène",
-    level: "subtitle",
-    kind: "text",
-  },
-  {
-    id: "s_ecole",
-    title: "École & apprentissages",
-    level: "subtitle",
-    kind: "text",
-  },
-  { id: "s_jeu", title: "Jeu & relations", level: "subtitle", kind: "text" },
-  {
-    id: "s_emotions",
-    title: "Régulation émotionnelle",
-    level: "subtitle",
+    boxed: false,
     kind: "text",
   },
   {
     id: "resultats_chiffres",
-    title: "Résultats chiffrés (Profil de Dunn)",
+    title: "Tableaux de résultats",
     level: "title",
     boxed: true,
     kind: "scores",
+  },
+  {
+    id: "s_interp",
+    title: "Interprétation des résultats",
+    level: "title",
+    boxed: true,
+    kind: "text",
+  },
+  { id: "s_q_recherche", title: "Recherche", level: "subtitle", kind: "text" },
+  { id: "s_q_evitement", title: "Évitement", level: "subtitle", kind: "text" },
+  {
+    id: "s_q_sensibilite",
+    title: "Sensibilité",
+    level: "subtitle",
+    kind: "text",
+  },
+  {
+    id: "s_q_enregistrement",
+    title: "Enregistrement",
+    level: "subtitle",
+    kind: "text",
+  },
+  {
+    id: "s_interp_sensorielles",
+    title: "Sections sensorielles",
+    hint: "La section auditive ressort en … · visuelle … · tactile … · mouvement … · position du corps … · orale …",
+    level: "subtitle",
+    kind: "text",
+  },
+  {
+    id: "s_interp_comport",
+    title: "Sections comportementales",
+    hint: "Conduite : … · Socio-émotionnelle : … · Attentionnelle : …",
+    level: "subtitle",
+    kind: "text",
   },
   {
     id: "conclusion",
@@ -525,32 +458,74 @@ export const DEFAULT_SENSORY_SECTIONS: BilanSectionConfig[] = [
   },
 ];
 
-/** Interprétation du Profil Sensoriel de Dunn 2 (affiché dans « Résultats chiffrés »). */
-export const DUNN_QUADRANTS = [
-  {
-    label: "Recherche sensorielle",
-    desc: "Seuil haut, réponse active : recherche des sensations intenses.",
-  },
-  {
-    label: "Faible enregistrement",
-    desc: "Seuil haut, réponse passive : ne remarque pas les stimuli, paraît passif.",
-  },
-  {
-    label: "Sensibilité sensorielle",
-    desc: "Seuil bas, réponse passive : remarque tout, se laisse distraire.",
-  },
-  {
-    label: "Évitement sensoriel",
-    desc: "Seuil bas, réponse active : dérangé par les stimuli, se retire ou contrôle.",
-  },
+/* ---------- Profil Sensoriel de Dunn 2 : tableaux à cocher ---------- */
+export const DUNN_BANDS = [
+  "Beaucoup moins que les autres",
+  "Moins que les autres",
+  "Comme les autres",
+  "Plus que les autres",
+  "Beaucoup plus que les autres",
 ];
 
-export const DUNN_BANDS = [
-  "Beaucoup moins que la plupart des autres",
-  "Moins que la plupart des autres",
-  "Juste comme la plupart des autres",
-  "Plus que la plupart des autres",
-  "Beaucoup plus que la plupart des autres",
+export interface DunnRow {
+  key: string;
+  label: string;
+  desc?: string;
+}
+export interface DunnTable {
+  key: string;
+  title: string;
+  rows: DunnRow[];
+}
+
+export const DUNN_TABLES: DunnTable[] = [
+  {
+    key: "quadrants",
+    title: "Quadrants (profil global)",
+    rows: [
+      {
+        key: "recherche",
+        label: "Recherche",
+        desc: "Degré auquel l'enfant recherche l'information sensorielle",
+      },
+      {
+        key: "evitement",
+        label: "Évitement",
+        desc: "Degré auquel l'enfant évite l'information sensorielle",
+      },
+      {
+        key: "sensibilite",
+        label: "Sensibilité",
+        desc: "Degré auquel l'enfant détecte l'information sensorielle",
+      },
+      {
+        key: "enregistrement",
+        label: "Enregistrement",
+        desc: "Degré auquel l'enfant manque l'information sensorielle",
+      },
+    ],
+  },
+  {
+    key: "sensorielles",
+    title: "Sections sensorielles",
+    rows: [
+      { key: "auditif", label: "Auditif" },
+      { key: "visuel", label: "Visuel" },
+      { key: "tactile", label: "Tactile" },
+      { key: "mouvement", label: "Mouvement" },
+      { key: "position", label: "Position du corps" },
+      { key: "oral", label: "Oral" },
+    ],
+  },
+  {
+    key: "comportementales",
+    title: "Sections comportementales",
+    rows: [
+      { key: "conduite", label: "Conduite" },
+      { key: "socio", label: "Socio-émotionnel" },
+      { key: "attentionnel", label: "Attentionnel" },
+    ],
+  },
 ];
 
 /** Trame effective : celle du profil pour ce type de bilan, sinon la trame par défaut. */

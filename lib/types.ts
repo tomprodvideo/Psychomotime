@@ -188,6 +188,7 @@ export interface BilanTests {
   bySection?: Record<string, string[]>; // tests sélectionnés par section
   mabc3_group?: 1 | 2 | 3 | null;
   mabc3?: Record<string, MabcScore>; // clé de ligne -> score
+  dunn?: Record<string, number>; // Dunn 2 : clé de ligne -> index de colonne (0-4)
 }
 
 export interface Bilan {

@@ -11,9 +11,10 @@ import {
   MABC_GROUPS,
   DEFAULT_CLOSING_NOTE,
   DUNN_BANDS,
-  DUNN_QUADRANTS,
+  DUNN_TABLES,
   SCORE_INTERPRETATION,
   bilanFontCss,
+  bilanHeading,
   nsColor,
   resolveBilanSections,
   testLabel,
@@ -64,6 +65,7 @@ export default async function BilanApercuPage({
     {},
   );
   const tests = b.tests ?? {};
+  const dunn = tests.dunn ?? {};
   const profile = settings.profile ?? {};
   const bySection = tests.bySection ?? {};
   const legacyUsed = tests.used ?? [];
@@ -283,7 +285,7 @@ export default async function BilanApercuPage({
               className="text-center text-2xl font-semibold tracking-wide mt-6 mb-2"
               style={{ color: "var(--accent)" }}
             >
-              COMPTE RENDU DU BILAN PSYCHOMOTEUR
+              {bilanHeading(bilanType)}
             </h1>
           </header>
 
@@ -374,41 +376,72 @@ export default async function BilanApercuPage({
             .map((s) => {
               // Section auto « Résultats chiffrés »
               if (s.kind === "scores") {
-                // Bilan sensoriel : interprétation du Profil de Dunn 2.
+                // Bilan sensoriel : les 3 tableaux à cocher du Profil de Dunn 2.
                 if (bilanType === "sensoriel") {
                   return (
                     <section key={s.id} className="mb-5 break-inside-avoid">
                       <SectionTitle variant={headingVariant(s)}>
                         {s.title}
                       </SectionTitle>
-                      <p className="text-[12px] mb-2">
-                        Le Profil Sensoriel de Dunn 2 situe l&apos;enfant par
-                        rapport à ses pairs selon quatre profils (quadrants),
-                        d&apos;après le seuil neurologique et le type de réponse
-                        comportementale.
-                      </p>
-                      <div className="grid sm:grid-cols-2 gap-3 text-[12px]">
-                        {DUNN_QUADRANTS.map((q) => (
-                          <div
-                            key={q.label}
-                            className="bg-slate-50 border border-slate-200 rounded-lg p-3"
-                          >
-                            <p
-                              className="font-semibold mb-1"
-                              style={{ color: "var(--accent)" }}
-                            >
-                              {q.label}
-                            </p>
-                            <p className="text-slate-600">{q.desc}</p>
-                          </div>
-                        ))}
-                      </div>
-                      <p className="text-[12px] mt-3">
-                        <span className="font-semibold">
-                          Interprétation des scores :{" "}
-                        </span>
-                        {DUNN_BANDS.join(" · ")}.
-                      </p>
+                      {DUNN_TABLES.map((tbl) => (
+                        <div key={tbl.key} className="my-3 break-inside-avoid">
+                          <p className="text-center font-semibold text-[12px] uppercase tracking-wide mb-1">
+                            {tbl.title}
+                          </p>
+                          <table className="w-full text-[11px] border border-slate-300 border-collapse">
+                            <thead>
+                              <tr className="bg-slate-100">
+                                <th className="border border-slate-300 px-2 py-1 text-left font-semibold">
+                                  Par rapport à la moyenne
+                                </th>
+                                {DUNN_BANDS.map((band) => (
+                                  <th
+                                    key={band}
+                                    className="border border-slate-300 px-1 py-1 text-center font-medium italic w-[15%]"
+                                  >
+                                    {band}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {tbl.rows.map((r) => {
+                                const sel = dunn[r.key];
+                                return (
+                                  <tr key={r.key}>
+                                    <td className="border border-slate-300 px-2 py-1 align-top">
+                                      <span className="font-semibold">
+                                        {r.label}
+                                      </span>
+                                      {r.desc && (
+                                        <span className="block text-slate-500 text-[10px] leading-tight">
+                                          {r.desc}
+                                        </span>
+                                      )}
+                                    </td>
+                                    {DUNN_BANDS.map((_, i) => (
+                                      <td
+                                        key={i}
+                                        className="border border-slate-300 px-1 py-1 text-center align-middle font-bold"
+                                        style={
+                                          sel === i
+                                            ? {
+                                                backgroundColor: "var(--accent)",
+                                                color: "#fff",
+                                              }
+                                            : undefined
+                                        }
+                                      >
+                                        {sel === i ? "✓" : ""}
+                                      </td>
+                                    ))}
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      ))}
                     </section>
                   );
                 }
