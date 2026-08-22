@@ -484,6 +484,10 @@ export default async function BilanApercuPage({
             </section>
           )}
 
+          {/* Nom du praticien, tout en bas du bilan */}
+          <footer className="mt-10 text-right text-[12px]">
+            <p className="font-semibold text-slate-900">{author}</p>
+          </footer>
         </article>
       </div>
     </div>
