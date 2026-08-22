@@ -91,69 +91,6 @@ export async function saveBilan(formData: FormData) {
   revalidatePath("/bilans");
 }
 
-export async function saveBilanPreset(
-  name: string,
-  content: Record<string, string>,
-  tests?: unknown,
-) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
-
-  const { data: s } = await supabase
-    .from("settings")
-    .select("profile")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  const profile = (s?.profile as Record<string, unknown>) ?? {};
-  const presets = Array.isArray(profile.bilan_presets)
-    ? (profile.bilan_presets as unknown[])
-    : [];
-  const id = globalThis.crypto?.randomUUID
-    ? globalThis.crypto.randomUUID()
-    : `p${Date.now()}`;
-  const next = [...presets, { id, name, content, tests }];
-
-  await supabase.from("settings").upsert({
-    user_id: user.id,
-    profile: { ...profile, bilan_presets: next },
-    updated_at: new Date().toISOString(),
-  });
-  revalidatePath("/bilans");
-  return next;
-}
-
-export async function deleteBilanPreset(id: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
-
-  const { data: s } = await supabase
-    .from("settings")
-    .select("profile")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  const profile = (s?.profile as Record<string, unknown>) ?? {};
-  const presets = Array.isArray(profile.bilan_presets)
-    ? (profile.bilan_presets as { id: string }[])
-    : [];
-  const next = presets.filter((p) => p.id !== id);
-
-  await supabase.from("settings").upsert({
-    user_id: user.id,
-    profile: { ...profile, bilan_presets: next },
-    updated_at: new Date().toISOString(),
-  });
-  revalidatePath("/bilans");
-  return next;
-}
-
 export async function saveAdaptationLibrary(
   templates: {
     id: string;
