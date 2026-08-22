@@ -437,7 +437,7 @@ export default function ParametresForm({
             { id: "apparence", label: "Apparence" },
             { id: "trame", label: "Trame" },
             { id: "conclusion", label: "Conclusion & signature" },
-            { id: "modeles", label: "Bibliothèque" },
+            { id: "modeles", label: "Modèles" },
             ...(bilanSubTab === "psychomoteur"
               ? [{ id: "courbe", label: "Courbe de Gauss" }]
               : []),
@@ -732,7 +732,7 @@ export default function ParametresForm({
       </div>
 
       <div className={bilanSection === "modeles" ? "space-y-6" : "hidden"}>
-      <Section title="Bibliothèque de modèles">
+      <Section title="Modèles">
         <div className={bilanSubTab === "psychomoteur" ? "" : "hidden"}>
           <AdaptationTemplatesManager
             type="psychomoteur"
