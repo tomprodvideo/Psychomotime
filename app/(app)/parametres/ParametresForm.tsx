@@ -8,6 +8,7 @@ import {
   FileText,
   FolderOpen,
   User,
+  UserCog,
 } from "lucide-react";
 import type { Settings } from "@/lib/types";
 import {
@@ -106,7 +107,13 @@ const THEME_PRESETS = [
   { name: "Ardoise", value: "#475569" },
 ];
 
-export default function ParametresForm({ settings }: { settings: Settings }) {
+export default function ParametresForm({
+  settings,
+  accountSlot,
+}: {
+  settings: Settings;
+  accountSlot?: React.ReactNode;
+}) {
   const [mode, setMode] = useState(settings.charge_mode);
   const [pending, start] = useTransition();
   const [saved, setSaved] = useState(false);
@@ -128,7 +135,7 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
   );
   const [signatureError, setSignatureError] = useState("");
   const [tab, setTab] = useState<
-    "general" | "bilan" | "modeles" | "compta"
+    "general" | "bilan" | "modeles" | "compta" | "compte"
   >("general");
 
   function handleLogo(e: React.ChangeEvent<HTMLInputElement>) {
@@ -210,6 +217,12 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
       icon: Calculator,
       intro: "Charges du cabinet et cotisations.",
     },
+    {
+      id: "compte" as const,
+      label: "Mon compte",
+      icon: UserCog,
+      intro: "Abonnement et suppression de votre compte.",
+    },
   ];
   const activeTab = tabs.find((t) => t.id === tab)!;
 
@@ -241,9 +254,11 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
 
       {/* Onglet Général */}
       <div className={tab === "general" ? "space-y-6" : "hidden"}>
-      <Section title="Profil">
+      <CategoryHeader>Identité</CategoryHeader>
+
+      <Section title="Nom affiché">
         <div>
-          <Label>Votre nom (apparaît sur les bilans)</Label>
+          <Label>Votre nom (apparaît sur les bilans et factures)</Label>
           <input
             name="display_name"
             defaultValue={settings.display_name ?? ""}
@@ -253,7 +268,9 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
         </div>
       </Section>
 
-      <Section title="Profil professionnel (apparaît sur les factures)">
+      <CategoryHeader>Cabinet &amp; facturation</CategoryHeader>
+
+      <Section title="Coordonnées professionnelles">
         <input type="hidden" name="logo_url" value={logo} />
         <div className="flex items-center gap-4 mb-4">
           <div className="h-20 w-20 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0">
@@ -380,12 +397,7 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
 
       {/* Onglet Bilan */}
       <div className={tab === "bilan" ? "space-y-6" : "hidden"}>
-      <CollapsibleSection
-        title="Trame du bilan (titres & ordre)"
-        subtitle="Réordonner, renommer, ajouter ou retirer des grands titres — cliquez pour déplier"
-      >
-        <BilanSectionsEditor initial={settings.profile?.bilan_sections} />
-      </CollapsibleSection>
+      <CategoryHeader>Apparence</CategoryHeader>
 
       <Section title="Thème des bilans">
         <input type="hidden" name="theme_color" value={themeColor} />
@@ -500,6 +512,15 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
           </p>
         </div>
       </Section>
+
+      <CategoryHeader>Structure &amp; contenu</CategoryHeader>
+
+      <CollapsibleSection
+        title="Trame du bilan (titres & ordre)"
+        subtitle="Réordonner, renommer, ajouter ou retirer des grands titres — cliquez pour déplier"
+      >
+        <BilanSectionsEditor initial={settings.profile?.bilan_sections} />
+      </CollapsibleSection>
 
       <Section title="Conclusion & signature">
         <label className="flex items-start gap-2 text-sm text-slate-700">
@@ -705,20 +726,37 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
       </Section>
       </div>
 
-      <div className="flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={pending}
-          className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg disabled:opacity-60"
-        >
-          {saved ? <Check className="h-4 w-4" /> : null}
-          {pending ? "Enregistrement…" : "Enregistrer les paramètres"}
-        </button>
-        {saved && (
-          <span className="text-sm text-brand-700">Paramètres enregistrés ✓</span>
-        )}
+      {/* Onglet Mon compte */}
+      <div className={tab === "compte" ? "space-y-6" : "hidden"}>
+        {accountSlot}
       </div>
+
+      {tab !== "compte" && (
+        <div className="flex items-center gap-3">
+          <button
+            type="submit"
+            disabled={pending}
+            className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg disabled:opacity-60"
+          >
+            {saved ? <Check className="h-4 w-4" /> : null}
+            {pending ? "Enregistrement…" : "Enregistrer les paramètres"}
+          </button>
+          {saved && (
+            <span className="text-sm text-brand-700">
+              Paramètres enregistrés ✓
+            </span>
+          )}
+        </div>
+      )}
     </form>
+  );
+}
+
+function CategoryHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 px-1 pt-3 first:pt-0">
+      {children}
+    </h3>
   );
 }
 

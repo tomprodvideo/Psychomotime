@@ -14,17 +14,19 @@ export default async function ParametresPage() {
         title="Paramètres"
         subtitle="Profil, apparence des bilans, modèles et comptabilité"
       />
-      <div className="mb-6">
-        <SubscriptionCard
-          status={access.status}
-          trialDaysLeft={access.trialDaysLeft}
-          isAdmin={access.isAdmin}
-        />
-      </div>
-      <ParametresForm settings={settings} />
-      <div className="mt-6">
-        <DeleteAccountCard />
-      </div>
+      <ParametresForm
+        settings={settings}
+        accountSlot={
+          <>
+            <SubscriptionCard
+              status={access.status}
+              trialDaysLeft={access.trialDaysLeft}
+              isAdmin={access.isAdmin}
+            />
+            <DeleteAccountCard />
+          </>
+        }
+      />
     </div>
   );
 }

@@ -32,9 +32,8 @@ export default function AdaptationTemplatesManager({
   const [templates, setTemplates] = useState<AdaptationTemplate[]>(
     initialTemplates.map((t) => ({ ...t })),
   );
-  const [open, setOpen] = useState<Set<string>>(
-    () => new Set([GENERAL, ...initialFolders.map((f) => f.id)]),
-  );
+  // Dossiers fermés par défaut (l'utilisateur les déplie au besoin).
+  const [open, setOpen] = useState<Set<string>>(() => new Set());
   const [pending, start] = useTransition();
   const [saved, setSaved] = useState(false);
 
