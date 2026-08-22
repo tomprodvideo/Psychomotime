@@ -526,7 +526,7 @@ export default function ParametresForm({ settings }: { settings: Settings }) {
       </Section>
 
       <CollapsibleSection
-        title="Modèles d'adaptations"
+        title="Modèles"
         subtitle="Textes réutilisables insérables dans les bilans — cliquez pour déplier"
       >
         <AdaptationTemplatesManager

@@ -6,7 +6,9 @@ import {
   ArrowLeft,
   Check,
   ChevronDown,
+  ChevronRight,
   Eye,
+  Folder,
   ImagePlus,
   Loader2,
   Mic,
@@ -849,40 +851,32 @@ function TemplatesMenu({
   onInsert: (text: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [folderId, setFolderId] = useState<string | null>(null);
+
   const folderIds = new Set(folders.map((f) => f.id));
   const general = templates.filter((t) => !t.folder || !folderIds.has(t.folder));
   const groups = [
     ...folders.map((f) => ({
+      id: f.id,
       name: f.name,
       items: templates.filter((t) => t.folder === f.id),
     })),
-    { name: "Général", items: general },
-  ].filter((g) => g.items.length > 0);
+    ...(general.length
+      ? [{ id: "__general__", name: "Général", items: general }]
+      : []),
+  ];
+  const current = folderId ? groups.find((g) => g.id === folderId) ?? null : null;
 
-  const item = (t: AdaptationTemplate) => (
-    <button
-      key={t.id}
-      type="button"
-      onClick={() => {
-        onInsert(t.text);
-        setOpen(false);
-      }}
-      className="block w-full text-left px-3 py-2 hover:bg-brand-50"
-    >
-      <p className="text-sm font-medium text-slate-700">
-        {t.title || "Sans titre"}
-      </p>
-      <p className="text-xs text-slate-500 whitespace-pre-wrap mt-0.5 leading-relaxed line-clamp-2">
-        {t.text}
-      </p>
-    </button>
-  );
+  const openModal = () => {
+    setFolderId(null);
+    setOpen(true);
+  };
 
   return (
-    <div className="relative">
+    <>
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={openModal}
         title="Insérer un modèle"
         className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-full transition"
       >
@@ -890,32 +884,88 @@ function TemplatesMenu({
         <ChevronDown className="h-3.5 w-3.5" />
       </button>
       {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-20 mt-1 w-80 sm:w-96 bg-white border border-slate-200 rounded-lg shadow-lg">
-            <div className="max-h-80 overflow-y-auto">
-              {groups.length === 0 ? (
-                <p className="text-xs text-slate-400 px-3 py-2">
-                  Aucun modèle. Créez-en dans Paramètres › Bilan.
+        <div
+          className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-slate-900/40 p-4 overflow-y-auto"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md my-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 px-5 py-3 border-b border-slate-100">
+              {current && (
+                <button
+                  type="button"
+                  onClick={() => setFolderId(null)}
+                  className="p-1 -ml-1 text-slate-400 hover:text-brand-600"
+                  title="Retour aux dossiers"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </button>
+              )}
+              <h2 className="font-semibold text-slate-800 flex-1 truncate">
+                {current ? current.name : "Modèles"}
+              </h2>
+              <button type="button" onClick={() => setOpen(false)}>
+                <X className="h-5 w-5 text-slate-400" />
+              </button>
+            </div>
+
+            <div className="max-h-[60vh] overflow-y-auto divide-y divide-slate-100">
+              {current ? (
+                current.items.length === 0 ? (
+                  <p className="text-sm text-slate-400 px-5 py-4">
+                    Aucun modèle dans ce dossier.
+                  </p>
+                ) : (
+                  current.items.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => {
+                        onInsert(t.text);
+                        setOpen(false);
+                      }}
+                      className="block w-full text-left px-5 py-3 hover:bg-brand-50"
+                    >
+                      <p className="text-sm font-medium text-slate-700">
+                        {t.title || "Sans titre"}
+                      </p>
+                      <p className="text-xs text-slate-500 whitespace-pre-wrap mt-0.5 leading-relaxed line-clamp-2">
+                        {t.text}
+                      </p>
+                    </button>
+                  ))
+                )
+              ) : groups.length === 0 ? (
+                <p className="text-sm text-slate-400 px-5 py-4">
+                  Aucun modèle. Créez des dossiers et des modèles dans
+                  Paramètres › Bilan › Modèles.
                 </p>
               ) : (
                 groups.map((g) => (
-                  <div key={g.name} className="border-b border-slate-100 last:border-0">
-                    <p className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => setFolderId(g.id)}
+                    className="flex items-center gap-2 w-full text-left px-5 py-3 hover:bg-brand-50"
+                  >
+                    <Folder className="h-4 w-4 text-brand-500 shrink-0" />
+                    <span className="flex-1 text-sm font-medium text-slate-700 truncate">
                       {g.name}
-                    </p>
-                    {g.items.map(item)}
-                  </div>
+                    </span>
+                    <span className="text-xs text-slate-400">
+                      {g.items.length}
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-slate-300" />
+                  </button>
                 ))
               )}
             </div>
-            <p className="px-3 py-2 text-[11px] text-slate-400 border-t border-slate-100">
-              Gérez vos dossiers et modèles dans Paramètres › Bilan.
-            </p>
           </div>
-        </>
+        </div>
       )}
-    </div>
+    </>
   );
 }
 
