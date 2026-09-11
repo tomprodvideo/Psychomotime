@@ -3,23 +3,38 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import {
+  ecritureReussie,
+  requireActiveAccess,
+  requireUser,
+  type Guarded,
+} from "@/lib/auth/guard";
 
 function str(v: FormDataEntryValue | null): string | null {
   const s = String(v ?? "").trim();
   return s === "" ? null : s;
 }
 
-// Colonne inexistante (migration non appliquée) : PGRST204 (écriture) ou 42703.
-const missingCol = (e: { code?: string } | null) =>
-  e?.code === "PGRST204" || e?.code === "42703";
+/**
+ * NOTE SUR LES REPLIS SUPPRIMÉS.
+ *
+ * Ce fichier réessayait l'écriture sans la colonne `tests` lorsque PostgREST
+ * répondait PGRST204 ou 42703 — c'est-à-dire lorsqu'une migration n'était pas
+ * appliquée. L'enregistrement « réussissait » alors EN PERDANT les résultats
+ * d'épreuves, et l'éditeur affichait « Enregistré ✓ ».
+ *
+ * Vérification du 2026-09-11 sur la base de production : `bilans.tests` existe.
+ * Le repli ne protégeait donc plus rien, il ne faisait que masquer de vraies
+ * erreurs. Une colonne manquante est un défaut de déploiement : elle doit
+ * échouer franchement, pas se traduire par une perte de données silencieuse.
+ */
 
 export async function createBilan(formData: FormData) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const acces = await requireActiveAccess();
+  if (!acces.ok) redirect("/login");
+  const { user } = acces.value;
 
+  const supabase = await createClient();
   const type =
     String(formData.get("bilan_type") ?? "") === "sensoriel"
       ? "sensoriel"
@@ -51,45 +66,49 @@ export async function createBilan(formData: FormData) {
     .maybeSingle();
   if (recent?.id) redirect(`/bilans/${recent.id}`);
 
-  let { data, error } = await supabase
+  const { data, error } = await supabase
     .from("bilans")
     .insert(payload)
     .select("id")
     .single();
 
-  // Repli si la colonne "tests" n'existe pas encore (migration_003 non lancée).
-  if (missingCol(error)) {
-    const { tests: _t, ...rest } = payload;
-    void _t;
-    ({ data, error } = await supabase
-      .from("bilans")
-      .insert(rest)
-      .select("id")
-      .single());
+  if (error || !data?.id) {
+    console.error("[bilans] création refusée :", error);
+    redirect("/bilans?erreur=creation");
   }
 
   revalidatePath("/bilans");
-  if (data?.id) redirect(`/bilans/${data.id}`);
-  redirect("/bilans");
+  redirect(`/bilans/${data.id}`);
 }
 
-export async function saveBilan(formData: FormData) {
-  const supabase = await createClient();
-  const id = str(formData.get("id"));
-  if (!id) return;
+/**
+ * Enregistre un bilan.
+ *
+ * Rend un résultat explicite plutôt que rien : c'est ce qui permet à l'éditeur
+ * de distinguer « enregistré » de « pas enregistré ». Une passation saisie en
+ * séance et perdue, c'est une séance à refaire et un enfant reparti.
+ */
+export async function saveBilan(formData: FormData): Promise<Guarded<true>> {
+  const acces = await requireActiveAccess();
+  if (!acces.ok) return acces;
 
-  let content: Record<string, string> = {};
+  const id = str(formData.get("id"));
+  if (!id) return { ok: false, error: "Bilan introuvable." };
+
+  // Un contenu illisible n'est pas un contenu vide : l'écraser par `{}`
+  // effacerait le bilan. On refuse plutôt que d'enregistrer une perte.
+  let content: Record<string, string>;
+  let tests: Record<string, unknown>;
   try {
     content = JSON.parse(String(formData.get("content") ?? "{}"));
-  } catch {
-    content = {};
-  }
-
-  let tests: Record<string, unknown> = {};
-  try {
     tests = JSON.parse(String(formData.get("tests") ?? "{}"));
-  } catch {
-    tests = {};
+  } catch (e) {
+    console.error("[bilans] contenu illisible :", e);
+    return {
+      ok: false,
+      error:
+        "Le contenu du bilan n'a pas pu être lu et n'a donc PAS été enregistré. Ne fermez pas cet onglet : copiez votre texte ailleurs avant toute autre action.",
+    };
   }
 
   const payload = {
@@ -104,17 +123,21 @@ export async function saveBilan(formData: FormData) {
     updated_at: new Date().toISOString(),
   };
 
-  const { error } = await supabase.from("bilans").update(payload).eq("id", id);
+  // `.select("id")` est indispensable : sans lui, un refus de la RLS ne lève
+  // aucune erreur et se manifeste seulement par zéro ligne affectée.
+  const supabase = await createClient();
+  const result = await supabase
+    .from("bilans")
+    .update(payload)
+    .eq("id", id)
+    .select("id");
 
-  // Repli si la colonne "tests" n'existe pas encore (migration_003 non lancée).
-  if (missingCol(error)) {
-    const { tests: _t, ...rest } = payload;
-    void _t;
-    await supabase.from("bilans").update(rest).eq("id", id);
-  }
+  const verdict = ecritureReussie(result, "Le bilan");
+  if (!verdict.ok) return verdict;
 
   revalidatePath(`/bilans/${id}`);
   revalidatePath("/bilans");
+  return { ok: true, value: true };
 }
 
 export async function saveAdaptationLibrary(
@@ -126,18 +149,25 @@ export async function saveAdaptationLibrary(
   }[],
   folders: { id: string; name: string }[],
   type: "psychomoteur" | "sensoriel" = "psychomoteur",
-) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return;
+): Promise<Guarded<true>> {
+  const acces = await requireActiveAccess();
+  if (!acces.ok) return acces;
+  const { user } = acces.value;
 
-  const { data: s } = await supabase
+  const supabase = await createClient();
+  const { data: s, error: lecture } = await supabase
     .from("settings")
     .select("profile")
     .eq("user_id", user.id)
     .maybeSingle();
+
+  if (lecture) {
+    console.error("[modèles] lecture des paramètres refusée :", lecture);
+    return {
+      ok: false,
+      error: "Vos paramètres n'ont pas pu être lus. Réessayez.",
+    };
+  }
 
   const tKey =
     type === "sensoriel"
@@ -153,30 +183,60 @@ export async function saveAdaptationLibrary(
     [fKey]: folders,
   };
 
-  await supabase.from("settings").upsert({
-    user_id: user.id,
-    profile,
-    updated_at: new Date().toISOString(),
-  });
+  const result = await supabase
+    .from("settings")
+    .upsert({
+      user_id: user.id,
+      profile,
+      updated_at: new Date().toISOString(),
+    })
+    .select("user_id");
+
+  const verdict = ecritureReussie(result, "La bibliothèque de modèles");
+  if (!verdict.ok) return verdict;
 
   revalidatePath("/bilans");
   revalidatePath("/parametres");
+  return { ok: true, value: true };
 }
 
 export async function deleteBilan(formData: FormData) {
-  const supabase = await createClient();
+  const session = await requireUser();
+  if (!session.ok) redirect("/login");
+
   const id = str(formData.get("id"));
-  if (id) await supabase.from("bilans").delete().eq("id", id);
+  if (!id) redirect("/bilans");
+
+  const supabase = await createClient();
+  const result = await supabase
+    .from("bilans")
+    .delete()
+    .eq("id", id)
+    .select("id");
+
+  const verdict = ecritureReussie(result, "Le bilan");
   revalidatePath("/bilans");
-  redirect("/bilans");
+  redirect(verdict.ok ? "/bilans" : "/bilans?erreur=suppression");
 }
 
 /** Suppression définitive d'un bilan depuis la liste (pas de redirection). */
-export async function deleteBilanById(id: string) {
-  if (!id) return;
+export async function deleteBilanById(id: string): Promise<Guarded<true>> {
+  const session = await requireUser();
+  if (!session.ok) return session;
+  if (!id) return { ok: false, error: "Bilan introuvable." };
+
   const supabase = await createClient();
-  // La ligne "bilans" porte tout le contenu (content + tests en jsonb) :
+  // La ligne « bilans » porte tout le contenu (content + tests en jsonb) :
   // la supprimer efface définitivement l'intégralité du bilan.
-  await supabase.from("bilans").delete().eq("id", id);
+  const result = await supabase
+    .from("bilans")
+    .delete()
+    .eq("id", id)
+    .select("id");
+
+  const verdict = ecritureReussie(result, "Le bilan");
+  if (!verdict.ok) return verdict;
+
   revalidatePath("/bilans");
+  return { ok: true, value: true };
 }

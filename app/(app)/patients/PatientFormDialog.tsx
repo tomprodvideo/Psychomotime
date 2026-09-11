@@ -13,6 +13,7 @@ export default function PatientFormDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
+  const [erreur, setErreur] = useState<string | null>(null);
   const dossier = (patient?.dossier ?? {}) as Record<
     string,
     string | null | undefined
@@ -21,8 +22,15 @@ export default function PatientFormDialog({
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    setErreur(null);
     start(async () => {
-      await savePatient(fd);
+      const res = await savePatient(fd);
+      // Ne fermer la boîte QUE si l'enregistrement a abouti : la refermer sur
+      // un échec ferait disparaître la saisie sans rien dire.
+      if (res.error) {
+        setErreur(res.error);
+        return;
+      }
       setOpen(false);
     });
   }
@@ -222,6 +230,14 @@ export default function PatientFormDialog({
                   </Fragment>
                 ))}
               </div>
+              {erreur && (
+                <p
+                  role="alert"
+                  className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200"
+                >
+                  {erreur}
+                </p>
+              )}
               <div className="flex justify-end gap-2 pt-1">
                 <button
                   type="button"

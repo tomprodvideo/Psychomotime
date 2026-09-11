@@ -86,7 +86,7 @@ Tout document de cette refonte utilise ces marqueurs, sans exception :
 
 | Lot | Intitulé | État |
 |---|---|---|
-| L0 | Socle : migrations reproductibles, tenancy cabinet, RLS refus par défaut, harnais de tests | **partiellement livré** — base, isolation, tests, arithmétique monétaire faits ; authentification et garde serveur à faire |
+| L0 | Socle : migrations reproductibles, tenancy cabinet, RLS refus par défaut, harnais de tests | **livré** |
 | L1 | Dossier patient, entourage, rôles, parcours de soin | à faire |
 | L2 | Agenda, séances, présences, objectifs | à faire |
 | L3 | Moteur de bilans configurable + registre d'instruments | à faire |
@@ -116,11 +116,13 @@ Commandes : `npm run verify` (lint + typecheck + 42 tests unitaires + 3 fichiers
 
 ## 8. Prochaine action exacte
 
-1. **Décision utilisateur sur R-01 et R-02** — elles conditionnent la suite.
-2. Terminer L0 : récupération et changement de mot de passe et d'e-mail `[A-01]`,
-   garde serveur unique appliquée à chaque cas d'usage `[A-11]`, aucune écriture
-   ne pouvant rendre une erreur comme un succès `[A-07]`.
-3. Monter `next` en `16.3.5` et vérifier le build `[R-03]`.
+Lot 0 **terminé**. R-01 et R-02 sont tranchés (voir § 9).
+
+Lot 1 — dossier patient : `patients`, `contacts`, `patient_contacts` avec rôles
+multiples et datés, responsables légaux multiples, prescripteur, adresseur,
+payeur et destinataires distincts `[C-03]` ; `care_pathways` `[C-04]` ;
+rattachement relationnel des documents `[A-10]` ; archivage et effacement
+raisonné `[A-29]` ; recherche, filtres, détection de doublons.
 
 ## 9. Risques ouverts
 

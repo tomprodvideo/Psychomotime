@@ -9,6 +9,12 @@ import { emailConfig, sendMail } from "@/lib/email";
 import { newShareToken, shareExpiry } from "@/lib/invoiceShare";
 import { siteOrigin } from "@/lib/siteOrigin";
 import {
+  ecritureReussie,
+  requireActiveAccess,
+  requireUser,
+  type Guarded,
+} from "@/lib/auth/guard";
+import {
   invoiceLinesTotal,
   normalizeInvoiceLines,
   validateInvoiceLines,
@@ -73,6 +79,9 @@ export async function nextInvoiceNumber(
   year: number,
   month: number,
 ): Promise<string> {
+  const session = await requireUser();
+  if (!session.ok) return "";
+
   const supabase = await createClient();
   const n = await numbering(supabase, year, month);
 
@@ -352,6 +361,14 @@ async function shareLink(
  * d'e-mail.
  */
 export async function sendInvoiceEmail(id: string): Promise<SendInvoiceResult> {
+  // Cette action émet un jeton d'accès et expédie un message : sans garde, elle
+  // consommait le quota du prestataire et créait des liens publics pour tout
+  // appelant connaissant son identifiant.
+  const acces = await requireActiveAccess();
+  if (!acces.ok) {
+    return { ok: false, reason: "error", message: acces.error };
+  }
+
   const config = emailConfig();
   if (!config) {
     return {
@@ -421,15 +438,42 @@ export async function sendInvoiceEmail(id: string): Promise<SendInvoiceResult> {
   return { ok: true, email: to };
 }
 
-export async function deleteInvoice(formData: FormData) {
-  const supabase = await createClient();
+/**
+ * Supprime une facture.
+ *
+ * [VALIDATION HUMAINE — expert-comptable] Supprimer physiquement une facture
+ * ÉMISE creuse un trou définitif et inexpliqué dans la série, puisque le
+ * compteur, lui, ne recule pas. La voie régulière est l'avoir ou la facture
+ * rectificative. Ce comportement est conservé tel quel pour ne pas retirer une
+ * fonction en service, et il est traité au lot 5 (voir `docs/refonte/02-LOTS.md`).
+ * Ce qui change ici : l'échec ne peut plus passer pour un succès.
+ */
+export async function deleteInvoice(formData: FormData): Promise<Guarded<true>> {
+  const session = await requireUser();
+  if (!session.ok) return session;
+
   const id = str(formData.get("id"));
-  if (id) await supabase.from("invoices").delete().eq("id", id);
+  if (!id) return { ok: false, error: "Facture introuvable." };
+
+  const supabase = await createClient();
+  const result = await supabase
+    .from("invoices")
+    .delete()
+    .eq("id", id)
+    .select("id");
+
+  const verdict = ecritureReussie(result, "La facture");
+  if (!verdict.ok) return verdict;
+
   revalidatePath("/comptabilite");
   revalidatePath("/");
+  return { ok: true, value: true };
 }
 
-export async function saveExpense(formData: FormData) {
+export async function saveExpense(formData: FormData): Promise<Guarded<true>> {
+  const acces = await requireActiveAccess();
+  if (!acces.ok) return acces;
+
   const supabase = await createClient();
   const id = str(formData.get("id"));
   const payload = {
@@ -443,17 +487,34 @@ export async function saveExpense(formData: FormData) {
       : null,
     notes: str(formData.get("notes")),
   };
-  if (id) {
-    await supabase.from("expenses").update(payload).eq("id", id);
-  } else {
-    await supabase.from("expenses").insert(payload);
-  }
+  const result = id
+    ? await supabase.from("expenses").update(payload).eq("id", id).select("id")
+    : await supabase.from("expenses").insert(payload).select("id");
+
+  const verdict = ecritureReussie(result, "La dépense");
+  if (!verdict.ok) return verdict;
+
   revalidatePath("/comptabilite");
+  return { ok: true, value: true };
 }
 
-export async function deleteExpense(formData: FormData) {
-  const supabase = await createClient();
+export async function deleteExpense(formData: FormData): Promise<Guarded<true>> {
+  const session = await requireUser();
+  if (!session.ok) return session;
+
   const id = str(formData.get("id"));
-  if (id) await supabase.from("expenses").delete().eq("id", id);
+  if (!id) return { ok: false, error: "Dépense introuvable." };
+
+  const supabase = await createClient();
+  const result = await supabase
+    .from("expenses")
+    .delete()
+    .eq("id", id)
+    .select("id");
+
+  const verdict = ecritureReussie(result, "La dépense");
+  if (!verdict.ok) return verdict;
+
   revalidatePath("/comptabilite");
+  return { ok: true, value: true };
 }

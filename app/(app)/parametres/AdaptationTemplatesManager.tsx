@@ -38,6 +38,7 @@ export default function AdaptationTemplatesManager({
   const [open, setOpen] = useState<Set<string>>(() => new Set());
   const [pending, start] = useTransition();
   const [saved, setSaved] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
 
   const toggle = (id: string) =>
     setOpen((s) => {
@@ -95,7 +96,12 @@ export default function AdaptationTemplatesManager({
       }))
       .filter((t) => t.title || t.text);
     start(async () => {
-      await saveAdaptationLibrary(cleanTemplates, cleanFolders, type);
+      const res = await saveAdaptationLibrary(cleanTemplates, cleanFolders, type);
+      if (!res.ok) {
+        setErreur(res.error);
+        return;
+      }
+      setErreur(null);
       setFolders(cleanFolders);
       setTemplates(cleanTemplates);
       setSaved(true);
@@ -241,8 +247,13 @@ export default function AdaptationTemplatesManager({
           {saved ? <Check className="h-4 w-4" /> : null}
           {pending ? "Enregistrement…" : "Enregistrer"}
         </button>
-        {saved && (
+        {saved && !erreur && (
           <span className="text-sm text-brand-700">Modèles enregistrés ✓</span>
+        )}
+        {erreur && (
+          <span role="alert" className="text-sm text-red-700">
+            {erreur}
+          </span>
         )}
       </div>
     </div>

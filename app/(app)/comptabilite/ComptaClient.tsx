@@ -467,7 +467,7 @@ export default function ComptaClient({
                               <FileText className="h-4 w-4" />
                             </Link>
                             <SendButton invoice={inv} />
-                            <DeleteButton id={inv.id} />
+                            <DeleteButton id={inv.id} numero={inv.invoice_number} />
                           </div>
                         </Td>
                       </tr>
@@ -603,22 +603,43 @@ function FilterChip({
   );
 }
 
-function DeleteButton({ id }: { id: string }) {
+function DeleteButton({ id, numero }: { id: string; numero?: string | null }) {
   const [pending, start] = useTransition();
+  const [erreur, setErreur] = useState<string | null>(null);
   return (
-    <button
-      onClick={() => {
-        if (!confirm("Supprimer cette facture ?")) return;
-        const fd = new FormData();
-        fd.set("id", id);
-        start(() => deleteInvoice(fd));
-      }}
-      disabled={pending}
-      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded disabled:opacity-50"
-      aria-label="Supprimer"
-    >
-      <Trash2 className="h-4 w-4" />
-    </button>
+    <>
+      <button
+        onClick={() => {
+          // Le message dit ce qui est réellement perdu, et ce qui ne l'est pas.
+          // Le numéro reste consommé : le compteur ne recule jamais.
+          const ok = confirm(
+            numero
+              ? `Supprimer définitivement la facture ${numero} ?\n\n` +
+                  "Le numéro restera consommé : la série gardera un trou à cet " +
+                  "endroit. Cette action est irréversible."
+              : "Supprimer définitivement cette facture ?\n\nCette action est irréversible.",
+          );
+          if (!ok) return;
+          setErreur(null);
+          const fd = new FormData();
+          fd.set("id", id);
+          start(async () => {
+            const res = await deleteInvoice(fd);
+            if (!res.ok) setErreur(res.error);
+          });
+        }}
+        disabled={pending}
+        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded disabled:opacity-50"
+        aria-label="Supprimer"
+      >
+        <Trash2 className="h-4 w-4" />
+      </button>
+      {erreur && (
+        <span role="alert" className="text-xs text-red-700">
+          {erreur}
+        </span>
+      )}
+    </>
   );
 }
 

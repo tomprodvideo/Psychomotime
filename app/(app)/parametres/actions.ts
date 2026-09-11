@@ -3,7 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { requireUser } from "@/lib/auth/guard";
+import {
+  ecritureReussie,
+  requireUser,
+  type Guarded,
+} from "@/lib/auth/guard";
 import { checkPassword } from "@/lib/auth/password";
 import { siteOrigin } from "@/lib/siteOrigin";
 
@@ -17,12 +21,27 @@ function num(v: FormDataEntryValue | null): number {
   return isNaN(n) ? 0 : n;
 }
 
-export async function updateSettings(formData: FormData) {
+/**
+ * Enregistre les paramètres du cabinet.
+ *
+ * UN DÉFAUT CORRIGÉ ICI. Le taux de rétrocession est désactivé en mode loyer,
+ * et le loyer est désactivé en mode rétrocession. Or un champ HTML `disabled`
+ * N'EST PAS SOUMIS : `formData.get()` rendait `null`, la conversion rendait 0,
+ * et basculer de mode écrasait définitivement l'autre valeur — celle-là même
+ * qui pilote tout le calcul comptable, sans le moindre avertissement.
+ *
+ * La règle est désormais explicite et tient quelle que soit l'interface :
+ *   · champ ABSENT du formulaire  → on conserve la valeur enregistrée ;
+ *   · champ PRÉSENT mais vide     → l'utilisateur l'a effacé, on écrit 0.
+ */
+export async function updateSettings(
+  formData: FormData,
+): Promise<Guarded<true>> {
+  const session = await requireUser();
+  if (!session.ok) return session;
+  const user = session.value;
+
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return;
 
   const charge_mode =
     String(formData.get("charge_mode")) === "loyer" ? "loyer" : "retrocession";
@@ -42,15 +61,32 @@ export async function updateSettings(formData: FormData) {
     }
   };
 
-  // Récupère le profil existant pour préserver les champs non gérés par ce
-  // formulaire (ex. adaptation_templates, enregistrés à part).
-  const { data: existing } = await supabase
+  // Récupère la ligne existante pour préserver ce que ce formulaire ne porte
+  // pas : les champs de profil enregistrés ailleurs, et les valeurs dont le
+  // champ est désactivé à l'écran.
+  const { data: existing, error: lecture } = await supabase
     .from("settings")
-    .select("profile")
+    .select("profile, retrocession_rate, monthly_rent, urssaf_rate")
     .eq("user_id", user.id)
     .maybeSingle();
 
+  if (lecture) {
+    console.error("[paramètres] lecture refusée :", lecture);
+    return {
+      ok: false,
+      error:
+        "Vos paramètres n'ont pas pu être lus, et n'ont donc PAS été modifiés. Réessayez.",
+    };
+  }
+
   const existingProfile = (existing?.profile as Record<string, unknown>) ?? {};
+
+  /** Valeur du formulaire si le champ y figure, valeur enregistrée sinon. */
+  const conserverSiAbsent = (
+    cle: string,
+    lire: (v: FormDataEntryValue | null) => number,
+    precedente: number,
+  ) => (formData.has(cle) ? lire(formData.get(cle)) : precedente);
 
   // Réglages d'apparence par type de bilan (thème, typo, conclusion, signature, courbe).
   const perType =
@@ -82,20 +118,39 @@ export async function updateSettings(formData: FormData) {
     bilan_sections_sensoriel: parseJson("bilan_sections_sensoriel"),
   };
 
-  await supabase.from("settings").upsert({
-    user_id: user.id,
-    display_name: String(formData.get("display_name") ?? "").trim() || null,
-    retrocession_rate: pctToRate(formData.get("retrocession_rate")),
-    urssaf_rate: pctToRate(formData.get("urssaf_rate")),
-    charge_mode,
-    monthly_rent: num(formData.get("monthly_rent")),
-    profile,
-    updated_at: new Date().toISOString(),
-  });
+  const result = await supabase
+    .from("settings")
+    .upsert({
+      user_id: user.id,
+      display_name: String(formData.get("display_name") ?? "").trim() || null,
+      retrocession_rate: conserverSiAbsent(
+        "retrocession_rate",
+        pctToRate,
+        existing?.retrocession_rate ?? 0,
+      ),
+      urssaf_rate: conserverSiAbsent(
+        "urssaf_rate",
+        pctToRate,
+        existing?.urssaf_rate ?? 0,
+      ),
+      charge_mode,
+      monthly_rent: conserverSiAbsent(
+        "monthly_rent",
+        num,
+        existing?.monthly_rent ?? 0,
+      ),
+      profile,
+      updated_at: new Date().toISOString(),
+    })
+    .select("user_id");
+
+  const verdict = ecritureReussie(result, "Vos paramètres");
+  if (!verdict.ok) return verdict;
 
   revalidatePath("/parametres");
   revalidatePath("/comptabilite");
   revalidatePath("/");
+  return { ok: true, value: true };
 }
 
 /** Suppression définitive de son propre compte et de toutes ses données. */
