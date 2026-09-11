@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Bilan } from "@/lib/types";
 import { PageHeader, EmptyState, PrimaryLink } from "@/components/ui";
 import { frDate } from "@/lib/format";
+import DeleteBilanButton from "./DeleteBilanButton";
 
 export default async function BilansPage() {
   const supabase = await createClient();
@@ -45,44 +46,56 @@ export default async function BilansPage() {
           {bilans.map((b) => {
             const sensoriel = b.content?.__type__ === "sensoriel";
             return (
-            <Link
+            <div
               key={b.id}
-              href={`/bilans/${b.id}`}
-              className="group bg-white rounded-xl border border-slate-100 shadow-sm p-4 hover:border-brand-200 hover:shadow transition flex flex-col"
+              className="group relative bg-white rounded-xl border border-slate-100 shadow-sm p-4 hover:border-brand-200 hover:shadow transition flex flex-col"
             >
-              <div className="flex items-start justify-between mb-2">
+              {/* En-tête hors du lien : la croix doit rester cliquable. */}
+              <div className="flex items-start justify-between gap-2 mb-2">
                 <div className="h-10 w-10 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center">
                   <FileText className="h-5 w-5" />
                 </div>
-                <span
-                  className={`text-xs px-2 py-0.5 rounded-full ${
-                    b.status === "finalisé"
-                      ? "bg-brand-100 text-brand-700"
-                      : "bg-amber-100 text-amber-700"
-                  }`}
-                >
-                  {b.status}
-                </span>
+                <div className="flex items-center gap-1">
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full ${
+                      b.status === "finalisé"
+                        ? "bg-brand-100 text-brand-700"
+                        : "bg-amber-100 text-amber-700"
+                    }`}
+                  >
+                    {b.status}
+                  </span>
+                  <DeleteBilanButton
+                    id={b.id}
+                    label={b.patient_name || b.title || "ce bilan"}
+                  />
+                </div>
               </div>
-              <p className="font-medium text-slate-800 group-hover:text-brand-700">
-                {b.patient_name || "Sans patient"}
-              </p>
-              <div className="flex items-center gap-1.5">
-                <span
-                  className={`text-[10px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded ${
-                    sensoriel
-                      ? "bg-indigo-50 text-indigo-600"
-                      : "bg-teal-50 text-teal-700"
-                  }`}
-                >
-                  {sensoriel ? "Sensoriel" : "Psychomoteur"}
-                </span>
-                <p className="text-sm text-slate-500 truncate">{b.title}</p>
-              </div>
-              <p className="text-xs text-slate-400 mt-auto pt-2">
-                {b.bilan_date ? frDate(b.bilan_date) : "Date non définie"}
-              </p>
-            </Link>
+              {/* after:inset-0 rend toute la carte cliquable. */}
+              <Link
+                href={`/bilans/${b.id}`}
+                className="flex flex-col flex-1 after:absolute after:inset-0 after:rounded-xl"
+              >
+                <p className="font-medium text-slate-800 group-hover:text-brand-700">
+                  {b.patient_name || "Sans patient"}
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className={`text-[10px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded ${
+                      sensoriel
+                        ? "bg-indigo-50 text-indigo-600"
+                        : "bg-teal-50 text-teal-700"
+                    }`}
+                  >
+                    {sensoriel ? "Sensoriel" : "Psychomoteur"}
+                  </span>
+                  <p className="text-sm text-slate-500 truncate">{b.title}</p>
+                </div>
+                <p className="text-xs text-slate-400 mt-auto pt-2">
+                  {b.bilan_date ? frDate(b.bilan_date) : "Date non définie"}
+                </p>
+              </Link>
+            </div>
             );
           })}
         </div>

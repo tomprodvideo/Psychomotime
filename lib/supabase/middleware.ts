@@ -43,18 +43,32 @@ export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isPublic = PUBLIC_PATHS.some((p) => path.startsWith(p));
 
+  // Une Server Action arrive en POST. Une redirection depuis le proxy renvoie
+  // un 307, qui REJOUE le corps de la requête ET l'en-tête « Next-Action » sur
+  // l'URL cible : l'action est alors ré-exécutée à chaque saut de redirection
+  // (d'où des bilans créés en rafale). On ne redirige donc jamais une requête
+  // mutative — ce sont les actions elles-mêmes qui vérifient la session.
+  const isMutating = request.method !== "GET" && request.method !== "HEAD";
+
+  // Une redirection crée une NOUVELLE réponse : il faut y recopier les cookies
+  // de session rafraîchis par getUser(), sinon ils sont perdus et la requête
+  // suivante repart déconnectée (ping-pong /login <-> /).
+  const redirectTo = (pathname: string) => {
+    const url = request.nextUrl.clone();
+    url.pathname = pathname;
+    const res = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((cookie) => res.cookies.set(cookie));
+    return res;
+  };
+
   // Non connecté + page privée -> login
   if (!user && !isPublic) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
+    return isMutating ? supabaseResponse : redirectTo("/login");
   }
 
   // Déjà connecté + page de login -> accueil
   if (user && path.startsWith("/login")) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/";
-    return NextResponse.redirect(url);
+    return isMutating ? supabaseResponse : redirectTo("/");
   }
 
   return supabaseResponse;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useFormStatus } from "react-dom";
 import type { Patient } from "@/lib/types";
 import { BILAN_TYPES, type BilanType } from "@/lib/constants";
 import { ageFromBirth, frDate } from "@/lib/format";
@@ -146,12 +147,7 @@ export default function NouveauBilanForm({
       </div>
 
       <div className="flex justify-end gap-2 pt-2">
-        <button
-          type="submit"
-          className="px-5 py-2.5 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg shadow-sm"
-        >
-          Créer et rédiger
-        </button>
+        <SubmitButton />
       </div>
     </form>
   );
@@ -165,5 +161,20 @@ function Label({ children }: { children: React.ReactNode }) {
     <label className="block text-xs font-medium text-slate-500 mb-1">
       {children}
     </label>
+  );
+}
+
+/** Bouton d'envoi désactivé pendant la soumission : évite les doubles clics,
+ *  donc les bilans créés en double. */
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="px-5 py-2.5 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+    >
+      {pending ? "Création…" : "Créer et rédiger"}
+    </button>
   );
 }

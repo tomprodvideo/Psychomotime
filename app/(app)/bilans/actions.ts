@@ -15,6 +15,11 @@ const missingCol = (e: { code?: string } | null) =>
 
 export async function createBilan(formData: FormData) {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
   const type =
     String(formData.get("bilan_type") ?? "") === "sensoriel"
       ? "sensoriel"
@@ -28,6 +33,23 @@ export async function createBilan(formData: FormData) {
     content: { __type__: type },
     tests: {},
   };
+
+  // Garde-fou anti-doublon : si un brouillon identique vient d'être créé
+  // (double clic sur « Créer », requête rejouée par le navigateur…), on rouvre
+  // celui-là au lieu d'insérer une nouvelle ligne.
+  const since = new Date(Date.now() - 15_000).toISOString();
+  const { data: recent } = await supabase
+    .from("bilans")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("patient_name", payload.patient_name)
+    .eq("title", payload.title)
+    .eq("status", "brouillon")
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (recent?.id) redirect(`/bilans/${recent.id}`);
 
   let { data, error } = await supabase
     .from("bilans")
@@ -147,4 +169,14 @@ export async function deleteBilan(formData: FormData) {
   if (id) await supabase.from("bilans").delete().eq("id", id);
   revalidatePath("/bilans");
   redirect("/bilans");
+}
+
+/** Suppression définitive d'un bilan depuis la liste (pas de redirection). */
+export async function deleteBilanById(id: string) {
+  if (!id) return;
+  const supabase = await createClient();
+  // La ligne "bilans" porte tout le contenu (content + tests en jsonb) :
+  // la supprimer efface définitivement l'intégralité du bilan.
+  await supabase.from("bilans").delete().eq("id", id);
+  revalidatePath("/bilans");
 }
