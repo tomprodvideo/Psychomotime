@@ -26,7 +26,7 @@ import {
   PAYMENT_LABELS,
   PAYMENT_STYLES,
 } from "./summary";
-import PatientFormDialog from "../patients/PatientFormDialog";
+import QuickPatientDialog from "./QuickPatientDialog";
 import { saveInvoice, deleteInvoice, nextInvoiceNumber } from "./actions";
 
 type PatientLite = PatientContact;
@@ -928,10 +928,12 @@ function InvoiceDialog({
               définies une fois pour toutes dans Paramètres › Comptabilité. */}
           <div className="bg-slate-50 rounded-xl p-4">
             <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
-              <span className="text-slate-500">
-                Après rétrocession :{" "}
-                <strong className="text-slate-700">{euro(afterRetro)}</strong>
-              </span>
+              {settings.charge_mode !== "loyer" && (
+                <span className="text-slate-500">
+                  Après rétrocession :{" "}
+                  <strong className="text-slate-700">{euro(afterRetro)}</strong>
+                </span>
+              )}
               <span className="text-slate-500">
                 Revenu net :{" "}
                 <strong className="text-brand-700">{euro(net)}</strong>
@@ -973,11 +975,9 @@ function InvoiceDialog({
         </form>
       </div>
 
-      <PatientFormDialog
-        hideTrigger
-        zClass="z-[60]"
+      <QuickPatientDialog
         open={newPatientOpen}
-        onOpenChange={setNewPatientOpen}
+        onClose={() => setNewPatientOpen(false)}
         onSaved={(p) => {
           setJustCreated(p);
           setPatientId(p.id);
