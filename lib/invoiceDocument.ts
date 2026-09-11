@@ -33,7 +33,7 @@
  * `buildInvoiceDocument` est pure et déterministe : l'horloge est injectée par
  * `options.now`, elle n'est lue que pour le dernier repli de la date d'émission.
  */
-import type { SharedInvoice } from "@/lib/invoiceShare";
+import type { PrintableInvoiceLine, SharedInvoice } from "@/lib/invoiceShare";
 import { euro, frDate } from "@/lib/format";
 
 /** Libellé de prestation appliqué quand la facture n'en porte aucun. */
@@ -105,7 +105,24 @@ export type InvoiceDocument = {
   table: {
     designationHeader: string;
     amountHeader: string;
-    /** Une facture ne porte aujourd'hui qu'une seule ligne de prestation. */
+    /**
+     * Lignes imprimées, dans l'ordre. Jamais vide.
+     *
+     * Une facture héritée (`lines` absent ou vide) en produit exactement une,
+     * dérivée de `service_label` comme auparavant. Une facture à blocs en
+     * produit une par bloc au style « liste », et une par date au style
+     * « par_date ».
+     */
+    lines: InvoiceDocumentLine[];
+    /**
+     * @deprecated Première ligne seulement — `lines[0]`.
+     *
+     * Conservé le temps que les trois rendus passent à `lines`. Sur une facture
+     * à plusieurs blocs, un rendu qui lit encore `line` n'imprime QUE le
+     * premier, sous un total qui vaut la somme de tous : le document serait
+     * faux. Les rendus doivent basculer sur `lines` dans la même livraison que
+     * la saisie multi-lignes.
+     */
     line: InvoiceDocumentLine;
   };
   total: {
@@ -144,6 +161,90 @@ function isoDay(now: Date): string {
   return now.toISOString().slice(0, 10);
 }
 
+/**
+ * Suffixes de NIVEAU FACTURE : période de facturation, puis « (PCO) ».
+ *
+ * Ils n'appartiennent à aucun bloc en particulier. Ils sont posés sur la
+ * PREMIÈRE ligne imprimée, et sur elle seule — c'est ce qui fait qu'une facture
+ * à un seul bloc « liste » sans date s'imprime exactement comme la facture à
+ * ligne unique d'aujourd'hui. Les répéter sur chaque ligne laisserait croire
+ * que la période qualifie le bloc.
+ */
+function invoiceSuffixes(
+  invoice: SharedInvoice["invoice"],
+): InvoiceDocumentSegment[] {
+  const out: InvoiceDocumentSegment[] = [];
+  if (invoice.billing_month) {
+    out.push({
+      text: ` — ${invoice.billing_month}${invoice.billing_year ? ` ${invoice.billing_year}` : ""}`,
+      muted: true,
+    });
+  }
+  if (invoice.has_pco) {
+    out.push({ text: " (PCO)", muted: true });
+  }
+  return out;
+}
+
+/** Un bloc porte des retours à la ligne dès qu'un de ses fragments en contient. */
+function asDesignation(segments: InvoiceDocumentSegment[]): InvoiceDocumentText {
+  return { segments, multiline: segments.some((s) => s.text.includes("\n")) };
+}
+
+/**
+ * Lignes imprimées d'UN bloc de prestation.
+ *
+ * Deux styles, tels que la ligne les a figés à l'enregistrement :
+ *
+ *   - « liste »    : une seule ligne de tableau. Les dates sont groupées sous
+ *                    le libellé, le montant est celui du bloc.
+ *   - « par_date » : une ligne de tableau par date, chacune portant le prix
+ *                    unitaire. Le serveur a déjà refusé l'enregistrement si la
+ *                    quantité ne suivait pas le nombre de dates, sans quoi la
+ *                    somme des lignes imprimées ne ferait plus le total.
+ *
+ * L'introduction n'est PAS atténuée : c'est une phrase écrite par la
+ * praticienne, au même titre que le libellé. Les dates et la note le sont,
+ * comme la période de facturation l'est déjà — ce sont des accessoires du
+ * libellé, pas le libellé.
+ *
+ * Une date illisible est retirée, jamais remplacée par un substitut.
+ */
+function documentLinesForBlock(
+  line: PrintableInvoiceLine,
+  suffixes: InvoiceDocumentSegment[],
+): InvoiceDocumentLine[] {
+  const label = line.label || DEFAULT_SERVICE_LABEL;
+  const intro = line.intro?.trim();
+  const note = line.note?.trim();
+  const dates = (line.dates ?? []).map(frDate).filter((d) => d !== "");
+
+  if (line.date_render === "par_date" && dates.length > 0) {
+    const unit = euro(line.unit_price);
+    return dates.map((d, i) => {
+      const segments: InvoiceDocumentSegment[] = [segment(label)];
+      if (i === 0) segments.push(...suffixes);
+      segments.push({ text: ` — ${d}`, muted: true });
+      if (i === 0 && intro) segments.push({ text: `\n${intro}`, muted: false });
+      if (i === dates.length - 1 && note) {
+        segments.push({ text: `\n${note}`, muted: true });
+      }
+      return { designation: asDesignation(segments), amount: unit };
+    });
+  }
+
+  // « liste », et repli d'un « par_date » qui n'a plus aucune date exploitable :
+  // mieux vaut un bloc unique correct qu'un tableau vide.
+  const segments: InvoiceDocumentSegment[] = [segment(label), ...suffixes];
+  if (intro) segments.push({ text: `\n${intro}`, muted: false });
+  if (dates.length > 0) {
+    segments.push({ text: `\n${dates.join(", ")}`, muted: true });
+  }
+  if (note) segments.push({ text: `\n${note}`, muted: true });
+
+  return [{ designation: asDesignation(segments), amount: euro(line.amount) }];
+}
+
 export function buildInvoiceDocument(
   source: SharedInvoice,
   options?: { now?: Date },
@@ -158,20 +259,33 @@ export function buildInvoiceDocument(
     invoice.issue_date ?? invoice.payment_date ?? isoDay(options?.now ?? new Date());
   const issueDateText = frDate(issueDate);
 
+  // Le total reste `revenue_gross`, colonne réelle et seule source du montant
+  // dû. Le serveur l'a recalculé comme la somme des blocs à l'enregistrement, et
+  // une contrainte SQL le vérifie : le modèle n'a pas à refaire l'addition.
   const amount = euro(invoice.revenue_gross ?? 0);
 
-  const designation: InvoiceDocumentSegment[] = [
-    segment(invoice.service_label ?? DEFAULT_SERVICE_LABEL),
-  ];
-  if (invoice.billing_month) {
-    designation.push({
-      text: ` — ${invoice.billing_month}${invoice.billing_year ? ` ${invoice.billing_year}` : ""}`,
-      muted: true,
-    });
-  }
-  if (invoice.has_pco) {
-    designation.push({ text: " (PCO)", muted: true });
-  }
+  const suffixes = invoiceSuffixes(invoice);
+
+  // `?? []` couvre une base où la migration 013 n'est pas encore passée : la
+  // clé `lines` est alors absente de la réponse de `invoice_by_token`.
+  const blocks = invoice.lines ?? [];
+
+  const tableLines: InvoiceDocumentLine[] =
+    blocks.length > 0
+      ? blocks.flatMap((b, i) => documentLinesForBlock(b, i === 0 ? suffixes : []))
+      : // Facture héritée : la ligne unique d'aujourd'hui, au fragment près.
+        [
+          {
+            designation: {
+              segments: [
+                segment(invoice.service_label ?? DEFAULT_SERVICE_LABEL),
+                ...suffixes,
+              ],
+              multiline: false,
+            },
+            amount,
+          },
+        ];
 
   const issuerLines = [
     valueBlock(profile.address, true),
@@ -226,7 +340,9 @@ export function buildInvoiceDocument(
     table: {
       designationHeader: "Désignation",
       amountHeader: "Montant",
-      line: { designation: { segments: designation, multiline: false }, amount },
+      lines: tableLines,
+      // Repli des rendus qui n'ont pas encore basculé sur `lines`.
+      line: tableLines[0],
     },
     total: {
       label: "Total à payer",

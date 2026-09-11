@@ -8,6 +8,11 @@ import { MONTHS } from "@/lib/constants";
 import { headers } from "next/headers";
 import { emailConfig, sendMail } from "@/lib/email";
 import { newShareToken, shareExpiry } from "@/lib/invoiceShare";
+import {
+  invoiceLinesTotal,
+  normalizeInvoiceLines,
+  validateInvoiceLines,
+} from "@/lib/invoiceLines";
 import type { Invoice, Patient, Settings } from "@/lib/types";
 import {
   buildInvoiceNumber,
@@ -114,6 +119,30 @@ async function reserveInvoiceNumber(
 const SAVE_FAILED_MESSAGE =
   "L'enregistrement n'a pas abouti. Votre saisie est toujours à l'écran : réessayez dans un instant.";
 
+/**
+ * Message de refus d'une ligne de prestation incohérente.
+ *
+ * Il nomme le rang de la ligne et la règle enfreinte — de quoi corriger — mais
+ * ni montant, ni date, ni identifiant : il est affiché tel quel dans le
+ * formulaire, et une facture porte des données de niveau « sensible »
+ * (docs/security/DATA_CLASSIFICATION.md).
+ */
+function lineProblemMessage(
+  problems: ReturnType<typeof validateInvoiceLines>,
+): string {
+  const first = problems[0];
+  const rang = `La prestation n° ${first.index + 1}`;
+
+  if (first.code === "dates-manquantes") {
+    return `${rang} est facturée à l'unité : indiquez au moins une date de séance avant d'enregistrer.`;
+  }
+  return (
+    `${rang} imprime un montant par date : elle doit compter autant de dates que de séances facturées ` +
+    `(${first.dateCount} date(s) pour ${first.quantity} séance(s)). ` +
+    `Corrigez l'un ou l'autre, ou choisissez l'affichage en liste.`
+  );
+}
+
 export type SaveInvoiceResult =
   | { ok: true }
   | {
@@ -186,10 +215,43 @@ export async function saveInvoice(
         monthIndex < 0 ? new Date().getMonth() : monthIndex,
       );
 
+  // ---- Lignes de prestation (migration 013) ----
+  //
+  // Le champ est ABSENT des formulaires qui ne gèrent pas les lignes : on ne
+  // touche alors pas du tout la colonne, et la facture se comporte exactement
+  // comme avant. Présent — même à « [] » — il fait autorité : c'est le client
+  // qui déclare gérer les lignes, et la colonne est écrite en conséquence.
+  const rawLines = formData.get("lines");
+  const managesLines = rawLines !== null;
+
+  // Le catalogue n'est PAS relu ici, et ne doit jamais l'être : la ligne porte
+  // déjà ses valeurs, figées au moment où elle a été créée. Une entrée de
+  // catalogue modifiée, désactivée ou supprimée ne change aucune facture émise.
+  const lines = managesLines ? normalizeInvoiceLines(rawLines) : [];
+
+  if (lines.length > 0) {
+    const problems = validateInvoiceLines(lines);
+    if (problems.length > 0) {
+      return {
+        ok: false,
+        reason: "error",
+        message: lineProblemMessage(problems),
+      };
+    }
+  }
+
   // Rétrocession et URSSAF ne sont plus saisies par facture : elles découlent
   // des réglages (Paramètres › Comptabilité).
-  const gross = num(formData.get("revenue_gross"));
+  //
+  // Dès qu'il y a des lignes, le brut est la somme des blocs et le montant posté
+  // par le client est IGNORÉ : il n'est ni lu, ni comparé, ni utilisé en repli.
+  // Sans ligne, le champ du formulaire reste la seule source, comme avant.
+  const gross =
+    lines.length > 0 ? invoiceLinesTotal(lines) : num(formData.get("revenue_gross"));
   const settings = await getSettings();
+  // Rétrocession et URSSAF restent calculées au niveau FACTURE, sur ce brut :
+  // elles ne se ventilent pas par ligne. Les colonnes générées `after_retro` et
+  // `net_revenue` en découlent donc sans changement.
   const { retrocession, urssaf } = computeInvoice(gross, settings);
 
   const payload = {
@@ -208,6 +270,9 @@ export async function saveInvoice(
     retrocession_amount: retrocession,
     urssaf_amount: urssaf,
     notes: str(formData.get("notes")),
+    // Écrit seulement si le client gère les lignes. Sans cette condition, toute
+    // écriture échouerait sur une base où la migration 013 n'est pas passée.
+    ...(managesLines ? { lines } : {}),
   };
 
   if (id) {

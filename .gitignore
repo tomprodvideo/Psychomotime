@@ -46,6 +46,9 @@ next-env.d.ts
 .claude/agent-memory-local/
 CLAUDE.local.md
 
+# Réglages Claude locaux à la machine (hooks de l'atelier, permissions locales)
+.claude/settings.local.json
+
 # Exemple d'environnement volontairement versionné (exception à `.env*` ci-dessus)
 !.env.example
 

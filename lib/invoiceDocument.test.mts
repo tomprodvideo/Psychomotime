@@ -115,6 +115,8 @@ const FACTURE_PARTAGEE: SharedInvoice = {
     payment_date: "2026-03-28",
     issue_date: "2026-03-25",
     service_label: null,
+    // Facture héritée : aucune ligne. C'est un état légal et permanent.
+    lines: [],
   },
   patient: { address: "2 impasse des Essais\n00000 Villefictive" },
   settings: {
@@ -161,6 +163,20 @@ test("le modèle d'une facture complète est celui attendu", () => {
     multiline: false,
   });
 
+  // Sans ligne, le tableau garde exactement la ligne unique d'avant la
+  // migration 013, et `line` reste le premier élément de `lines`.
+  const ligneHeritee = {
+    designation: {
+      segments: [
+        { text: DEFAULT_SERVICE_LABEL, muted: false },
+        { text: " — Mars 2026", muted: true },
+        { text: " (PCO)", muted: true },
+      ],
+      multiline: false,
+    },
+    amount: euro(60),
+  };
+
   const attendu: InvoiceDocument = {
     issuer: {
       logoUrl: "data:image/png;base64,AAAA",
@@ -191,17 +207,8 @@ test("le modèle d'une facture complète est celui attendu", () => {
     table: {
       designationHeader: "Désignation",
       amountHeader: "Montant",
-      line: {
-        designation: {
-          segments: [
-            { text: DEFAULT_SERVICE_LABEL, muted: false },
-            { text: " — Mars 2026", muted: true },
-            { text: " (PCO)", muted: true },
-          ],
-          multiline: false,
-        },
-        amount: euro(60),
-      },
+      lines: [ligneHeritee],
+      line: ligneHeritee,
     },
     total: {
       label: "Total à payer",
@@ -249,6 +256,7 @@ test("aucun montant interne n'atteint le modèle", () => {
     "has_pco",
     "invoice_number",
     "issue_date",
+    "lines",
     "patient_name",
     "payment_date",
     "payment_method",
@@ -306,6 +314,7 @@ test("une valeur absente est retirée, jamais remplacée par un substitut", () =
       payment_date: null,
       issue_date: null,
       service_label: null,
+      lines: [],
     },
     patient: null,
     settings: {
@@ -334,6 +343,7 @@ test("une valeur absente est retirée, jamais remplacée par un substitut", () =
   assert.equal(doc.billedTo.address, undefined);
   assert.equal(doc.total.note, undefined);
   assert.equal(doc.legalMentions, undefined);
+  assert.equal(doc.table.lines.length, 1);
   assert.deepEqual(doc.table.line.designation, {
     segments: [{ text: DEFAULT_SERVICE_LABEL, muted: false }],
     multiline: false,

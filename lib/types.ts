@@ -35,6 +35,7 @@ export interface Profile {
   legal_mentions?: string;
   invoice_number_format?: string; // gabarit des numéros de facture
   recurring_expenses?: RecurringExpense[]; // dépenses récurrentes du cabinet
+  service_catalog?: ServiceCatalogItem[]; // catalogue des prestations facturables
   theme_color?: string; // couleur d'accent des bilans (hex)
   bilan_font?: string; // 'sans' | 'serif'
   bilan_title_style?: string; // 'underline' | 'boxed' | 'plain'
@@ -61,6 +62,69 @@ export interface RecurringExpense {
   period: "mensuel" | "annuel";
   /** Décochée, la dépense reste enregistrée mais n'entre pas dans les calculs. */
   active: boolean;
+}
+
+/** Mode de tarification d'une prestation. */
+export type ServicePricing = "forfait" | "unitaire";
+
+/** Façon d'imprimer les dates de séance d'une ligne de facture. */
+export type InvoiceDateRender =
+  /** Les dates sont groupées sous le libellé, le montant est celui du bloc. */
+  | "liste"
+  /** Une ligne de tableau par date, chacune avec son montant. */
+  | "par_date";
+
+/**
+ * Prestation du catalogue du cabinet (Paramètres), rangée dans
+ * `settings.profile.service_catalog` sur le modèle de `recurring_expenses`.
+ *
+ * C'est un RÉFÉRENTIEL, pas une source de vérité pour les factures émises :
+ * une ligne de facture en recopie les valeurs au moment de l'enregistrement et
+ * ne les relit plus jamais (voir `InvoiceLine`).
+ */
+export interface ServiceCatalogItem {
+  id: string; // uuid
+  label: string;
+  unit_price: number;
+  pricing: ServicePricing;
+  /** Style d'impression proposé par défaut aux lignes issues de cette entrée. */
+  default_date_render: InvoiceDateRender;
+  /** Phrase d'introduction imprimée au-dessus des dates. Peut être vide. */
+  intro: string;
+  /** Décochée, l'entrée reste enregistrée mais n'est plus proposée à la saisie. */
+  active: boolean;
+}
+
+/**
+ * Ligne de prestation d'une facture, stockée dans `invoices.lines` (jsonb,
+ * migration 013).
+ *
+ * RÈGLE DE FIGEMENT — la raison d'être de ce type. `label`, `unit_price`,
+ * `pricing` et `intro` sont COPIÉS du catalogue au moment de l'enregistrement
+ * et ne sont plus jamais relus. Modifier, désactiver ou supprimer une entrée de
+ * `service_catalog` ne change AUCUNE facture existante : une facture est un
+ * document émis, son contenu ne bouge pas parce qu'un référentiel a bougé.
+ *
+ * `catalog_id` ne répond qu'à une seule question — « d'où vient cette ligne ? ».
+ * Il ne doit JAMAIS servir à relire le catalogue pour recomposer la ligne, et
+ * il ne sort pas vers le document (voir `PrintableInvoiceLine`).
+ */
+export interface InvoiceLine {
+  id: string; // uuid propre à la ligne, sans portée hors de la facture
+  /** PROVENANCE SEULE. Null si la ligne a été saisie hors catalogue. */
+  catalog_id: string | null;
+  label: string;
+  pricing: ServicePricing;
+  unit_price: number;
+  /** Entier >= 1. Toujours 1 pour une ligne au forfait. */
+  quantity: number;
+  /** Dates de séance « YYYY-MM-DD », triées croissantes et distinctes. */
+  dates: string[];
+  /** Montant du bloc, recalculé côté serveur — jamais celui posté par le client. */
+  amount: number;
+  date_render: InvoiceDateRender;
+  intro: string | null;
+  note: string | null;
 }
 
 /** Réglages d'apparence propres à un type de bilan. */
@@ -172,6 +236,10 @@ export interface Invoice {
   // Lien de consultation envoyé au patient (migration 011).
   share_token?: string | null;
   share_expires_at?: string | null;
+  // Lignes de prestation (migration 013). Optionnel : une base où la migration
+  // n'a pas encore été passée ne renvoie pas la colonne, et `revenue_gross`
+  // reste alors la seule source du montant.
+  lines?: InvoiceLine[];
 }
 
 export interface Expense {
