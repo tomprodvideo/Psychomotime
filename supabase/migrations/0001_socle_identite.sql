@@ -10,7 +10,7 @@
 --   2. Refus par défaut : ce qui n'est pas explicitement autorisé est refusé.
 --   3. Les fonctions `security definer` vivent dans le schéma `app`, ne sont
 --      pas exposées par PostgREST, ont un `search_path` épinglé et ne
---      répondent que sur `app.current_user_id()` — jamais sur un utilisateur arbitraire.
+--      répondent que sur l'utilisateur courant — jamais sur un utilisateur arbitraire.
 --   4. L'argent est en CENTIMES ENTIERS (`bigint`), les taux en POINTS DE BASE
 --      (`integer`, 1 bp = 0,01 %). Aucun flottant monétaire, jamais.
 --   5. Les paramètres qui changent dans le temps sont DATÉS, pour qu'une pièce
@@ -451,7 +451,7 @@ grant execute on function public.create_practice(text) to authenticated;
 -- ---------- identité de l'appelant ----------
 --  SEUL POINT DE CONTACT AVEC SUPABASE DANS TOUT LE SCHÉMA.
 --
---  `app.current_user_id()` est fourni par Supabase. Si l'hébergement doit changer — et
+--  `auth.uid()` est fourni par Supabase. Si l'hébergement doit changer — et
 --  l'audit HDS du 2026-09-11 rend cette hypothèse sérieuse — c'est cette
 --  fonction, et elle seule, qui sera réécrite. Aucune politique RLS, aucune
 --  autre fonction n'appelle `auth.` directement ; un test de couverture le
@@ -469,7 +469,7 @@ grant execute on function app.current_user_id() to authenticated;
 -- ---------- appartenance ----------
 -- SECURITY DEFINER : lit `practice_members` sans déclencher la RLS de cette
 -- même table, ce qui rendrait les politiques récursives. Borne stricte : la
--- fonction ne répond QUE sur `app.current_user_id()`. Elle ne prend pas d'utilisateur en
+-- fonction ne répond QUE sur l'utilisateur courant. Elle ne prend pas d'utilisateur en
 -- paramètre et ne peut donc pas servir à interroger les droits d'un tiers.
 create or replace function app.member_practice_ids()
 returns setof uuid
