@@ -1,22 +1,31 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus, Trash2, X } from "lucide-react";
+import { House, Plus, Trash2, X } from "lucide-react";
 import type { Expense } from "@/lib/types";
 import { euro, frDate } from "@/lib/format";
 import { MONTHS } from "@/lib/constants";
+import { expensePeriod, ymKey, MONTHS_SHORT } from "@/lib/period";
 import { saveExpense, deleteExpense } from "./actions";
 
 export default function LoyersClient({
   expenses,
   defaultYear,
+  defaultMonth,
+  periodLabel,
 }: {
   expenses: Expense[];
   defaultYear: number;
+  defaultMonth: number;
+  periodLabel: string;
 }) {
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
   const total = expenses.reduce((s, e) => s + (e.amount || 0), 0);
+
+  const sorted = [...expenses].sort(
+    (a, b) => ymKey(expensePeriod(b)) - ymKey(expensePeriod(a)),
+  );
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -28,13 +37,19 @@ export default function LoyersClient({
   }
 
   return (
-    <div className="bg-white rounded-xl border border-slate-100 shadow-sm">
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
       <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-        <div>
-          <h2 className="font-semibold text-slate-800">Loyers &amp; charges</h2>
-          <p className="text-xs text-slate-500">
-            Total : <strong>{euro(total)}</strong>
-          </p>
+        <div className="flex items-center gap-3">
+          <span className="h-9 w-9 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center">
+            <House className="h-4 w-4" />
+          </span>
+          <div>
+            <h2 className="font-semibold text-slate-800">Loyers &amp; charges</h2>
+            <p className="text-xs text-slate-500">
+              {periodLabel} · total{" "}
+              <strong className="text-violet-600">{euro(total)}</strong>
+            </p>
+          </div>
         </div>
         <button
           onClick={() => setOpen(true)}
@@ -45,45 +60,52 @@ export default function LoyersClient({
         </button>
       </div>
 
-      {expenses.length === 0 ? (
+      {sorted.length === 0 ? (
         <p className="text-sm text-slate-400 px-5 py-6 text-center">
-          Aucun loyer ou charge enregistré pour cette année.
+          Aucun loyer ou charge enregistré sur cette période.
         </p>
       ) : (
         <ul className="divide-y divide-slate-100">
-          {expenses.map((e) => (
-            <li
-              key={e.id}
-              className="flex items-center justify-between px-5 py-3 text-sm"
-            >
-              <div>
-                <p className="font-medium text-slate-700 capitalize">
-                  {e.label || e.type}
-                  {e.period_month ? ` · ${e.period_month}` : ""}
-                </p>
-                <p className="text-xs text-slate-400">
-                  {e.expense_date ? frDate(e.expense_date) : ""}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="font-semibold text-rose-600">
-                  {euro(e.amount)}
-                </span>
-                <button
-                  onClick={() => {
-                    if (!confirm("Supprimer ?")) return;
-                    const fd = new FormData();
-                    fd.set("id", e.id);
-                    start(() => deleteExpense(fd));
-                  }}
-                  disabled={pending}
-                  className="p-1 text-slate-400 hover:text-rose-600"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            </li>
-          ))}
+          {sorted.map((e) => {
+            const p = expensePeriod(e);
+            return (
+              <li
+                key={e.id}
+                className="flex items-center justify-between px-5 py-3 text-sm"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="shrink-0 text-[11px] font-medium text-violet-600 bg-violet-50 rounded-md px-2 py-1 tabular-nums">
+                    {MONTHS_SHORT[p.m]} {String(p.y).slice(2)}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="font-medium text-slate-700 first-letter:uppercase truncate">
+                      {e.label || e.type}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      {e.expense_date ? frDate(e.expense_date) : ""}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <span className="font-semibold text-violet-600 tabular-nums">
+                    {euro(e.amount)}
+                  </span>
+                  <button
+                    onClick={() => {
+                      if (!confirm("Supprimer ?")) return;
+                      const fd = new FormData();
+                      fd.set("id", e.id);
+                      start(() => deleteExpense(fd));
+                    }}
+                    disabled={pending}
+                    className="p-1 text-slate-400 hover:text-rose-600"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
 
@@ -123,7 +145,11 @@ export default function LoyersClient({
                 </div>
                 <div>
                   <Label>Mois</Label>
-                  <select name="period_month" className={inputCls}>
+                  <select
+                    name="period_month"
+                    defaultValue={MONTHS[defaultMonth]}
+                    className={inputCls}
+                  >
                     <option value="">—</option>
                     {MONTHS.map((m) => (
                       <option key={m} value={m}>
