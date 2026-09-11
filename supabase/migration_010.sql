@@ -41,6 +41,15 @@ as $$
 declare
   v_seq integer;
 begin
+  -- Appelée sans session (éditeur SQL Supabase, tâche cron…), auth.uid() est
+  -- NULL : on le dit explicitement plutôt que de laisser échouer la contrainte
+  -- NOT NULL avec un message obscur.
+  if auth.uid() is null then
+    raise exception
+      'next_invoice_seq : aucune session authentifiée (auth.uid() est NULL). '
+      'Cette fonction doit être appelée depuis l''application.';
+  end if;
+
   insert into public.invoice_counters (user_id, scope, last_seq)
   values (auth.uid(), p_scope, greatest(coalesce(p_min, 0), 0) + 1)
   on conflict (user_id, scope) do update
