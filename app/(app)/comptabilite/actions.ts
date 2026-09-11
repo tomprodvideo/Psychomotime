@@ -106,8 +106,42 @@ async function reserveInvoiceNumber(
   return buildInvoiceNumber(n.format, n.ctx, seq);
 }
 
-export async function saveInvoice(formData: FormData) {
+/**
+ * Message unique d'échec d'écriture. Volontairement sans identifiant, sans nom
+ * de patient, sans montant et sans détail technique : il est affiché tel quel
+ * dans le formulaire.
+ */
+const SAVE_FAILED_MESSAGE =
+  "L'enregistrement n'a pas abouti. Votre saisie est toujours à l'écran : réessayez dans un instant.";
+
+export type SaveInvoiceResult =
+  | { ok: true }
+  | {
+      ok: false;
+      reason: "unauthenticated" | "not-found" | "error";
+      message: string;
+    };
+
+export async function saveInvoice(
+  formData: FormData,
+): Promise<SaveInvoiceResult> {
   const supabase = await createClient();
+
+  // Une Server Action est un endpoint HTTP : la session se vérifie ici. Sans ce
+  // contrôle, getSettings() lève « Non authentifié » plus bas et l'appelante ne
+  // reçoit qu'une exception opaque, sans savoir que sa saisie n'est pas passée.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return {
+      ok: false,
+      reason: "unauthenticated",
+      message:
+        "Votre session a expiré. Reconnectez-vous dans un autre onglet, puis revenez ici et enregistrez : votre saisie reste à l'écran tant que vous ne quittez pas cette page.",
+    };
+  }
+
   const id = str(formData.get("id"));
 
   const patientId = str(formData.get("patient_id"));
@@ -116,12 +150,25 @@ export async function saveInvoice(formData: FormData) {
   // sinon on conserve le texte envoyé (anciennes factures non rattachées).
   let patientName = String(formData.get("patient_name") ?? "").trim();
   if (patientId) {
-    const { data: p } = await supabase
+    const { data: p, error: patientError } = await supabase
       .from("patients")
       .select("first_name, last_name")
       .eq("id", patientId)
       .maybeSingle();
-    if (p) patientName = `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim();
+    // La RLS masque les fiches des autres cabinets : une fiche illisible est
+    // soit supprimée, soit celle d'un autre compte. Dans les deux cas on
+    // refuse d'écrire la référence. Une facture ne doit jamais pointer une
+    // fiche que le compte ne peut pas lire : la fonction de partage public
+    // s'exécute hors RLS et suit ce lien.
+    if (patientError || !p) {
+      return {
+        ok: false,
+        reason: "not-found",
+        message:
+          "Cette fiche patient n'est plus disponible. Rechargez la page, puis sélectionnez à nouveau le patient.",
+      };
+    }
+    patientName = `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim();
   }
 
   const billingYear = formData.get("billing_year")
@@ -164,14 +211,37 @@ export async function saveInvoice(formData: FormData) {
   };
 
   if (id) {
-    await supabase.from("invoices").update(payload).eq("id", id);
+    const { data, error } = await supabase
+      .from("invoices")
+      .update(payload)
+      .eq("id", id)
+      .select("id");
+
+    if (error) {
+      return { ok: false, reason: "error", message: SAVE_FAILED_MESSAGE };
+    }
+    // Aucune ligne touchée : la facture a été supprimée, ou elle appartient à
+    // un autre compte et la RLS la rend invisible. Même message dans les deux
+    // cas — rien ne doit laisser deviner qu'un identifiant existe ailleurs.
+    if (!data || data.length === 0) {
+      return {
+        ok: false,
+        reason: "not-found",
+        message:
+          "Cette facture n'est plus disponible. Elle a peut-être été supprimée depuis un autre onglet. Rechargez la page avant de recommencer.",
+      };
+    }
   } else {
-    await supabase.from("invoices").insert(payload);
+    const { error } = await supabase.from("invoices").insert(payload);
+    if (error) {
+      return { ok: false, reason: "error", message: SAVE_FAILED_MESSAGE };
+    }
   }
 
   revalidatePath("/comptabilite");
   revalidatePath("/patients");
   revalidatePath("/");
+  return { ok: true };
 }
 
 export type SendInvoiceResult =

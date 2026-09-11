@@ -622,6 +622,18 @@ function DeleteButton({ id }: { id: string }) {
   );
 }
 
+/**
+ * Date du jour au format « YYYY-MM-DD », dans le fuseau du navigateur.
+ * `toISOString()` est volontairement écarté : il bascule en UTC et renvoie la
+ * veille en soirée, ce qui daterait la facture d'un jour trop tôt.
+ */
+function todayLocal(): string {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
 function InvoiceDialog({
   invoice,
   patients,
@@ -705,12 +717,27 @@ function InvoiceDialog({
   const { afterRetro, net } = computeInvoice(gross, settings);
   const due = Math.round(Math.max(0, gross - paid) * 100) / 100;
 
+  // Message d'échec d'enregistrement. Tant qu'il est rempli, la fenêtre reste
+  // ouverte : la saisie ne doit jamais disparaître sur une écriture ratée.
+  const [error, setError] = useState("");
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    setError("");
     start(async () => {
-      await saveInvoice(fd);
-      onClose();
+      try {
+        const r = await saveInvoice(fd);
+        if (!r.ok) {
+          setError(r.message);
+          return;
+        }
+        onClose();
+      } catch {
+        setError(
+          "Le serveur n'a pas répondu. Votre saisie reste à l'écran : vérifiez votre connexion, puis réessayez.",
+        );
+      }
     });
   }
 
@@ -872,11 +899,7 @@ function InvoiceDialog({
                 type="number"
                 step="0.01"
                 value={gross || ""}
-                onChange={(e) => {
-                  const v = parseFloat(e.target.value) || 0;
-                  setGross(v);
-                  if (paid === gross) setPaid(v);
-                }}
+                onChange={(e) => setGross(parseFloat(e.target.value) || 0)}
                 className={inputCls}
                 required
               />
@@ -944,7 +967,12 @@ function InvoiceDialog({
               <input
                 name="issue_date"
                 type="date"
-                defaultValue={invoice?.issue_date ?? ""}
+                /* À la création seulement : sans date d'émission, les rendus de
+                   facture retombent sur la date du jour et la même facture
+                   change de date à chaque impression. En édition, on ne touche
+                   à rien — dater après coup une facture émise serait inventer
+                   une date. */
+                defaultValue={invoice ? (invoice.issue_date ?? "") : todayLocal()}
                 className={inputCls}
               />
             </div>
@@ -1004,6 +1032,12 @@ function InvoiceDialog({
               className={inputCls}
             />
           </div>
+
+          {error && (
+            <p className="text-sm text-rose-600 bg-rose-50 rounded-lg px-3 py-2">
+              {error}
+            </p>
+          )}
 
           <div className="flex justify-end gap-2 pt-2">
             <button
