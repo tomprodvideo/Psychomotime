@@ -12,6 +12,7 @@ import { sumTotals } from "@/lib/calc";
 import { euro, frDate } from "@/lib/format";
 import type { Bilan, Invoice } from "@/lib/types";
 import { StatCard, Card } from "@/components/ui";
+import { BILAN_TYPE_UI, bilanTypeOf } from "@/lib/constants";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -109,32 +110,42 @@ export default async function DashboardPage() {
             </p>
           ) : (
             <ul className="divide-y divide-slate-100">
-              {bilans.map((b) => (
-                <li key={b.id}>
-                  <Link
-                    href={`/bilans/${b.id}`}
-                    className="flex items-center justify-between py-3 -mx-2 px-2 rounded-lg hover:bg-slate-50"
-                  >
-                    <div>
-                      <p className="text-sm font-medium text-slate-700">
-                        {b.patient_name || "Sans patient"}
-                      </p>
-                      <p className="text-xs text-slate-400">
-                        {b.title} · {frDate(b.bilan_date)}
-                      </p>
-                    </div>
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full ${
-                        b.status === "finalisé"
-                          ? "bg-brand-100 text-brand-700"
-                          : "bg-amber-100 text-amber-700"
-                      }`}
+              {bilans.map((b) => {
+                const ui = BILAN_TYPE_UI[bilanTypeOf(b.content)];
+                return (
+                  <li key={b.id}>
+                    <Link
+                      href={`/bilans/${b.id}`}
+                      className="flex items-center justify-between gap-2 py-3 -mx-2 px-2 rounded-lg hover:bg-slate-50"
                     >
-                      {b.status}
-                    </span>
-                  </Link>
-                </li>
-              ))}
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-slate-700 truncate">
+                          {b.patient_name || "Sans patient"}
+                        </p>
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`text-[10px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded ${ui.badge}`}
+                          >
+                            {ui.label}
+                          </span>
+                          <p className="text-xs text-slate-400 truncate">
+                            {b.title} · {frDate(b.bilan_date)}
+                          </p>
+                        </div>
+                      </div>
+                      <span
+                        className={`shrink-0 text-xs px-2 py-0.5 rounded-full ${
+                          b.status === "finalisé"
+                            ? "bg-brand-100 text-brand-700"
+                            : "bg-amber-100 text-amber-700"
+                        }`}
+                      >
+                        {b.status}
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </Card>

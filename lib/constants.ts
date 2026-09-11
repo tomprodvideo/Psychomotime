@@ -390,6 +390,35 @@ export const BILAN_TYPES: {
   },
 ];
 
+/** Type d'un bilan, lu depuis content.__type__ (psychomoteur par défaut). */
+export function bilanTypeOf(
+  content: { __type__?: string } | null | undefined,
+): BilanType {
+  return content?.__type__ === "sensoriel" ? "sensoriel" : "psychomoteur";
+}
+
+/** Libellés et couleurs d'un type de bilan, partagés par toutes les listes. */
+export const BILAN_TYPE_UI: Record<
+  BilanType,
+  { label: string; plural: string; badge: string; accent: string }
+> = {
+  psychomoteur: {
+    label: "Psychomoteur",
+    plural: "Bilans psychomoteurs",
+    badge: "bg-teal-50 text-teal-700",
+    accent: "text-teal-700",
+  },
+  sensoriel: {
+    label: "Sensoriel",
+    plural: "Bilans sensoriels",
+    badge: "bg-indigo-50 text-indigo-600",
+    accent: "text-indigo-600",
+  },
+};
+
+/** Ordre d'affichage des sections par type. */
+export const BILAN_TYPE_ORDER: BilanType[] = ["psychomoteur", "sensoriel"];
+
 export function bilanHeading(type: BilanType): string {
   return (
     BILAN_TYPES.find((t) => t.id === type)?.heading ??

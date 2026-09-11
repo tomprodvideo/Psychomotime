@@ -6,6 +6,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getSettings } from "@/lib/data";
 import type { Bilan, Patient } from "@/lib/types";
 import {
+  BILAN_TYPE_ORDER,
+  BILAN_TYPE_UI,
+  bilanTypeOf,
   DOSSIER_GROUPS,
   PATIENT_DOSSIER_FIELDS,
 } from "@/lib/constants";
@@ -36,13 +39,20 @@ export default async function FichePatientPage({
 
   const { data: bilansRaw } = await supabase
     .from("bilans")
-    .select("id, title, bilan_date, status")
+    .select("id, title, bilan_date, status, content")
     .eq("patient_id", id)
     .order("bilan_date", { ascending: false });
   const bilans = (bilansRaw ?? []) as Pick<
     Bilan,
-    "id" | "title" | "bilan_date" | "status"
+    "id" | "title" | "bilan_date" | "status" | "content"
   >[];
+
+  // Regroupement par type : psychomoteur et sensoriel sont listés séparément.
+  const bilanGroups = BILAN_TYPE_ORDER.map((type) => ({
+    type,
+    ui: BILAN_TYPE_UI[type],
+    list: bilans.filter((b) => bilanTypeOf(b.content) === type),
+  })).filter((grp) => grp.list.length > 0);
 
   const guardianName = [g.first_name, g.last_name].filter(Boolean).join(" ");
   const hasGuardian =
@@ -177,16 +187,23 @@ export default async function FichePatientPage({
           {bilans.length > 0 && (
             <>
               <Section>Bilans réalisés</Section>
-              <ul className="mb-5 space-y-1">
-                {bilans.map((b) => (
-                  <li key={b.id} className="flex justify-between">
-                    <span>{b.title}</span>
-                    <span className="text-slate-500">
-                      {b.bilan_date ? frDate(b.bilan_date) : ""} · {b.status}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              {bilanGroups.map(({ type, ui, list }) => (
+                <div key={type} className="mb-4 last:mb-5 break-inside-avoid">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
+                    {ui.plural} ({list.length})
+                  </p>
+                  <ul className="space-y-1">
+                    {list.map((b) => (
+                      <li key={b.id} className="flex justify-between">
+                        <span>{b.title}</span>
+                        <span className="text-slate-500">
+                          {b.bilan_date ? frDate(b.bilan_date) : ""} · {b.status}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
             </>
           )}
 

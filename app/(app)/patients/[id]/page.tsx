@@ -5,6 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 import type { Bilan, Invoice, Patient } from "@/lib/types";
 import { ageFromBirth, euro, frDate } from "@/lib/format";
 import {
+  BILAN_TYPE_ORDER,
+  BILAN_TYPE_UI,
+  bilanTypeOf,
   DOSSIER_GROUPS,
   PATIENT_DOSSIER_FIELDS,
 } from "@/lib/constants";
@@ -45,6 +48,13 @@ export default async function PatientDetailPage({
 
   const invoices = (invoicesRaw ?? []) as Invoice[];
   const bilans = (bilansRaw ?? []) as Bilan[];
+
+  // Les bilans du patient sont regroupés par type (psychomoteur / sensoriel).
+  const bilanGroups = BILAN_TYPE_ORDER.map((type) => ({
+    type,
+    ui: BILAN_TYPE_UI[type],
+    list: bilans.filter((b) => bilanTypeOf(b.content) === type),
+  })).filter((g) => g.list.length > 0);
   const totalNet = invoices.reduce((s, i) => s + (i.net_revenue || 0), 0);
 
   const dossier = (p.dossier ?? {}) as Record<string, string | null | undefined>;
@@ -219,34 +229,47 @@ export default async function PatientDetailPage({
               Aucun bilan pour ce patient.
             </p>
           ) : (
-            <ul className="divide-y divide-slate-100">
-              {bilans.map((b) => (
-                <li key={b.id}>
-                  <Link
-                    href={`/bilans/${b.id}`}
-                    className="flex items-center justify-between py-3 hover:bg-slate-50 -mx-2 px-2 rounded-lg"
+            bilanGroups.map(({ type, ui, list }) => (
+              <div key={type} className="mb-4 last:mb-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <p
+                    className={`text-xs font-semibold uppercase tracking-wider ${ui.accent}`}
                   >
-                    <div>
-                      <p className="text-sm font-medium text-slate-700">
-                        {b.title}
-                      </p>
-                      <p className="text-xs text-slate-400">
-                        {frDate(b.bilan_date)}
-                      </p>
-                    </div>
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full ${
-                        b.status === "finalisé"
-                          ? "bg-brand-100 text-brand-700"
-                          : "bg-amber-100 text-amber-700"
-                      }`}
-                    >
-                      {b.status}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+                    {ui.plural}
+                  </p>
+                  <span className="text-xs text-slate-400">{list.length}</span>
+                  <div className="h-px flex-1 bg-slate-100" />
+                </div>
+                <ul className="divide-y divide-slate-100">
+                  {list.map((b) => (
+                    <li key={b.id}>
+                      <Link
+                        href={`/bilans/${b.id}`}
+                        className="flex items-center justify-between gap-2 py-3 hover:bg-slate-50 -mx-2 px-2 rounded-lg"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-slate-700 truncate">
+                            {b.title}
+                          </p>
+                          <p className="text-xs text-slate-400">
+                            {frDate(b.bilan_date)}
+                          </p>
+                        </div>
+                        <span
+                          className={`shrink-0 text-xs px-2 py-0.5 rounded-full ${
+                            b.status === "finalisé"
+                              ? "bg-brand-100 text-brand-700"
+                              : "bg-amber-100 text-amber-700"
+                          }`}
+                        >
+                          {b.status}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))
           )}
         </Card>
 
