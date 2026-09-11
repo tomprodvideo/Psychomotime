@@ -78,9 +78,17 @@ as $$
   union all
 
   -- 6. Fonction du schéma public exécutable par `anon`. PostgREST l'expose
-  --    alors en `/rest/v1/rpc/...` à un visiteur sans session. Seules les
-  --    fonctions délibérément publiques doivent y figurer — aujourd'hui la
-  --    seule légitime est la consultation d'une facture par son jeton.
+  --    alors en `/rest/v1/rpc/...` à un visiteur sans session.
+  --
+  --    DEUX EXCEPTIONS NOMMÉES, et deux seulement :
+  --     · `invoice_by_token` est publique par conception — elle sert la facture
+  --       d'un patient qui n'a pas de compte ;
+  --     · `handle_new_user` est un DÉCLENCHEUR de la v1, inerte hors de son
+  --       contexte (pas d'enregistrement NEW), qui disparaîtra avec la reprise
+  --       de la table `subscriptions`.
+  --
+  --    Attention au pseudo-rôle PUBLIC : révoquer sur `anon` seul ne suffit
+  --    pas, `anon` hérite de ce qui est accordé à PUBLIC.
   select format('Fonction %I.%I : exécutable par anon (exposée en RPC sans session).',
                 n.nspname, p.proname)
   from pg_proc p
@@ -88,7 +96,7 @@ as $$
   where n.nspname = 'public'
     and p.prokind = 'f'
     and has_function_privilege('anon', p.oid, 'execute')
-    and p.proname not in ('invoice_by_token')
+    and p.proname not in ('invoice_by_token', 'handle_new_user')
 
   union all
 

@@ -6,6 +6,7 @@ import {
   Activity,
   LayoutDashboard,
   Calculator,
+  CalendarDays,
   Users,
   FileText,
   FolderClosed,
@@ -19,8 +20,9 @@ import { useState } from "react";
 
 const NAV = [
   { href: "/", label: "Tableau de bord", icon: LayoutDashboard, exact: true },
-  { href: "/comptabilite", label: "Comptabilité", icon: Calculator },
+  { href: "/agenda", label: "Agenda", icon: CalendarDays },
   { href: "/patients", label: "Patients", icon: Users },
+  { href: "/comptabilite", label: "Comptabilité", icon: Calculator },
   { href: "/bilans", label: "Bilans", icon: FileText },
   { href: "/documents", label: "Documents", icon: FolderClosed },
   { href: "/parametres", label: "Paramètres", icon: SettingsIcon },

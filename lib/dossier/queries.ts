@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type {
+  Appointment,
+  AppointmentWithPatient,
   CareObjective,
   CarePathway,
   Contact,
@@ -306,4 +308,149 @@ export async function listContacts(
     return [];
   }
   return (data ?? []) as Contact[];
+}
+
+/* ==========================================================================
+ *  Agenda et séances
+ * ========================================================================== */
+
+/** Colonnes d'une ligne d'agenda, plus le strict nécessaire du patient. */
+const COLONNES_RDV =
+  "id, practice_id, patient_id, pathway_id, practitioner_member_id, location_id, " +
+  "kind, starts_at, ends_at, attendance, attendance_note, billable, title, note";
+
+const COLONNES_RDV_PATIENT =
+  COLONNES_RDV +
+  ", patient:patients(id, first_name, last_name, preferred_name)";
+
+/**
+ * Rendez-vous d'une période.
+ *
+ * Les bornes sont données par l'appelant, jamais déduites d'une horloge cachée :
+ * l'agenda affiche la journée qu'on lui demande, et le même appel rend toujours
+ * le même résultat.
+ */
+export async function listAppointments(
+  practice: PracticeContext,
+  from: Date,
+  to: Date,
+): Promise<AppointmentWithPatient[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("appointments")
+    .select(COLONNES_RDV_PATIENT)
+    .eq("practice_id", practice.practiceId)
+    .gte("starts_at", from.toISOString())
+    .lt("starts_at", to.toISOString())
+    .order("starts_at", { ascending: true });
+
+  if (error) {
+    console.error("[agenda] lecture des rendez-vous refusée :", error);
+    return [];
+  }
+  return (data ?? []) as unknown as AppointmentWithPatient[];
+}
+
+/**
+ * Rendez-vous passés dont l'issue n'a pas été constatée.
+ *
+ * C'est la première chose qu'un tableau de bord doit montrer : tant qu'un
+ * créneau n'est pas qualifié, il ne compte ni comme séance réalisée, ni comme
+ * absence, et il ne peut nourrir aucune attestation.
+ */
+export async function listAppointmentsToQualify(
+  practice: PracticeContext,
+  now: Date,
+  limit = 20,
+): Promise<AppointmentWithPatient[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("appointments")
+    .select(COLONNES_RDV_PATIENT)
+    .eq("practice_id", practice.practiceId)
+    .eq("attendance", "a_venir")
+    .lt("starts_at", now.toISOString())
+    .order("starts_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error("[agenda] lecture des rendez-vous à qualifier refusée :", error);
+    return [];
+  }
+  return (data ?? []) as unknown as AppointmentWithPatient[];
+}
+
+/** Historique des rendez-vous d'un patient, le plus récent d'abord. */
+export async function listPatientAppointments(
+  practice: PracticeContext,
+  patientId: string,
+  limit = 50,
+): Promise<Appointment[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("appointments")
+    .select(COLONNES_RDV)
+    .eq("practice_id", practice.practiceId)
+    .eq("patient_id", patientId)
+    .order("starts_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error("[agenda] lecture de l'historique refusée :", error);
+    return [];
+  }
+  return (data ?? []) as unknown as Appointment[];
+}
+
+export interface SessionCount {
+  realisees: number;
+  aVenir: number;
+  absences: number;
+  aQualifier: number;
+}
+
+/**
+ * Compte des séances d'un patient, par issue.
+ *
+ * Répond à la question que le produit ne savait pas traiter : « combien de
+ * séances cet enfant a-t-il eues ? ». Le compte des séances RÉALISÉES passe
+ * par la vue dédiée, qui est la seule source admissible.
+ */
+export async function countPatientSessions(
+  practice: PracticeContext,
+  patientId: string,
+  now: Date,
+): Promise<SessionCount> {
+  const supabase = await createClient();
+
+  // `head: true` : on ne rapatrie aucune ligne, seulement le compte. Une liste
+  // qui n'affiche qu'un nombre n'a pas à charger ce qu'elle ne montre pas.
+  const base = () =>
+    supabase
+      .from("appointments")
+      .select("id", { count: "exact", head: true })
+      .eq("practice_id", practice.practiceId)
+      .eq("patient_id", patientId);
+
+  const [realisees, aVenir, absences, aQualifier] = await Promise.all([
+    supabase
+      .from("realised_sessions")
+      .select("appointment_id", { count: "exact", head: true })
+      .eq("practice_id", practice.practiceId)
+      .eq("patient_id", patientId)
+      .then((r) => r.count ?? 0),
+    base()
+      .eq("attendance", "a_venir")
+      .gte("starts_at", now.toISOString())
+      .then((r) => r.count ?? 0),
+    base()
+      .in("attendance", ["absent_excuse", "absent_non_excuse"])
+      .then((r) => r.count ?? 0),
+    base()
+      .eq("attendance", "a_venir")
+      .lt("starts_at", now.toISOString())
+      .then((r) => r.count ?? 0),
+  ]);
+
+  return { realisees, aVenir, absences, aQualifier };
 }

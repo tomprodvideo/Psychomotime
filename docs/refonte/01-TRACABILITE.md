@@ -58,6 +58,9 @@ Colonnes : **Origine** — `AUDIT` (audit fonctionnel du 2026-09-11), `MANDAT` (
 | A-38 | ORCH | Le schéma adhère à Supabase par `auth.uid()` dans chaque politique | Un seul point de contact, vérifié par test | L0 | `app.current_user_id()` | `010_couverture_rls` § 5 | **fait** |
 | A-39 | ORCH | Trois implémentations concurrentes de la même règle de cotation divergent aux valeurs 4, 7 et 17 ; une teinte signifie « très supérieur » en tableau et « moyenne » sur la courbe | Une échelle porte ses propres bandes, versionnées ; même score → même couleur et même libellé dans les quatre rendus | L3 | — | — | à faire |
 | A-40 | ORCH | `has_pco` est une donnée de santé imprimée sur la facture et exportée en clair dans le CSV | Le rattachement à un parcours PCO change le circuit, il ne s'imprime pas sur un document familial | L5 | — | — | à faire |
+| A-43 | ORCH | Les privilèges par défaut de Supabase accordent `ALL` sur toute table et fonction de `public` ; un `revoke from public` ne les retire pas | Surface d'API explicite : `REVOKE ALL` puis `GRANT` du strict nécessaire | L0 | `0004`, `0006` | `010_couverture_rls` § 6 ; vérifié en production | **fait** |
+| A-44 | ORCH | Les séances n'existaient que comme montant sur une facture : impossible de savoir combien de séances un enfant avait eues | Agenda, issues constatées, comptes par patient | L2 | `appointments`, `SeancesSection` | `050_agenda_seances` | **fait** |
+| A-45 | ORCH | Une séance pouvait être « réalisée » avant d'avoir eu lieu — donc attestable | Un rendez-vous futur ne peut pas être marqué honoré | L2 | déclencheur `app.guard_appointment` | `050_agenda_seances` § 1, vérifié en production | **fait** |
 | A-42 | ORCH | Mot de passe minimum de 6 caractères, aucune autre contrainte | Au moins 12 caractères, refus des racines les plus essayées, des suites et des mots bâtis sur l'adresse ; le refus dit toujours pourquoi | L0 | `lib/auth/password.ts` | `lib/auth/password.test.mts` — 11 tests | **fait** |
 | A-41 | ORCH | La dictée vocale peut transmettre la parole clinique à l'éditeur du navigateur, sans information ni contrat | Information explicite de l'utilisateur, ou retrait de la fonction | L6 | — | — | **décision utilisateur** |
 
@@ -91,7 +94,7 @@ Colonnes : **Origine** — `AUDIT` (audit fonctionnel du 2026-09-11), `MANDAT` (
 | C-02 | MANDAT | RLS refus par défaut sur toutes les tables et liaisons ; tests négatifs inter-cabinets, y compris par UUID deviné | L0 | **fait** — `010_couverture_rls`, `020_isolation_cabinets` |
 | C-03 | MANDAT | Plusieurs responsables légaux ; rôles distincts responsable légal / destinataire / payeur / assuré / prescripteur / adresseur | L1 | **fait** — `contacts` + `patient_contacts` datés, `040_dossier_patient` §1-4 |
 | C-04 | MANDAT | Parcours de prise en soin : prescription, demande, objectifs, statut actif/en pause/terminé, archivage | L1 | **fait** — `care_pathways`, `care_objectives`, `archive_patient` |
-| C-05 | MANDAT | Agenda, rendez-vous, séances, présence/absence/annulation, liste d'attente | L2 | à faire |
+| C-05 | MANDAT | Agenda, rendez-vous, séances, présence/absence/annulation, liste d'attente | L2 | **fait** — `appointments`, vue `realised_sessions`, liste d'attente portée par le parcours ; `050_agenda_seances` — 9 scénarios |
 | C-06 | MANDAT | Moteur de bilans configurable : nature × population × contexte × domaines × instruments × destinataires | L3 | à faire |
 | C-07 | MANDAT | Registre versionné des instruments avec statut de licence ; aucun contenu éditeur dans le code | L3 | à faire |
 | C-08 | MANDAT | Passations multiples par bilan, chacune datée, avec son âge calculé | L3 | à faire |
@@ -100,7 +103,7 @@ Colonnes : **Origine** — `AUDIT` (audit fonctionnel du 2026-09-11), `MANDAT` (
 | C-11 | MANDAT | Catalogue de prestations historisé ; devis de bilan, de séances, mixte, forfait | L5 | à faire |
 | C-12 | MANDAT | Factures multi-lignes, avoirs, paiements partiels et groupés, trop-perçus, remboursements, relances | L5 | à faire |
 | C-13 | MANDAT | Dépenses ponctuelles et récurrentes, justificatifs, rapprochement | L5 | à faire |
-| C-14 | MANDAT | Attestation de présence (séances réalisées, aucun contenu clinique) et attestation de paiement (paiements réellement affectés) | L5 | à faire |
+| C-14 | MANDAT | Attestation de présence (séances réalisées, aucun contenu clinique) et attestation de paiement (paiements réellement affectés) | L5 | **en cours** — la source unique existe : vue `realised_sessions`, qui exclut par construction les rendez-vous à venir, annulés, non qualifiés et sans patient |
 | C-15 | MANDAT | Exports réconciliables CSV/XLSX/PDF pour l'expert-comptable | L5 | à faire |
 | C-16 | MANDAT | Configuration fiscale datée : micro-BNC, EI hors micro, société ; TVA par ligne ; aucun taux en dur | L5 | à faire |
 | C-17 | MANDAT | Assistance IA : sélection explicite, désidentification, diff avant/après, acceptation paragraphe par paragraphe, jamais de finalisation | L6 | à faire |

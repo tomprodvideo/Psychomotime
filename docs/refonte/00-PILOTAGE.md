@@ -3,7 +3,7 @@
 > Document de continuité. Il doit permettre à un autre contexte de reprendre le
 > travail sans perte. Mis à jour à chaque fin de lot.
 
-**Dernière mise à jour :** 2026-09-11 — L0 et L1 livrés, bascule appliquée en production
+**Dernière mise à jour :** 2026-09-11 — L0, L1 et L2 livrés, bascule appliquée en production
 **Base de départ :** `main` @ `d8af516` — audit fonctionnel du 2026-09-11.
 
 ---
@@ -88,7 +88,7 @@ Tout document de cette refonte utilise ces marqueurs, sans exception :
 |---|---|---|
 | L0 | Socle : migrations reproductibles, tenancy cabinet, RLS refus par défaut, harnais de tests | **livré** |
 | L1 | Dossier patient, entourage, rôles, parcours de soin | **livré et en service** |
-| L2 | Agenda, séances, présences, objectifs | à faire |
+| L2 | Agenda, séances, présences, objectifs | **livré et en service** |
 | L3 | Moteur de bilans configurable + registre d'instruments | à faire |
 | L4 | Composition documentaire, statuts, versions, exports | à faire |
 | L5 | Devis, factures, avoirs, paiements, attestations, PCO | à faire |
@@ -114,6 +114,9 @@ Détail : `docs/refonte/02-LOTS.md`.
 | **Bascule appliquée en production le 2026-09-11** | 2 cabinets, 7 dossiers repris avec leurs identifiants, 4 bilans et 9 factures toujours rattachés, `patients_v1` conservée |
 | Âge calculé à une date donnée, jamais à l'horloge | `lib/age.ts` + 8 tests |
 | Privilèges de fonction et de table remis à plat | `0004_durcissement_privileges.sql`, vérifié en production |
+| Agenda, séances et présences | `0005_agenda_seances.sql`, `/agenda`, section Séances de la fiche |
+| Source unique d'une attestation de présence | vue `realised_sessions` — exclut par construction les rendez-vous à venir, annulés, non qualifiés et sans patient |
+| Surface anonyme réduite à deux fonctions nommées | `0006`, vérifié en production |
 | Arithmétique monétaire en centimes entiers | `lib/money.ts` + 15 tests, dont la preuve du défaut corrigé |
 | Règle d'accès unique et fermée par défaut | `lib/subscription.ts` + `app.subscription_is_active` |
 
@@ -123,10 +126,16 @@ Commandes : `npm run verify` (lint + typecheck + 42 tests unitaires + 3 fichiers
 
 Lots 0 et 1 **terminés et en service**.
 
-Lot 2 — agenda et séances : `appointments`, `sessions`, présence / absence /
-annulation avec motif, liste d'attente, notes de suivi datées et attribuées
-`[C-05]`. Une séance réalisée sera la seule source possible d'une attestation
-de présence.
+Lot 3 — moteur de bilans configurable : catalogue des natures de documents,
+domaines activables dont aucun n'est obligatoire, registre versionné des
+instruments avec leur statut de licence, passations multiples datées avec l'âge
+calculé à la passation, échelles portant leurs propres bandes et leur
+vocabulaire `[C-06, C-07, C-08, A-04, A-05, A-06, A-22, A-39]`.
+
+C'est le lot le plus lourd de la refonte, et celui qui dépend le plus de
+décisions humaines : les seuils et le vocabulaire imprimés sur un document
+remis à une famille ne peuvent être arbitrés que par une psychomotricienne
+(`01-TRACABILITE.md`, section D).
 
 ### Ce qui n'a pas pu être vérifié
 

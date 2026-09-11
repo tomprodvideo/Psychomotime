@@ -5,6 +5,7 @@ import { frDate } from "@/lib/format";
 import { formatAgeAt } from "@/lib/age";
 import { getCurrentPractice } from "@/lib/dossier/practice";
 import {
+  countPatientSessions,
   findPossibleDuplicates,
   getPatient,
   listConsents,
@@ -12,6 +13,7 @@ import {
   listNotes,
   listObjectives,
   listPathways,
+  listPatientAppointments,
   listPatientContacts,
 } from "@/lib/dossier/queries";
 import { patientName } from "@/lib/dossier/types";
@@ -21,6 +23,7 @@ import EntourageSection from "./EntourageSection";
 import ParcoursSection from "./ParcoursSection";
 import NotesSection from "./NotesSection";
 import ConsentementsSection from "./ConsentementsSection";
+import SeancesSection from "./SeancesSection";
 
 export default async function FichePatientPage({
   params,
@@ -36,23 +39,33 @@ export default async function FichePatientPage({
 
   // Toutes les lectures du dossier en parallèle : elles ne dépendent pas
   // les unes des autres, et les enchaîner n'apporterait qu'un écran plus lent.
-  const [entourage, parcours, notes, consentements, contacts, doublons] =
-    await Promise.all([
-      listPatientContacts(practice, patient.id),
-      listPathways(practice, patient.id),
-      listNotes(practice, patient.id),
-      listConsents(practice, patient.id),
-      listContacts(practice),
-      findPossibleDuplicates(practice, patient),
-    ]);
+  const maintenant = new Date();
+  const [
+    entourage,
+    parcours,
+    notes,
+    consentements,
+    contacts,
+    doublons,
+    rendezVous,
+    comptes,
+  ] = await Promise.all([
+    listPatientContacts(practice, patient.id),
+    listPathways(practice, patient.id),
+    listNotes(practice, patient.id),
+    listConsents(practice, patient.id),
+    listContacts(practice),
+    findPossibleDuplicates(practice, patient),
+    listPatientAppointments(practice, patient.id),
+    countPatientSessions(practice, patient.id, maintenant),
+  ]);
 
   const objectifs = await listObjectives(
     practice,
     parcours.map((p) => p.id),
   );
 
-  const aujourdhui = new Date();
-  const age = formatAgeAt(patient.birth_date, aujourdhui);
+  const age = formatAgeAt(patient.birth_date, maintenant);
   const archive = patient.status === "archive";
 
   return (
@@ -197,6 +210,8 @@ export default async function FichePatientPage({
           contacts={contacts}
           canWrite={practice.canWrite}
         />
+
+        <SeancesSection appointments={rendezVous} counts={comptes} />
 
         <ParcoursSection
           patientId={patient.id}

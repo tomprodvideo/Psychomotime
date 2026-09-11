@@ -275,12 +275,28 @@ begin
     'Une note issue d''un tiers doit pouvoir être marquée comme telle.');
 
   -- Cette note doit être exclue d'une communication de dossier au patient.
-  perform tests.assert_rows(
-    format('select 1 from public.patient_notes
-             where patient_id = %L and not third_party_information',
-           'a6000000-0000-4000-8000-000000000001'),
-    1,
-    'Le tri « communicable / non communicable » doit être possible.');
+  -- On vérifie que LE TRI fonctionne, pas un compte exact : celui-ci dépend du
+  -- jeu d'essai, qu'un autre lot peut légitimement enrichir.
+  perform tests.assert(
+    (select count(*) from public.patient_notes
+      where patient_id = 'a6000000-0000-4000-8000-000000000001'
+        and not third_party_information) > 0,
+    'Des notes communicables doivent exister.');
+  perform tests.assert(
+    (select count(*) from public.patient_notes
+      where patient_id = 'a6000000-0000-4000-8000-000000000001'
+        and third_party_information) > 0,
+    'Des notes non communicables doivent exister.');
+  perform tests.assert_equals(
+    (select count(*) from public.patient_notes
+      where patient_id = 'a6000000-0000-4000-8000-000000000001'),
+    (select count(*) from public.patient_notes
+      where patient_id = 'a6000000-0000-4000-8000-000000000001'
+        and third_party_information)
+    + (select count(*) from public.patient_notes
+        where patient_id = 'a6000000-0000-4000-8000-000000000001'
+          and not third_party_information),
+    'Le tri doit partitionner les notes sans en perdre ni en dupliquer.');
 
   -- Une source de tiers sans le marquage serait incohérente.
   perform tests.assert_fails(
@@ -332,7 +348,10 @@ select tests.authenticate_as(:alpha::uuid);
 do $$
 declare
   v_avant bigint;
+  v_notes bigint;
 begin
+  select count(*) into v_notes from public.patient_notes
+   where patient_id = 'a6000000-0000-4000-8000-000000000001';
   select count(*) into v_avant from public.patients where status = 'actif';
   perform tests.assert_equals(v_avant, 3::bigint,
     'Trois patients actifs, l''archivé n''en fait pas partie.');
@@ -352,10 +371,12 @@ begin
              where patient_id = %L and status in (''actif'', ''demande'')',
            'a6000000-0000-4000-8000-000000000001'),
     0, 'Aucun parcours ne doit rester ouvert sur un dossier archivé.');
-  perform tests.assert_rows(
-    format('select 1 from public.patient_notes where patient_id = %L',
-           'a6000000-0000-4000-8000-000000000001'),
-    2, 'Archiver n''efface aucune note.');
+  -- On compare au compte relevé AVANT l'archivage : ce qui importe est que
+  -- rien ne disparaisse, pas qu'il y en ait un nombre précis.
+  perform tests.assert_equals(
+    (select count(*) from public.patient_notes
+      where patient_id = 'a6000000-0000-4000-8000-000000000001'),
+    v_notes, 'Archiver n''efface aucune note.');
   perform tests.assert_rows(
     'select 1 from public.audit_events where action = ''patient.archive''',
     1, 'L''archivage doit laisser une trace au journal.');

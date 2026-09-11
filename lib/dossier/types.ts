@@ -314,3 +314,105 @@ export function patientName(p: Pick<Patient, "first_name" | "last_name" | "prefe
   const nom = [prenom, p.last_name?.trim()].filter(Boolean).join(" ").trim();
   return nom || "Dossier sans nom";
 }
+
+/* ==========================================================================
+ *  Agenda, séances et présences
+ * ========================================================================== */
+
+/** Ce qui était prévu. */
+export type AppointmentKind =
+  | "seance"
+  | "bilan"
+  | "entretien"
+  | "restitution"
+  | "reunion"
+  | "administratif"
+  | "autre";
+
+/**
+ * Ce qui s'est réellement passé.
+ *
+ * `a_venir` reste tant que rien n'est constaté — y compris pour un rendez-vous
+ * déjà passé. Le logiciel ne décide pas à la place du praticien : un créneau
+ * passé non qualifié est une chose à traiter, pas une absence supposée.
+ */
+export type Attendance =
+  | "a_venir"
+  | "honore"
+  | "absent_excuse"
+  | "absent_non_excuse"
+  | "annule_praticien"
+  | "annule_patient"
+  | "reporte";
+
+export interface Appointment {
+  id: string;
+  practice_id: string;
+  patient_id: string | null;
+  pathway_id: string | null;
+  practitioner_member_id: string | null;
+  location_id: string | null;
+  kind: AppointmentKind;
+  starts_at: string;
+  ends_at: string;
+  attendance: Attendance;
+  attendance_note: string | null;
+  billable: boolean;
+  title: string | null;
+  note: string | null;
+}
+
+/** Un rendez-vous accompagné du nom du patient, pour l'agenda. */
+export interface AppointmentWithPatient extends Appointment {
+  patient: Pick<Patient, "id" | "first_name" | "last_name" | "preferred_name"> | null;
+}
+
+export const APPOINTMENT_KIND_LABELS: Record<AppointmentKind, string> = {
+  seance: "Séance",
+  bilan: "Passation de bilan",
+  entretien: "Entretien",
+  restitution: "Restitution",
+  reunion: "Réunion",
+  administratif: "Temps administratif",
+  autre: "Autre",
+};
+
+export const ATTENDANCE_LABELS: Record<Attendance, string> = {
+  a_venir: "À venir",
+  honore: "Honoré",
+  absent_excuse: "Absent, prévenu",
+  absent_non_excuse: "Absent, sans nouvelle",
+  annule_praticien: "Annulé par le cabinet",
+  annule_patient: "Annulé par le patient",
+  reporte: "Reporté",
+};
+
+/**
+ * Issues exigeant un motif, en écho à la contrainte de la base.
+ * Sans motif, on ne saurait ni relancer, ni justifier une facturation.
+ */
+export const ATTENDANCE_REQUIRING_NOTE: Attendance[] = [
+  "absent_non_excuse",
+  "annule_praticien",
+  "reporte",
+];
+
+/**
+ * Issues facturables par défaut. Le praticien garde la main : la règle
+ * d'un cabinet à l'autre n'est pas la même.
+ */
+export const ATTENDANCE_BILLABLE_BY_DEFAULT: Attendance[] = [
+  "honore",
+  "absent_non_excuse",
+];
+
+/** Un rendez-vous compte-t-il comme une séance réalisée ? */
+export function isRealisedSession(a: Pick<Appointment, "attendance" | "kind" | "patient_id">): boolean {
+  return (
+    a.attendance === "honore" &&
+    a.patient_id !== null &&
+    ["seance", "bilan", "entretien", "restitution"].includes(a.kind)
+  );
+}
+
+export type WaitlistPriority = "normale" | "prioritaire";
