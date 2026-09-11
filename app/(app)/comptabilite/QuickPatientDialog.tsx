@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { X } from "lucide-react";
 import type { PatientContact } from "@/lib/types";
 import { savePatient } from "../patients/actions";
@@ -20,15 +20,21 @@ export default function QuickPatientDialog({
   onSaved: (patient: PatientContact) => void;
 }) {
   const [pending, start] = useTransition();
+  const [erreur, setErreur] = useState<string | null>(null);
 
   if (!open) return null;
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    setErreur(null);
     start(async () => {
-      const { patient } = await savePatient(fd);
-      if (patient) onSaved(patient);
+      const res = await savePatient(fd);
+      if (res.error || !res.patient) {
+        setErreur(res.error ?? "Le patient n'a pas pu être créé.");
+        return;
+      }
+      onSaved(res.patient);
       onClose();
     });
   }
@@ -68,6 +74,15 @@ export default function QuickPatientDialog({
             Coordonnées, tuteur et dossier de suivi se complètent ensuite dans
             l&apos;onglet Patients.
           </p>
+
+          {erreur && (
+            <p
+              role="alert"
+              className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200"
+            >
+              {erreur}
+            </p>
+          )}
 
           <div className="flex justify-end gap-2 pt-1">
             <button

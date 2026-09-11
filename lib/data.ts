@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Access, Settings, Subscription } from "@/lib/types";
+import { ACCESS_DENIED, decideAccess } from "@/lib/subscription";
 
 const DEFAULT_SETTINGS: Omit<Settings, "user_id" | "created_at" | "updated_at"> =
   {
@@ -52,15 +53,7 @@ export async function getAccess(): Promise<Access> {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    return {
-      active: false,
-      isAdmin: false,
-      status: "none",
-      trialEnd: null,
-      trialDaysLeft: null,
-    };
-  }
+  if (!user) return ACCESS_DENIED;
 
   const { data: initial, error } = await supabase
     .from("subscriptions")
@@ -68,16 +61,11 @@ export async function getAccess(): Promise<Access> {
     .eq("user_id", user.id)
     .maybeSingle();
 
-  // Si la table n'existe pas encore (migration_004 non lancée), ne pas bloquer.
-  if (error) {
-    return {
-      active: true,
-      isAdmin: user.email === "tom.marcon@live.fr",
-      status: "trialing",
-      trialEnd: null,
-      trialDaysLeft: null,
-    };
-  }
+  // Une erreur de lecture n'accorde RIEN. Le repli précédent rendait
+  // `active: true` — et le rôle d'administrateur sur comparaison d'adresse —
+  // dès qu'une requête échouait : une indisponibilité de la base devenait un
+  // octroi d'accès. Le refus est désormais le comportement par défaut.
+  if (error) return ACCESS_DENIED;
 
   let data = initial;
 
@@ -96,31 +84,5 @@ export async function getAccess(): Promise<Access> {
     data = created ?? null;
   }
 
-  const sub = data as Subscription | null;
-  const isAdmin = !!sub?.is_admin;
-  const now = Date.now();
-  const trialEnd = sub?.trial_end ?? null;
-  const trialActive =
-    sub?.status === "trialing" && trialEnd
-      ? new Date(trialEnd).getTime() > now
-      : false;
-
-  const active =
-    isAdmin ||
-    !!sub?.manual_override ||
-    sub?.status === "active" ||
-    trialActive;
-
-  const trialDaysLeft =
-    trialActive && trialEnd
-      ? Math.max(0, Math.ceil((new Date(trialEnd).getTime() - now) / 86400000))
-      : null;
-
-  return {
-    active,
-    isAdmin,
-    status: sub?.status ?? "inactive",
-    trialEnd,
-    trialDaysLeft,
-  };
+  return decideAccess(data as Subscription | null);
 }

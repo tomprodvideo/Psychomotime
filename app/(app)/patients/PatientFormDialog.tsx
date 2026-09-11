@@ -1,229 +1,224 @@
 "use client";
 
-import { Fragment, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, X } from "lucide-react";
-import type { Patient } from "@/lib/types";
-import { DOSSIER_GROUPS, PATIENT_DOSSIER_FIELDS } from "@/lib/constants";
 import { savePatient } from "./actions";
+import type { Patient } from "@/lib/dossier/types";
 
+/**
+ * Création et modification d'un dossier.
+ *
+ * CE QUI A CHANGÉ. Le formulaire ne contient plus le responsable légal ni le
+ * dossier de suivi : ce sont des objets à part entière, qui vivent sur la fiche.
+ * Un responsable légal n'est pas un champ du patient — c'est une personne, qui
+ * peut suivre une fratrie et tenir plusieurs rôles.
+ *
+ * Ce qui reste ici est ce qui décrit LA PERSONNE et rien d'autre.
+ */
 export default function PatientFormDialog({
   patient,
-  trigger,
+  label,
 }: {
   patient?: Patient;
-  trigger?: "button" | "link";
+  label?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const dossier = (patient?.dossier ?? {}) as Record<
-    string,
-    string | null | undefined
-  >;
+  const router = useRouter();
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    setErreur(null);
     start(async () => {
-      await savePatient(fd);
+      const res = await savePatient(fd);
+      // On ne referme QUE si l'enregistrement a abouti : refermer sur un échec
+      // ferait disparaître la saisie sans rien dire.
+      if (res.error || !res.id) {
+        setErreur(res.error ?? "Le dossier n'a pas pu être enregistré.");
+        return;
+      }
       setOpen(false);
+      if (!patient) router.push(`/patients/${res.id}`);
     });
   }
 
   return (
     <>
-      {patient ? (
-        <button
-          onClick={() => setOpen(true)}
-          className="text-sm font-medium text-brand-700 hover:bg-brand-50 px-3 py-1.5 rounded-lg"
-        >
-          Modifier
-        </button>
-      ) : (
-        <button
-          onClick={() => setOpen(true)}
-          className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shadow-sm"
-        >
-          <Plus className="h-4 w-4" />
-          Nouveau patient
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={
+          patient
+            ? "text-sm font-medium text-brand-700 hover:bg-brand-50 px-3 py-1.5 rounded-lg"
+            : "inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shadow-sm"
+        }
+      >
+        {!patient && <Plus className="h-4 w-4" aria-hidden="true" />}
+        {label ?? (patient ? "Modifier" : "Nouveau dossier")}
+      </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-slate-900/40 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 z-10 bg-white flex items-center justify-between px-6 py-4 border-b border-slate-100 rounded-t-2xl">
-              <h2 className="font-semibold text-slate-800">
-                {patient ? "Modifier le patient" : "Nouveau patient"}
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="titre-dossier"
+          className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-slate-900/40 p-4 overflow-y-auto"
+        >
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl my-8">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <h2 id="titre-dossier" className="font-semibold text-slate-800">
+                {patient ? "Modifier le dossier" : "Nouveau dossier"}
               </h2>
-              <button onClick={() => setOpen(false)}>
-                <X className="h-5 w-5 text-slate-400" />
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                aria-label="Fermer"
+                className="text-slate-400 hover:text-slate-600 rounded p-1 focus:outline-none focus:ring-2 focus:ring-brand-300"
+              >
+                <X className="h-5 w-5" aria-hidden="true" />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+
+            <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
               {patient && <input type="hidden" name="id" value={patient.id} />}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Prénom</Label>
-                  <input
+
+              <fieldset className="space-y-4">
+                <legend className="text-sm font-medium text-slate-700">Identité</legend>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <Champ
                     name="first_name"
-                    required
-                    defaultValue={patient?.first_name ?? ""}
-                    className={inputCls}
+                    label="Prénom"
+                    defaultValue={patient?.first_name}
+                    autoComplete="off"
                   />
-                </div>
-                <div>
-                  <Label>Nom</Label>
-                  <input
+                  <Champ
                     name="last_name"
-                    defaultValue={patient?.last_name ?? ""}
-                    className={inputCls}
+                    label="Nom"
+                    defaultValue={patient?.last_name}
+                    autoComplete="off"
                   />
-                </div>
-                <div>
-                  <Label>Date de naissance</Label>
-                  <input
+                  <Champ
+                    name="preferred_name"
+                    label="Prénom d'usage"
+                    defaultValue={patient?.preferred_name ?? ""}
+                    aide="S'il diffère du prénom d'état civil."
+                  />
+                  <Champ
+                    name="birth_name"
+                    label="Nom de naissance"
+                    defaultValue={patient?.birth_name ?? ""}
+                    aide="À ne renseigner que s'il diffère et qu'il sert."
+                  />
+                  <Champ
                     name="birth_date"
+                    label="Date de naissance"
                     type="date"
                     defaultValue={patient?.birth_date ?? ""}
-                    className={inputCls}
                   />
+                  <div>
+                    <label
+                      htmlFor="norm_reference_sex"
+                      className="block text-sm text-slate-700 mb-1"
+                    >
+                      Sexe de référence
+                    </label>
+                    <select
+                      id="norm_reference_sex"
+                      name="norm_reference_sex"
+                      defaultValue={patient?.norm_reference_sex ?? ""}
+                      aria-describedby="aide-sexe"
+                      className={CHAMP}
+                    >
+                      <option value="">Non renseigné</option>
+                      <option value="f">Féminin</option>
+                      <option value="m">Masculin</option>
+                      <option value="autre">Autre</option>
+                    </select>
+                    <p id="aide-sexe" className="text-xs text-slate-500 mt-1">
+                      Sert uniquement à lire l&apos;étalonnage d&apos;un
+                      instrument qui distingue les normes. Facultatif : un bilan
+                      sans score n&apos;en a aucun besoin.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <Label>Téléphone</Label>
-                  <input
-                    name="phone"
-                    defaultValue={patient?.phone ?? ""}
-                    className={inputCls}
-                  />
-                </div>
-                <div className="col-span-2">
-                  <Label>Email</Label>
-                  <input
+              </fieldset>
+
+              <fieldset className="space-y-4">
+                <legend className="text-sm font-medium text-slate-700">
+                  Coordonnées du patient
+                </legend>
+                <p className="text-xs text-slate-500">
+                  Pour un enfant, laissez ces champs vides : les coordonnées des
+                  parents se saisissent dans l&apos;entourage, sur la fiche. Les
+                  recopier ici était le défaut de la version précédente.
+                </p>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <Champ
                     name="email"
+                    label="Adresse e-mail"
                     type="email"
                     defaultValue={patient?.email ?? ""}
-                    className={inputCls}
+                  />
+                  <Champ
+                    name="phone"
+                    label="Téléphone"
+                    type="tel"
+                    defaultValue={patient?.phone ?? ""}
+                  />
+                  <Champ
+                    name="address_line1"
+                    label="Adresse"
+                    defaultValue={patient?.address_line1 ?? ""}
+                    className="sm:col-span-2"
+                  />
+                  <Champ
+                    name="postal_code"
+                    label="Code postal"
+                    defaultValue={patient?.postal_code ?? ""}
+                  />
+                  <Champ
+                    name="city"
+                    label="Ville"
+                    defaultValue={patient?.city ?? ""}
                   />
                 </div>
-                <div className="col-span-2">
-                  <Label>Adresse</Label>
-                  <input
-                    name="address"
-                    defaultValue={patient?.address ?? ""}
-                    className={inputCls}
-                  />
-                </div>
-                <div className="col-span-2">
-                  <Label>Notes</Label>
-                  <textarea
-                    name="notes"
-                    rows={3}
-                    defaultValue={patient?.notes ?? ""}
-                    className={inputCls}
-                  />
-                </div>
+              </fieldset>
 
-                {/* Tuteur / Parent */}
-                <div className="col-span-2 pt-2 border-t border-slate-100">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-brand-600 mt-1 mb-1">
-                    Tuteur / Parent
-                  </h3>
-                </div>
-                <div>
-                  <Label>Prénom</Label>
-                  <input
-                    name="guardian_first_name"
-                    defaultValue={patient?.guardian?.first_name ?? ""}
-                    className={inputCls}
-                  />
-                </div>
-                <div>
-                  <Label>Nom</Label>
-                  <input
-                    name="guardian_last_name"
-                    defaultValue={patient?.guardian?.last_name ?? ""}
-                    className={inputCls}
-                  />
-                </div>
-                <div>
-                  <Label>Lien</Label>
-                  <select
-                    name="guardian_relation"
-                    defaultValue={patient?.guardian?.relation ?? ""}
-                    className={inputCls}
-                  >
-                    <option value="">—</option>
-                    {["Parent", "Mère", "Père", "Tuteur légal", "Autre"].map(
-                      (r) => (
-                        <option key={r} value={r}>
-                          {r}
-                        </option>
-                      ),
-                    )}
-                  </select>
-                </div>
-                <div>
-                  <Label>Téléphone</Label>
-                  <input
-                    name="guardian_phone"
-                    defaultValue={patient?.guardian?.phone ?? ""}
-                    className={inputCls}
-                  />
-                </div>
-                <div className="col-span-2">
-                  <Label>Email</Label>
-                  <input
-                    name="guardian_email"
-                    type="email"
-                    defaultValue={patient?.guardian?.email ?? ""}
-                    className={inputCls}
-                  />
-                </div>
-                <div className="col-span-2">
-                  <Label>Adresse</Label>
-                  <input
-                    name="guardian_address"
-                    defaultValue={patient?.guardian?.address ?? ""}
-                    className={inputCls}
-                  />
-                </div>
+              <fieldset>
+                <legend className="text-sm font-medium text-slate-700 mb-1">
+                  Notes d&apos;organisation
+                </legend>
+                <label htmlFor="administrative_notes" className="sr-only">
+                  Notes d&apos;organisation
+                </label>
+                <textarea
+                  id="administrative_notes"
+                  name="administrative_notes"
+                  rows={3}
+                  defaultValue={patient?.administrative_notes ?? ""}
+                  aria-describedby="aide-notes"
+                  placeholder="Accès au cabinet, contrainte d'horaire, langue…"
+                  className={CHAMP}
+                />
+                <p id="aide-notes" className="text-xs text-slate-500 mt-1">
+                  Informations pratiques. Les observations cliniques se
+                  saisissent dans les notes de la fiche, qui portent leur date et
+                  leur auteur.
+                </p>
+              </fieldset>
 
-                {/* Dossier de suivi */}
-                {DOSSIER_GROUPS.map((group) => (
-                  <Fragment key={group}>
-                    <div className="col-span-2 pt-2 border-t border-slate-100">
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-brand-600 mt-1 mb-1">
-                        {group}
-                      </h3>
-                    </div>
-                    {PATIENT_DOSSIER_FIELDS.filter(
-                      (f) => f.group === group,
-                    ).map((f) => (
-                      <div
-                        key={f.id}
-                        className={f.type === "long" ? "col-span-2" : ""}
-                      >
-                        <Label>{f.label}</Label>
-                        {f.type === "long" ? (
-                          <textarea
-                            name={`dossier_${f.id}`}
-                            rows={2}
-                            defaultValue={dossier[f.id] ?? ""}
-                            className={inputCls}
-                          />
-                        ) : (
-                          <input
-                            name={`dossier_${f.id}`}
-                            type={f.type === "date" ? "date" : "text"}
-                            defaultValue={dossier[f.id] ?? ""}
-                            className={inputCls}
-                          />
-                        )}
-                      </div>
-                    ))}
-                  </Fragment>
-                ))}
-              </div>
+              {erreur && (
+                <p
+                  role="alert"
+                  className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200"
+                >
+                  {erreur}
+                </p>
+              )}
+
               <div className="flex justify-end gap-2 pt-1">
                 <button
                   type="button"
@@ -248,13 +243,46 @@ export default function PatientFormDialog({
   );
 }
 
-const inputCls =
-  "w-full rounded-lg border border-slate-200 bg-white py-2 px-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100 transition";
+const CHAMP =
+  "w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100 transition";
 
-function Label({ children }: { children: React.ReactNode }) {
+function Champ({
+  name,
+  label,
+  type = "text",
+  defaultValue,
+  aide,
+  autoComplete,
+  className = "",
+}: {
+  name: string;
+  label: string;
+  type?: string;
+  defaultValue?: string;
+  aide?: string;
+  autoComplete?: string;
+  className?: string;
+}) {
+  const aideId = aide ? `${name}-aide` : undefined;
   return (
-    <label className="block text-xs font-medium text-slate-500 mb-1">
-      {children}
-    </label>
+    <div className={className}>
+      <label htmlFor={name} className="block text-sm text-slate-700 mb-1">
+        {label}
+      </label>
+      <input
+        id={name}
+        name={name}
+        type={type}
+        defaultValue={defaultValue}
+        autoComplete={autoComplete}
+        aria-describedby={aideId}
+        className={CHAMP}
+      />
+      {aide && (
+        <p id={aideId} className="text-xs text-slate-500 mt-1">
+          {aide}
+        </p>
+      )}
+    </div>
   );
 }

@@ -5,9 +5,20 @@ import { createClient } from "@/lib/supabase/server";
 import { getSettings } from "@/lib/data";
 import { computeInvoice } from "@/lib/calc";
 import { MONTHS } from "@/lib/constants";
-import { headers } from "next/headers";
 import { emailConfig, sendMail } from "@/lib/email";
 import { newShareToken, shareExpiry } from "@/lib/invoiceShare";
+import { siteOrigin } from "@/lib/siteOrigin";
+import {
+  ecritureReussie,
+  requireActiveAccess,
+  requireUser,
+  type Guarded,
+} from "@/lib/auth/guard";
+import {
+  invoiceLinesTotal,
+  normalizeInvoiceLines,
+  validateInvoiceLines,
+} from "@/lib/invoiceLines";
 import type { Invoice, Patient, Settings } from "@/lib/types";
 import {
   buildInvoiceNumber,
@@ -68,6 +79,9 @@ export async function nextInvoiceNumber(
   year: number,
   month: number,
 ): Promise<string> {
+  const session = await requireUser();
+  if (!session.ok) return "";
+
   const supabase = await createClient();
   const n = await numbering(supabase, year, month);
 
@@ -113,6 +127,30 @@ async function reserveInvoiceNumber(
  */
 const SAVE_FAILED_MESSAGE =
   "L'enregistrement n'a pas abouti. Votre saisie est toujours à l'écran : réessayez dans un instant.";
+
+/**
+ * Message de refus d'une ligne de prestation incohérente.
+ *
+ * Il nomme le rang de la ligne et la règle enfreinte — de quoi corriger — mais
+ * ni montant, ni date, ni identifiant : il est affiché tel quel dans le
+ * formulaire, et une facture porte des données de niveau « sensible »
+ * (docs/security/DATA_CLASSIFICATION.md).
+ */
+function lineProblemMessage(
+  problems: ReturnType<typeof validateInvoiceLines>,
+): string {
+  const first = problems[0];
+  const rang = `La prestation n° ${first.index + 1}`;
+
+  if (first.code === "dates-manquantes") {
+    return `${rang} est facturée à l'unité : indiquez au moins une date de séance avant d'enregistrer.`;
+  }
+  return (
+    `${rang} imprime un montant par date : elle doit compter autant de dates que de séances facturées ` +
+    `(${first.dateCount} date(s) pour ${first.quantity} séance(s)). ` +
+    `Corrigez l'un ou l'autre, ou choisissez l'affichage en liste.`
+  );
+}
 
 export type SaveInvoiceResult =
   | { ok: true }
@@ -186,10 +224,43 @@ export async function saveInvoice(
         monthIndex < 0 ? new Date().getMonth() : monthIndex,
       );
 
+  // ---- Lignes de prestation (migration 013) ----
+  //
+  // Le champ est ABSENT des formulaires qui ne gèrent pas les lignes : on ne
+  // touche alors pas du tout la colonne, et la facture se comporte exactement
+  // comme avant. Présent — même à « [] » — il fait autorité : c'est le client
+  // qui déclare gérer les lignes, et la colonne est écrite en conséquence.
+  const rawLines = formData.get("lines");
+  const managesLines = rawLines !== null;
+
+  // Le catalogue n'est PAS relu ici, et ne doit jamais l'être : la ligne porte
+  // déjà ses valeurs, figées au moment où elle a été créée. Une entrée de
+  // catalogue modifiée, désactivée ou supprimée ne change aucune facture émise.
+  const lines = managesLines ? normalizeInvoiceLines(rawLines) : [];
+
+  if (lines.length > 0) {
+    const problems = validateInvoiceLines(lines);
+    if (problems.length > 0) {
+      return {
+        ok: false,
+        reason: "error",
+        message: lineProblemMessage(problems),
+      };
+    }
+  }
+
   // Rétrocession et URSSAF ne sont plus saisies par facture : elles découlent
   // des réglages (Paramètres › Comptabilité).
-  const gross = num(formData.get("revenue_gross"));
+  //
+  // Dès qu'il y a des lignes, le brut est la somme des blocs et le montant posté
+  // par le client est IGNORÉ : il n'est ni lu, ni comparé, ni utilisé en repli.
+  // Sans ligne, le champ du formulaire reste la seule source, comme avant.
+  const gross =
+    lines.length > 0 ? invoiceLinesTotal(lines) : num(formData.get("revenue_gross"));
   const settings = await getSettings();
+  // Rétrocession et URSSAF restent calculées au niveau FACTURE, sur ce brut :
+  // elles ne se ventilent pas par ligne. Les colonnes générées `after_retro` et
+  // `net_revenue` en découlent donc sans changement.
   const { retrocession, urssaf } = computeInvoice(gross, settings);
 
   const payload = {
@@ -208,6 +279,9 @@ export async function saveInvoice(
     retrocession_amount: retrocession,
     urssaf_amount: urssaf,
     notes: str(formData.get("notes")),
+    // Écrit seulement si le client gère les lignes. Sans cette condition, toute
+    // écriture échouerait sur une base où la migration 013 n'est pas passée.
+    ...(managesLines ? { lines } : {}),
   };
 
   if (id) {
@@ -252,14 +326,6 @@ export type SendInvoiceResult =
       message: string;
     };
 
-/** Origine publique du site, déduite de la requête en cours. */
-async function siteOrigin(): Promise<string> {
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
-  const proto = h.get("x-forwarded-proto") ?? "https";
-  return `${proto}://${host}`;
-}
-
 /**
  * Renvoie le lien de consultation de la facture, en créant le jeton si la
  * facture n'en a pas encore ou si le précédent a expiré.
@@ -295,6 +361,14 @@ async function shareLink(
  * d'e-mail.
  */
 export async function sendInvoiceEmail(id: string): Promise<SendInvoiceResult> {
+  // Cette action émet un jeton d'accès et expédie un message : sans garde, elle
+  // consommait le quota du prestataire et créait des liens publics pour tout
+  // appelant connaissant son identifiant.
+  const acces = await requireActiveAccess();
+  if (!acces.ok) {
+    return { ok: false, reason: "error", message: acces.error };
+  }
+
   const config = emailConfig();
   if (!config) {
     return {
@@ -364,15 +438,42 @@ export async function sendInvoiceEmail(id: string): Promise<SendInvoiceResult> {
   return { ok: true, email: to };
 }
 
-export async function deleteInvoice(formData: FormData) {
-  const supabase = await createClient();
+/**
+ * Supprime une facture.
+ *
+ * [VALIDATION HUMAINE — expert-comptable] Supprimer physiquement une facture
+ * ÉMISE creuse un trou définitif et inexpliqué dans la série, puisque le
+ * compteur, lui, ne recule pas. La voie régulière est l'avoir ou la facture
+ * rectificative. Ce comportement est conservé tel quel pour ne pas retirer une
+ * fonction en service, et il est traité au lot 5 (voir `docs/refonte/02-LOTS.md`).
+ * Ce qui change ici : l'échec ne peut plus passer pour un succès.
+ */
+export async function deleteInvoice(formData: FormData): Promise<Guarded<true>> {
+  const session = await requireUser();
+  if (!session.ok) return session;
+
   const id = str(formData.get("id"));
-  if (id) await supabase.from("invoices").delete().eq("id", id);
+  if (!id) return { ok: false, error: "Facture introuvable." };
+
+  const supabase = await createClient();
+  const result = await supabase
+    .from("invoices")
+    .delete()
+    .eq("id", id)
+    .select("id");
+
+  const verdict = ecritureReussie(result, "La facture");
+  if (!verdict.ok) return verdict;
+
   revalidatePath("/comptabilite");
   revalidatePath("/");
+  return { ok: true, value: true };
 }
 
-export async function saveExpense(formData: FormData) {
+export async function saveExpense(formData: FormData): Promise<Guarded<true>> {
+  const acces = await requireActiveAccess();
+  if (!acces.ok) return acces;
+
   const supabase = await createClient();
   const id = str(formData.get("id"));
   const payload = {
@@ -386,17 +487,34 @@ export async function saveExpense(formData: FormData) {
       : null,
     notes: str(formData.get("notes")),
   };
-  if (id) {
-    await supabase.from("expenses").update(payload).eq("id", id);
-  } else {
-    await supabase.from("expenses").insert(payload);
-  }
+  const result = id
+    ? await supabase.from("expenses").update(payload).eq("id", id).select("id")
+    : await supabase.from("expenses").insert(payload).select("id");
+
+  const verdict = ecritureReussie(result, "La dépense");
+  if (!verdict.ok) return verdict;
+
   revalidatePath("/comptabilite");
+  return { ok: true, value: true };
 }
 
-export async function deleteExpense(formData: FormData) {
-  const supabase = await createClient();
+export async function deleteExpense(formData: FormData): Promise<Guarded<true>> {
+  const session = await requireUser();
+  if (!session.ok) return session;
+
   const id = str(formData.get("id"));
-  if (id) await supabase.from("expenses").delete().eq("id", id);
+  if (!id) return { ok: false, error: "Dépense introuvable." };
+
+  const supabase = await createClient();
+  const result = await supabase
+    .from("expenses")
+    .delete()
+    .eq("id", id)
+    .select("id");
+
+  const verdict = ecritureReussie(result, "La dépense");
+  if (!verdict.ok) return verdict;
+
   revalidatePath("/comptabilite");
+  return { ok: true, value: true };
 }

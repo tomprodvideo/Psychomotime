@@ -1,10 +1,26 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 type ResultHandler = (text: string, sectionId: string) => void;
+
+/** Constructeur SpeechRecognition du navigateur, ou `null` s'il n'existe pas. */
+function speechRecognitionCtor(): any {
+  if (typeof window === "undefined") return null;
+  return (
+    (window as any).SpeechRecognition ||
+    (window as any).webkitSpeechRecognition ||
+    null
+  );
+}
+
+/**
+ * La disponibilité de l'API ne change jamais pendant la vie de la page :
+ * il n'y a donc rien à quoi s'abonner.
+ */
+const subscribeNothing = () => () => {};
 
 /**
  * Dictée vocale via l'API SpeechRecognition du navigateur (Chrome, Edge, Safari).
@@ -12,16 +28,26 @@ type ResultHandler = (text: string, sectionId: string) => void;
  */
 export function useDictation(onFinal: ResultHandler) {
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [supported, setSupported] = useState(true);
   const recRef = useRef<any>(null);
   const onFinalRef = useRef(onFinal);
-  onFinalRef.current = onFinal;
+
+  // Le gestionnaire est lu par les rappels asynchrones de l'API, longtemps
+  // après le rendu. On le rafraîchit dans un effet plutôt que pendant le
+  // rendu, qui doit rester sans effet de bord.
+  useEffect(() => {
+    onFinalRef.current = onFinal;
+  });
+
+  // Capacité du navigateur, lue sans passer par un état : au rendu serveur on
+  // suppose l'API disponible pour ne pas afficher d'avertissement avant
+  // l'hydratation, puis la valeur réelle prend le relais côté client.
+  const supported = useSyncExternalStore(
+    subscribeNothing,
+    () => speechRecognitionCtor() !== null,
+    () => true,
+  );
 
   useEffect(() => {
-    const SR =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition;
-    if (!SR) setSupported(false);
     return () => {
       try {
         recRef.current?.stop();
@@ -32,13 +58,8 @@ export function useDictation(onFinal: ResultHandler) {
   }, []);
 
   function toggle(sectionId: string) {
-    const SR =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition;
-    if (!SR) {
-      setSupported(false);
-      return;
-    }
+    const SR = speechRecognitionCtor();
+    if (!SR) return;
 
     // Stop si déjà en cours sur cette section
     if (activeId === sectionId) {

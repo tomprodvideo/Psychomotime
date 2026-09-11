@@ -1,0 +1,201 @@
+-- ============================================================================
+--  VÉRIFICATIONS DE BASCULE
+--  Exécutées après avoir rejoué v1 → cible sur une base jetable.
+--  Ce fichier ne porte pas l'extension .sql : il n'est pas une migration et ne
+--  doit jamais être ramassé par un chargement de répertoire.
+-- ============================================================================
+\set ON_ERROR_STOP on
+
+do $$
+declare
+  v_n bigint;
+  v_texte text;
+  v_id uuid;
+begin
+  -- ---------------------------------------------------------------- cabinets
+  perform tests.assert_rows('select 1 from public.practices', 2,
+    'Deux comptes v1 avec des données doivent donner deux cabinets.');
+  perform tests.assert_rows(
+    'select 1 from public.practices where name = ''Cabinet Girouette (fictif)''', 1,
+    'Le nom affiché de la v1 doit devenir le nom du cabinet.');
+  perform tests.assert_rows(
+    'select 1 from public.practice_members where role = ''owner'' and status = ''active''', 2,
+    'Chaque compte doit devenir propriétaire actif de son cabinet.');
+
+  -- L'abonnement reprend l'état v1 SANS l'améliorer. C'est le point : la
+  -- bascule ne doit accorder à personne un accès qu'il n'avait pas.
+  perform tests.assert_rows(
+    'select 1 from public.practice_subscriptions
+      where status = ''active'' and manual_override', 1,
+    'L''abonnement actif de la v1 doit être repris tel quel.');
+  perform tests.assert_rows(
+    'select 1 from public.practice_subscriptions where status = ''trialing''', 1,
+    'Un compte en essai doit rester en essai, jamais promu.');
+  perform tests.assert_rows(
+    'select 1 from public.practice_subscriptions s
+       join public.subscriptions v on true
+      where s.status = ''active'' and v.status = ''trialing''
+        and s.practice_id in (
+          select m.practice_id from public.practice_members m
+           where m.user_id = v.user_id)',
+    0, 'Aucun compte ne doit voir son abonnement amélioré par la bascule.');
+
+  -- ---------------------------------------------------------------- patients
+  perform tests.assert_rows('select 1 from public.patients', 4,
+    'Les quatre patients v1 doivent être repris, aucun perdu.');
+
+  -- L'identifiant est conservé : c'est ce qui sauve les liens existants.
+  perform tests.assert_rows(
+    'select 1 from public.patients where id = ''22222222-2222-4222-8222-000000000001''',
+    1, 'L''identifiant du patient doit être conservé à l''identique.');
+
+  -- Le dossier sans nom est conservé, avec un libellé explicite.
+  select last_name into v_texte from public.patients
+   where id = '22222222-2222-4222-8222-000000000003';
+  perform tests.assert(v_texte like '%repris de la v1%',
+    'Un dossier v1 sans nom doit être conservé avec un libellé explicite, pas perdu.');
+
+  -- Deux comptes, deux cabinets : aucun patient ne change de main.
+  select count(distinct practice_id) into v_n from public.patients;
+  perform tests.assert_equals(v_n, 2::bigint,
+    'Les patients doivent rester répartis entre les deux cabinets.');
+
+  -- ------------------------------------------------------- responsable légal
+  perform tests.assert_rows(
+    'select 1 from public.contacts where last_name = ''Cabriole''', 1,
+    'Le responsable légal du JSON doit devenir un contact de plein droit.');
+  perform tests.assert_rows(
+    'select 1 from public.patient_contacts where role = ''responsable_legal''', 1,
+    'Le lien responsable légal doit être créé.');
+
+  -- Le fondement juridique n'est PAS deviné : la v1 ne le portait pas.
+  select legal_basis into v_texte from public.patient_contacts
+   where role = 'responsable_legal' limit 1;
+  perform tests.assert(v_texte is null,
+    'Le fondement juridique ne doit pas être inventé par la reprise.');
+  select note into v_texte from public.patient_contacts
+   where role = 'responsable_legal' limit 1;
+  perform tests.assert(v_texte like '%à préciser%',
+    'La reprise doit signaler ce qui reste à trancher.');
+
+  -- Le responsable légal ne devient PAS destinataire : ce serait une décision.
+  perform tests.assert_rows(
+    'select 1 from public.patient_contacts where role = ''destinataire''', 0,
+    'La reprise ne doit accorder aucun droit de destinataire.');
+
+  -- ---------------------------------------------------------------- parcours
+  perform tests.assert_rows('select 1 from public.care_pathways', 1,
+    'Seul le dossier de suivi renseigné doit donner un parcours.');
+  select referral_reason into v_texte from public.care_pathways limit 1;
+  perform tests.assert(v_texte like '%écrit%',
+    'Le motif de la demande doit être repris dans ses termes.');
+
+  select prescription_date::text into v_texte from public.care_pathways limit 1;
+  perform tests.assert_equals(v_texte, '2026-02-10',
+    'La date d''ordonnance doit être reprise comme date de prescription.');
+
+  -- Prescripteur et adresseur : deux contacts distincts.
+  perform tests.assert_rows(
+    'select 1 from public.care_pathways
+      where prescriber_contact_id is not null
+        and referral_source_contact_id is not null
+        and prescriber_contact_id <> referral_source_contact_id',
+    1, 'Le prescripteur et l''adresseur doivent rester deux contacts distincts.');
+
+  -- L'école devient un établissement rattaché, pas une note.
+  perform tests.assert_rows(
+    'select 1 from public.contacts
+      where kind = ''organisation'' and organisation_name like ''%Moulins%''',
+    1, 'L''école doit devenir une organisation.');
+  perform tests.assert_rows(
+    'select 1 from public.patient_contacts where role = ''etablissement''', 1,
+    'L''école doit être rattachée au dossier comme établissement.');
+
+  -- ----------------------------------------------------------------- notes
+  -- Les cinq champs cliniques libres deviennent des notes datées et attribuées.
+  perform tests.assert_rows('select 1 from public.patient_notes', 5,
+    'Chaque champ clinique libre doit devenir une note tracée.');
+  perform tests.assert_rows(
+    'select 1 from public.patient_notes where author_member_id is null', 0,
+    'Chaque note reprise doit porter son auteur.');
+  perform tests.assert_rows(
+    'select 1 from public.patient_notes where body like ''[diagnostic,%''', 1,
+    'La note doit indiquer de quel champ v1 elle provient.');
+
+  -- ------------------------------------------------- liens bilans / factures
+  -- LE POINT CRITIQUE : un bilan et une facture existants doivent rester
+  -- rattachés à leur patient après la bascule.
+  select b.patient_id into v_id from public.bilans b
+   where b.id = '33333333-3333-4333-8333-000000000001';
+  perform tests.assert_equals(v_id, '22222222-2222-4222-8222-000000000001'::uuid,
+    'Le bilan doit rester rattaché à son patient.');
+  perform tests.assert_rows(
+    'select 1 from public.bilans b
+       join public.patients p on p.id = b.patient_id',
+    1, 'La jointure bilan → patient doit fonctionner après la bascule.');
+  perform tests.assert_rows(
+    'select 1 from public.invoices i
+       join public.patients p on p.id = i.patient_id',
+    1, 'La jointure facture → patient doit fonctionner après la bascule.');
+
+  -- La clé étrangère pointe bien sur la NOUVELLE table.
+  perform tests.assert_rows(
+    'select 1 from pg_constraint c
+       join pg_class t on t.oid = c.conrelid
+       join pg_class f on f.oid = c.confrelid
+      where t.relname = ''bilans'' and c.contype = ''f''
+        and f.relname = ''patients''',
+    1, 'La clé étrangère de bilans doit pointer sur la nouvelle table patients.');
+
+  -- ------------------------------------------------------- retour arrière
+  -- Tant que patients_v1 existe, l'opération reste réversible.
+  perform tests.assert(to_regclass('public.patients_v1') is not null,
+    'La table v1 doit être conservée : c''est le filet de retour arrière.');
+  select count(*) into v_n from public.patients_v1;
+  perform tests.assert_equals(v_n, 4::bigint,
+    'Aucune ligne v1 ne doit avoir été supprimée.');
+
+  -- --------------------------------------------------------------- journal
+  perform tests.assert_rows(
+    'select 1 from public.audit_events where action = ''practice.migrate_v1''', 2,
+    'Chaque cabinet créé par la reprise doit laisser une trace.');
+end
+$$;
+
+-- ============================================================================
+--  COUVERTURE RLS APRÈS BASCULE
+-- ============================================================================
+--  Les objets du modèle v1 encore en place appellent `auth.uid()` directement
+--  et ne respectent pas les règles du modèle cible. C'est un état TRANSITOIRE
+--  assumé : ils seront repris par leurs lots respectifs.
+--
+--  L'exemption est NOMINATIVE, et c'est délibéré : si une table du modèle cible
+--  venait à manquer de RLS, ou si un nouvel objet appelait `auth.*` en direct,
+--  le contrôle échouerait. La liste ci-dessous doit RÉTRÉCIR à chaque lot ;
+--  elle ne doit jamais s'allonger.
+do $$
+declare
+  v_issues text;
+  v_count integer;
+  -- Objets v1 restants, à reprendre lot par lot.
+  v_exempt text[] := array[
+    'patients_v1',          -- table de transition, conservée pour le retour arrière
+    'bilans', 'invoices', 'expenses', 'settings', 'subscriptions',
+    'doc_folders', 'documents', 'invoice_counters',
+    'is_admin', 'delete_my_account', 'next_invoice_seq', 'handle_new_user',
+    'invoice_by_token', 'invoice_lines_total'
+  ];
+begin
+  select count(*), string_agg(issue, E'\n  · ')
+    into v_count, v_issues
+  from tests.check_rls_coverage() t
+  where not exists (
+    select 1 from unnest(v_exempt) e where t.issue like '%' || e || '%'
+  );
+
+  if v_count > 0 then
+    raise exception E'ÉCHEC : la bascule a dégradé la couverture RLS :\n  · %', v_issues
+      using errcode = 'assert_failure';
+  end if;
+end
+$$;

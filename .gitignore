@@ -46,9 +46,16 @@ next-env.d.ts
 .claude/agent-memory-local/
 CLAUDE.local.md
 
+# Réglages Claude locaux à la machine (hooks de l'atelier, permissions locales)
+.claude/settings.local.json
+
 # Exemple d'environnement volontairement versionné (exception à `.env*` ci-dessus)
 !.env.example
 
 # Artefacts locaux d'audit susceptibles de contenir des informations sensibles
 artifacts/private/
 reports/private/
+
+# Documents de travail : un compte rendu, même fictif, n'a pas sa place dans Git.
+*.pdf
+!docs/**/*.pdf

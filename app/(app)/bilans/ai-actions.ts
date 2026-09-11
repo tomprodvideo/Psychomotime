@@ -1,6 +1,7 @@
 "use server";
 
 import Anthropic from "@anthropic-ai/sdk";
+import { createClient } from "@/lib/supabase/server";
 
 // Modèle utilisé pour la reformulation. Opus 4.8 = meilleure qualité rédactionnelle.
 // (Pour réduire le coût, remplacer par "claude-sonnet-4-6".)
@@ -15,6 +16,24 @@ export async function reformulateText(
   sectionTitle: string,
   rawText: string,
 ): Promise<ReformulateResult> {
+  // Une Server Action est un endpoint HTTP public. Sans ce contrôle, quiconque
+  // connaît son identifiant consomme ANTHROPIC_API_KEY : c'est la seule capacité
+  // du système que la RLS ne protège pas, puisque cette action ne touche pas la
+  // base. Le proxy ne redirige jamais une requête mutative — c'est délibéré, une
+  // redirection 307 rejouait les actions (voir lib/supabase/middleware.ts) — donc
+  // la session se vérifie ici, et nulle part ailleurs.
+  // Ce contrôle passe avant tout le reste pour ne rien révéler de la
+  // configuration à un appelant non authentifié.
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+  if (!authUser) {
+    return {
+      error: "Session expirée. Reconnectez-vous pour utiliser la reformulation.",
+    };
+  }
+
   const input = (rawText ?? "").trim();
   if (!input) {
     return { error: "Cette section est vide." };

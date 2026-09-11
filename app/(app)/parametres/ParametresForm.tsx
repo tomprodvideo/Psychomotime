@@ -128,6 +128,7 @@ export default function ParametresForm({
   );
   const [pending, start] = useTransition();
   const [saved, setSaved] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
   const [logo, setLogo] = useState(settings.profile?.logo_url ?? "");
   const [logoError, setLogoError] = useState("");
   const [curveError, setCurveError] = useState("");
@@ -198,8 +199,13 @@ export default function ParametresForm({
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    setErreur(null);
     start(async () => {
-      await updateSettings(fd);
+      const res = await updateSettings(fd);
+      if (!res.ok) {
+        setErreur(res.error);
+        return;
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     });
@@ -911,12 +917,17 @@ export default function ParametresForm({
             disabled={pending}
             className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg disabled:opacity-60"
           >
-            {saved ? <Check className="h-4 w-4" /> : null}
+            {saved && !erreur ? <Check className="h-4 w-4" /> : null}
             {pending ? "Enregistrement…" : "Enregistrer les paramètres"}
           </button>
-          {saved && (
+          {saved && !erreur && (
             <span className="text-sm text-brand-700">
               Paramètres enregistrés ✓
+            </span>
+          )}
+          {erreur && (
+            <span role="alert" className="text-sm text-red-700">
+              {erreur}
             </span>
           )}
         </div>

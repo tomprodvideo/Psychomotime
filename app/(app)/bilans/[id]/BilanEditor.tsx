@@ -152,6 +152,7 @@ export default function BilanEditor({
 
   const [dirty, setDirty] = useState(false);
   const [savedAt, setSavedAt] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
   const [aiBusy, setAiBusy] = useState<string | null>(null);
@@ -320,7 +321,16 @@ export default function BilanEditor({
           dunn: dunnScores,
         }),
       );
-      await saveBilan(fd);
+      const res = await saveBilan(fd);
+      if (!res.ok) {
+        // Le bilan n'est PAS enregistré. Le dire, et ne surtout pas effacer
+        // l'indicateur « modifications non enregistrées » : c'est le seul
+        // signal qui empêche de fermer l'onglet en croyant avoir sauvé.
+        setSaveError(res.error);
+        setSavedAt(false);
+        return;
+      }
+      setSaveError(null);
       setDirty(false);
       setSavedAt(true);
       setTimeout(() => setSavedAt(false), 2500);
@@ -893,14 +903,28 @@ export default function BilanEditor({
             >
               {status === "finalisé" ? "● Finalisé" : "○ Brouillon"}
             </button>
-            <span className="text-xs text-slate-400">
-              {savedAt
-                ? "Enregistré ✓"
-                : dirty
-                  ? "Modifications non enregistrées"
-                  : ""}
+            <span
+              className={`text-xs ${
+                saveError ? "text-red-600 font-medium" : "text-slate-400"
+              }`}
+            >
+              {saveError
+                ? "Non enregistré"
+                : savedAt
+                  ? "Enregistré ✓"
+                  : dirty
+                    ? "Modifications non enregistrées"
+                    : ""}
             </span>
           </div>
+          {saveError && (
+            <p
+              role="alert"
+              className="w-full order-first rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200"
+            >
+              {saveError}
+            </p>
+          )}
           <div className="flex items-center gap-2">
             <Link
               href={`/bilans/${bilan.id}/apercu`}

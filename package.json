@@ -7,7 +7,16 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --import ./scripts/test-hooks.mjs --test \"lib/**/*.test.mts\""
+    "typecheck": "tsc --noEmit",
+    "test": "npm run test:unit && npm run db:test && npm run db:cutover",
+    "test:unit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/test-hooks.mjs --test \"lib/**/*.test.mts\"",
+    "db:reset": "node scripts/db.mjs reset",
+    "db:migrate": "node scripts/db.mjs migrate",
+    "db:seed": "node scripts/db.mjs seed",
+    "db:test": "node scripts/db.mjs test",
+    "db:cutover": "node scripts/db.mjs cutover",
+    "db:psql": "node scripts/db.mjs psql",
+    "verify": "npm run lint && npm run typecheck && npm test"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.2",
@@ -15,7 +24,7 @@
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.2",
     "lucide-react": "^1.20.0",
-    "next": "16.2.9",
+    "next": "16.3.5",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "resend": "^6.27.0"
@@ -26,7 +35,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.9",
+    "eslint-config-next": "16.3.5",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

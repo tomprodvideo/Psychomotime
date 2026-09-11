@@ -87,6 +87,33 @@ Une tâche n’est terminée que lorsque :
 - les documents de continuité concernés sont à jour ;
 - les risques non résolus et validations humaines nécessaires sont visibles.
 
+## Atelier local : publier les échanges visibles
+
+Un tableau de bord local observe l’activité des agents (`STUDIO AGENTS/atelier-agents-local`, hors dépôt). Des hooks locaux lui transmettent les états et les appels d’outils. Ils ne lisent aucun transcript.
+
+**Quand publier un résumé.** Lorsqu’un travail est confié à un autre rôle, lorsqu’un résultat important revient, lorsqu’un défaut doit être corrigé, ou lorsqu’une décision est attendue. **Pas à chaque appel d’outil** : ceux-ci sont déjà observés par les hooks. Distinguer constat, proposition et vérification.
+
+**Comment publier.** Exécuter le script `scripts/message.mjs` de l’atelier avec Node, en fournissant un objet JSON sur stdin. Le hook place le chemin exact du script et l’identifiant de session dans le contexte de `UserPromptSubmit` et `SubagentStart` — utiliser cet identifiant tel quel. En shell POSIX, passer le JSON par un **heredoc à délimiteur cité**, afin qu’aucune variable, substitution ni backtick ne soit interprété :
+
+```sh
+node '/chemin/absolu/atelier-agents-local/scripts/message.mjs' <<'ATELIER_JSON'
+{"session":"SESSION_FOURNIE_PAR_LE_HOOK","from":"ingenieur-backend","to":"auditeur-securite-applicative","text":"Le contrôle de l’export est prêt pour contre-vérification."}
+ATELIER_JSON
+```
+
+**Règles de contenu — elles priment sur l’envie de documenter.**
+
+- `from` et `to` doivent être des identifiants exacts du catalogue des 24 agents. Un rôle inconnu est refusé.
+- Texte limité à 400 caractères, et **potentiellement sensible malgré cette limite** : l’auteur reste responsable de son contenu.
+- Ne jamais publier : donnée de patient ou de responsable légal, donnée personnelle, transcript, raisonnement interne, contenu d’un dossier, valeur de secret, URL signée, chemin sensible, commande complète.
+- Un résumé est une **déclaration**, pas une preuve. Les statuts et les appels d’outils viennent des hooks ; les messages viennent de l’auteur. L’atelier n’atteste pas cryptographiquement l’identité de l’auteur d’un résumé.
+
+**Ce que cette publication n’est pas.** Elle ne délègue rien et ne remplace jamais la délégation effective de la tâche. Un message affiché n’envoie aucune instruction à l’agent destinataire. Publier un résumé ne dispense pas de confier réellement le travail à l’agent concerné.
+
+**Agents sans Bash.** Si un agent n’a pas `Bash` parmi ses outils — c’est le cas des agents de revue en lecture seule — **conserver cette restriction**. Ne pas élargir ses permissions pour l’atelier : il retourne son résumé au coordinateur, qui le publie en l’attribuant à ce rôle.
+
+**Si l’atelier n’est pas lancé**, le hook échoue silencieusement en moins de deux secondes et ne bloque ni n’autorise aucun travail. L’absence de message signifie « aucun résumé publié », pas « aucun échange ».
+
 ## Instructions de synthèse et de continuité
 
 Lors d’une compaction ou d’un passage de relais, préserver :

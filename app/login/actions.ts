@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { checkPassword } from "@/lib/auth/password";
 
 export interface AuthState {
   error?: string;
@@ -32,9 +33,8 @@ export async function signUp(
   const password = String(formData.get("password") ?? "");
   const displayName = String(formData.get("display_name") ?? "").trim();
 
-  if (password.length < 6) {
-    return { error: "Le mot de passe doit contenir au moins 6 caractères." };
-  }
+  const verdict = checkPassword(password, email);
+  if (!verdict.ok) return { error: verdict.error };
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
@@ -44,7 +44,14 @@ export async function signUp(
   });
 
   if (error) {
-    return { error: error.message };
+    // Le message brut du fournisseur peut révéler qu'une adresse est déjà
+    // enregistrée, ou nommer une contrainte de configuration. Il reste côté
+    // serveur ; l'utilisateur reçoit un motif utile et non bavard.
+    console.error("[auth] inscription refusée :", error.message);
+    return {
+      error:
+        "La création du compte a échoué. Vérifiez l'adresse saisie, ou réessayez dans quelques instants.",
+    };
   }
 
   // Si la confirmation par email est désactivée, une session est créée -> on entre directement.
