@@ -37,9 +37,6 @@ export default function PeriodPicker({
   onChange: (p: Period) => void;
   invoiceCount: number;
 }) {
-  const now = new Date();
-  const thisMonth = { y: now.getFullYear(), m: now.getMonth() };
-
   function setMode(mode: PeriodMode) {
     if (mode === period.mode) return;
     // On garde le repère courant en changeant de granularité.
@@ -57,53 +54,6 @@ export default function PeriodPicker({
     }
     onChange({ ...period, mode });
   }
-
-  const presets: { label: string; build: () => Period }[] = [
-    {
-      label: "Ce mois-ci",
-      build: () => ({ ...period, mode: "month", ...ym(thisMonth) }),
-    },
-    {
-      label: "Mois dernier",
-      build: () => {
-        const k = thisMonth.y * 12 + thisMonth.m - 1;
-        return {
-          ...period,
-          mode: "month",
-          year: Math.floor(k / 12),
-          month: ((k % 12) + 12) % 12,
-        };
-      },
-    },
-    {
-      label: "3 derniers mois",
-      build: () => {
-        const end = thisMonth.y * 12 + thisMonth.m;
-        return {
-          ...period,
-          mode: "range",
-          from: toMonthInput(fromK(end - 2)),
-          to: toMonthInput(fromK(end)),
-        };
-      },
-    },
-    {
-      label: "12 derniers mois",
-      build: () => {
-        const end = thisMonth.y * 12 + thisMonth.m;
-        return {
-          ...period,
-          mode: "range",
-          from: toMonthInput(fromK(end - 11)),
-          to: toMonthInput(fromK(end)),
-        };
-      },
-    },
-    {
-      label: `Année ${now.getFullYear()}`,
-      build: () => ({ ...period, mode: "year", year: now.getFullYear() }),
-    },
-  ];
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 sm:p-4 mb-5">
@@ -165,26 +115,6 @@ export default function PeriodPicker({
         )}
       </div>
 
-      {/* Raccourcis */}
-      <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-slate-100">
-        {presets.map((p) => {
-          const built = p.build();
-          const active = samePeriod(built, period);
-          return (
-            <button
-              key={p.label}
-              onClick={() => onChange(built)}
-              className={`text-xs px-2.5 py-1 rounded-full transition ${
-                active
-                  ? "bg-brand-600 text-white"
-                  : "bg-slate-50 text-slate-500 hover:bg-brand-50 hover:text-brand-700"
-              }`}
-            >
-              {p.label}
-            </button>
-          );
-        })}
-      </div>
     </div>
   );
 }
@@ -239,18 +169,4 @@ function MonthInput({
       />
     </label>
   );
-}
-
-const fromK = (k: number) => ({
-  y: Math.floor(k / 12),
-  m: ((k % 12) + 12) % 12,
-});
-const ym = (v: { y: number; m: number }) => ({ year: v.y, month: v.m });
-
-function samePeriod(a: Period, b: Period): boolean {
-  if (a.mode !== b.mode) return false;
-  if (a.mode === "month") return a.year === b.year && a.month === b.month;
-  if (a.mode === "year") return a.year === b.year;
-  if (a.mode === "range") return a.from === b.from && a.to === b.to;
-  return true;
 }

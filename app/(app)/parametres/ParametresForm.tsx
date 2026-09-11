@@ -23,6 +23,11 @@ import {
 import { updateSettings } from "./actions";
 import AdaptationTemplatesManager from "./AdaptationTemplatesManager";
 import BilanSectionsEditor from "./BilanSectionsEditor";
+import {
+  DEFAULT_INVOICE_FORMAT,
+  INVOICE_TOKENS,
+  previewInvoiceNumber,
+} from "@/lib/invoiceNumber";
 
 /** Redimensionne une image raster et renvoie un data-URL JPEG léger.
  *  Les SVG (déjà légers et vectoriels) sont conservés tels quels. */
@@ -116,6 +121,9 @@ export default function ParametresForm({
   accountSlot?: React.ReactNode;
 }) {
   const [mode, setMode] = useState(settings.charge_mode);
+  const [numFormat, setNumFormat] = useState(
+    settings.profile?.invoice_number_format ?? DEFAULT_INVOICE_FORMAT,
+  );
   const [pending, start] = useTransition();
   const [saved, setSaved] = useState(false);
   const [logo, setLogo] = useState(settings.profile?.logo_url ?? "");
@@ -802,6 +810,51 @@ export default function ParametresForm({
             />
           </div>
         </div>
+      </Section>
+
+      <Section title="Numérotation des factures">
+        <p className="text-sm text-slate-500 -mt-2 mb-3">
+          Le numéro est attribué automatiquement à la création d&apos;une
+          facture, à partir de ce modèle.
+        </p>
+        <div className="max-w-sm">
+          <Label>Modèle de numéro</Label>
+          <input
+            name="invoice_number_format"
+            value={numFormat}
+            onChange={(e) => setNumFormat(e.target.value)}
+            placeholder={DEFAULT_INVOICE_FORMAT}
+            className={inputCls}
+          />
+          <p className="text-xs text-slate-500 mt-1.5">
+            Première facture de mars 2026 :{" "}
+            <strong className="text-brand-700">
+              {previewInvoiceNumber(numFormat || DEFAULT_INVOICE_FORMAT, {
+                year: 2026,
+                month: 2,
+              })}
+            </strong>
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-1.5 mt-3">
+          {INVOICE_TOKENS.map((t) => (
+            <button
+              key={t.token}
+              type="button"
+              onClick={() => setNumFormat((f) => f + t.token)}
+              title={`Insérer ${t.token}`}
+              className="text-xs px-2.5 py-1 rounded-full bg-slate-50 text-slate-500 hover:bg-brand-50 hover:text-brand-700 transition"
+            >
+              <code>{t.token}</code> {t.label}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-slate-400 mt-3">
+          Le compteur repart à 1 dès que la partie fixe change : un modèle qui
+          contient {"{AAAA}"} se réinitialise chaque année, un modèle qui
+          contient {"{MM}"} chaque mois. Le nombre de N fixe le nombre de
+          chiffres ({"{NNN}"} donne 001).
+        </p>
       </Section>
 
       <Section title="Cotisations">

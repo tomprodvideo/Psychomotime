@@ -33,6 +33,7 @@ export interface Profile {
   business_email?: string;
   business_phone?: string;
   legal_mentions?: string;
+  invoice_number_format?: string; // gabarit des numéros de facture
   theme_color?: string; // couleur d'accent des bilans (hex)
   bilan_font?: string; // 'sans' | 'serif'
   bilan_title_style?: string; // 'underline' | 'boxed' | 'plain'

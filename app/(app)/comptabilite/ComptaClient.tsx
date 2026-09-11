@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import {
   ArrowUpDown,
@@ -27,7 +27,7 @@ import {
   PAYMENT_STYLES,
 } from "./summary";
 import PatientFormDialog from "../patients/PatientFormDialog";
-import { saveInvoice, deleteInvoice } from "./actions";
+import { saveInvoice, deleteInvoice, nextInvoiceNumber } from "./actions";
 
 type PatientLite = PatientContact;
 type SortKey = "period" | "patient" | "number" | "gross" | "paid" | "net";
@@ -41,6 +41,7 @@ export default function ComptaClient({
   defaultMonth,
   payFilter,
   onPayFilter,
+  defaultCollapsed = false,
 }: {
   invoices: Invoice[];
   patients: PatientLite[];
@@ -49,13 +50,18 @@ export default function ComptaClient({
   defaultMonth: number;
   payFilter: PayFilter;
   onPayFilter: (v: PayFilter) => void;
+  /** Sélection couvrant plusieurs mois : les groupes démarrent repliés. */
+  defaultCollapsed?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Invoice | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("period");
   const [sortAsc, setSortAsc] = useState(false);
   const [grouped, setGrouped] = useState(true);
-  const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
+  // Groupes dont l'utilisateur a inversé l'état par rapport au défaut.
+  const [toggled, setToggled] = useState<Set<number>>(new Set());
+  const isCollapsedGroup = (k: number) =>
+    defaultCollapsed ? !toggled.has(k) : toggled.has(k);
 
   const showRetro = settings.charge_mode !== "loyer";
 
@@ -143,7 +149,7 @@ export default function ComptaClient({
   }
 
   function toggleGroup(k: number) {
-    setCollapsed((prev) => {
+    setToggled((prev) => {
       const next = new Set(prev);
       if (next.has(k)) next.delete(k);
       else next.add(k);
@@ -294,7 +300,7 @@ export default function ComptaClient({
           )}
 
           {groups.map((g) => {
-            const isCollapsed = collapsed.has(g.key);
+            const isCollapsed = isCollapsedGroup(g.key);
             const gs = summarize(g.items, []);
             return (
               <tbody key={g.key}>
@@ -594,6 +600,44 @@ function InvoiceDialog({
     invoice?.revenue_gross_paid ?? invoice?.revenue_gross ?? 0,
   );
 
+  // Le numéro suit la période facturée : il est régénéré si elle change.
+  const [billingMonth, setBillingMonth] = useState(
+    invoice?.billing_month ?? MONTHS[defaultMonth],
+  );
+  const [billingYear, setBillingYear] = useState<number>(
+    invoice?.billing_year ?? defaultYear,
+  );
+  // Numéro saisi à la main : une fois renseigné, il l'emporte sur la
+  // proposition automatique.
+  const [manualNumber, setManualNumber] = useState<string | null>(
+    invoice?.invoice_number ?? null,
+  );
+  // Proposition automatique, mémorisée avec la période qui l'a produite.
+  const [generated, setGenerated] = useState<{
+    key: string;
+    value: string;
+  } | null>(null);
+
+  const periodKey = `${billingYear}-${billingMonth}`;
+  const fresh = generated?.key === periodKey ? generated.value : null;
+  const numberLoading = !invoice && manualNumber === null && fresh === null;
+  const number = manualNumber ?? fresh ?? "";
+
+  // Numéro attribué automatiquement à la création, d'après le modèle défini
+  // dans Paramètres › Comptabilité. En édition, on ne touche à rien.
+  useEffect(() => {
+    if (invoice) return;
+    let cancelled = false;
+    const mi = MONTHS.indexOf(billingMonth);
+    nextInvoiceNumber(billingYear, mi < 0 ? 0 : mi).then((n) => {
+      if (!cancelled)
+        setGenerated({ key: `${billingYear}-${billingMonth}`, value: n });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [invoice, billingMonth, billingYear]);
+
   const options = useMemo(() => {
     if (!justCreated || patients.some((p) => p.id === justCreated.id))
       return patients;
@@ -726,17 +770,25 @@ function InvoiceDialog({
               <Label>N° de facture</Label>
               <input
                 name="invoice_number"
-                defaultValue={invoice?.invoice_number ?? ""}
+                value={number}
+                onChange={(e) => setManualNumber(e.target.value)}
                 className={inputCls}
-                placeholder="Ex. 202665"
+                placeholder={numberLoading ? "Attribution…" : "Ex. 2026-001"}
               />
+              {!invoice && (
+                <p className="text-xs text-slate-400 mt-1">
+                  Attribué automatiquement · modèle réglable dans Paramètres ›
+                  Comptabilité.
+                </p>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label>Mois</Label>
                 <select
                   name="billing_month"
-                  defaultValue={invoice?.billing_month ?? MONTHS[defaultMonth]}
+                  value={billingMonth}
+                  onChange={(e) => setBillingMonth(e.target.value)}
                   className={inputCls}
                 >
                   <option value="">—</option>
@@ -752,7 +804,10 @@ function InvoiceDialog({
                 <input
                   name="billing_year"
                   type="number"
-                  defaultValue={invoice?.billing_year ?? defaultYear}
+                  value={billingYear}
+                  onChange={(e) =>
+                    setBillingYear(parseInt(e.target.value, 10) || 0)
+                  }
                   className={inputCls}
                 />
               </div>

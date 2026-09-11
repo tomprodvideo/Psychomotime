@@ -153,7 +153,18 @@ export default function ComptabiliteView({
         onShowUnpaid={() => setPayFilter("unpaid")}
       />
 
-      <div className="mb-5">
+      <ComptaClient
+        invoices={selInvoices}
+        patients={patients}
+        settings={settings}
+        defaultYear={period.mode === "all" ? now.getFullYear() : period.year}
+        defaultMonth={period.mode === "month" ? period.month : now.getMonth()}
+        payFilter={payFilter}
+        onPayFilter={setPayFilter}
+        defaultCollapsed={period.mode !== "month"}
+      />
+
+      <div className="mt-5">
         <PeriodChart
           period={period}
           invoices={invoices}
@@ -163,16 +174,6 @@ export default function ComptabiliteView({
           onPick={pickBucket}
         />
       </div>
-
-      <ComptaClient
-        invoices={selInvoices}
-        patients={patients}
-        settings={settings}
-        defaultYear={period.mode === "all" ? now.getFullYear() : period.year}
-        defaultMonth={period.mode === "month" ? period.month : now.getMonth()}
-        payFilter={payFilter}
-        onPayFilter={setPayFilter}
-      />
 
       <div className="mt-5 max-w-2xl">
         <LoyersClient

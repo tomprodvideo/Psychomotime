@@ -4,6 +4,12 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSettings } from "@/lib/data";
 import { computeInvoice } from "@/lib/calc";
+import {
+  buildInvoiceNumber,
+  DEFAULT_INVOICE_FORMAT,
+  nextSeq,
+  splitFormat,
+} from "@/lib/invoiceNumber";
 
 function num(v: FormDataEntryValue | null): number {
   if (v == null) return 0;
@@ -14,6 +20,31 @@ function num(v: FormDataEntryValue | null): number {
 function str(v: FormDataEntryValue | null): string | null {
   const s = String(v ?? "").trim();
   return s === "" ? null : s;
+}
+
+/**
+ * Prochain numéro disponible pour la période donnée, d'après le modèle
+ * enregistré dans Paramètres › Comptabilité.
+ */
+export async function nextInvoiceNumber(
+  year: number,
+  month: number,
+): Promise<string> {
+  const supabase = await createClient();
+  const settings = await getSettings();
+  const format =
+    settings.profile?.invoice_number_format?.trim() || DEFAULT_INVOICE_FORMAT;
+
+  const ctx = { year, month };
+  const { prefix, suffix } = splitFormat(format, ctx);
+
+  const { data } = await supabase.from("invoices").select("invoice_number");
+  const seq = nextSeq(
+    (data ?? []).map((r) => r.invoice_number as string | null),
+    prefix,
+    suffix,
+  );
+  return buildInvoiceNumber(format, ctx, seq);
 }
 
 export async function saveInvoice(formData: FormData) {
