@@ -14,6 +14,8 @@
  *   node scripts/db.mjs migrate  applique les migrations sur la base courante
  *   node scripts/db.mjs seed     recharge les seeds
  *   node scripts/db.mjs test     exécute les tests SQL de supabase/tests/
+ *   node scripts/db.mjs cutover  rejoue la bascule v1 -> cible sur une base
+ *                                jetable, puis vérifie le résultat
  *   node scripts/db.mjs psql     ouvre une session psql sur la base locale
  *
  * Variables d'environnement
@@ -38,6 +40,8 @@ const MIGRATIONS_DIR = join(ROOT, "supabase", "migrations");
 const LOCAL_DIR = join(ROOT, "supabase", "local");
 const SEED_DIR = join(ROOT, "supabase", "seed");
 const TESTS_DIR = join(ROOT, "supabase", "tests");
+const V1_DIR = join(ROOT, "supabase", "schema-v1");
+const CUTOVER_DIR = join(ROOT, "supabase", "cutover");
 
 const ESC = "\u001b[";
 const C = {
@@ -174,6 +178,62 @@ switch (cmd) {
   case "test":
     process.exit(runTests());
     break;
+  case "cutover": {
+    // La bascule ne peut être prouvée que sur une base qui porte RÉELLEMENT le
+    // modèle v1. On en fabrique une, on rejoue les migrations dans l'ordre, et
+    // on vérifie ce qui en sort. Base distincte : la base de développement
+    // n'est jamais touchée.
+    const scratch = process.env.CUTOVER_DB_NAME || "psychomotime_bascule";
+    console.log(`${C.dim}· base jetable ${scratch}${C.reset}`);
+    adminPsql(`drop database if exists ${scratch} with (force);`);
+    adminPsql(`create database ${scratch};`);
+
+    const applique = (dir, label, filtre = () => true) => {
+      for (const f of sqlFiles(dir).filter((x) => filtre(basename(x)))) {
+        console.log(`${C.dim}· ${label} ${basename(f)}${C.reset}`);
+        const res = psql(scratch, ["-f", f], { quiet: true });
+        if (res.code !== 0) {
+          console.error(`${C.red}✗ ${basename(f)}${C.reset}`);
+          process.stderr.write(res.stderr);
+          process.exit(1);
+        }
+      }
+    };
+
+    applique(LOCAL_DIR, "local ");
+
+    // Le schéma v1 tel qu'il est en production. L'ordre compte et n'est PAS
+    // l'ordre alphabétique : `schema.sql` pose les tables, les migrations les
+    // font évoluer. `migrations_en_attente.sql` est un doublon documentaire,
+    // périmé de six migrations — c'est précisément le défaut que la nouvelle
+    // arborescence corrige.
+    for (const f of ["schema.sql", ...sqlFiles(V1_DIR)
+      .map((x) => basename(x))
+      .filter((n) => n.startsWith("migration_"))
+      .sort()]) {
+      console.log(`${C.dim}· v1     ${f}${C.reset}`);
+      const r = psql(scratch, ["-f", join(V1_DIR, f)], { quiet: true });
+      if (r.code !== 0) {
+        console.error(`${C.red}✗ ${f}${C.reset}`);
+        process.stderr.write(r.stderr);
+        process.exit(1);
+      }
+    }
+    applique(CUTOVER_DIR, "v1-jeu");
+    applique(MIGRATIONS_DIR, "migr. ");
+
+    const res = psql(scratch, ["-f", join(CUTOVER_DIR, "verifications.sql.check")], {
+      quiet: true,
+    });
+    if (res.code !== 0) {
+      console.log(`  ${C.red}✗ vérifications de bascule${C.reset}`);
+      process.stderr.write(res.stderr);
+      process.exit(1);
+    }
+    console.log(`  ${C.green}✓${C.reset} vérifications de bascule`);
+    console.log(`\n${C.green}${C.bold}Bascule v1 → cible rejouée et vérifiée.${C.reset}`);
+    break;
+  }
   case "psql":
     spawnSync("psql", baseArgs(DB_NAME), { stdio: "inherit" });
     break;
