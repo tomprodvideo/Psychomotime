@@ -1,0 +1,30 @@
+name: Validate Claude agent kit
+
+on:
+  pull_request:
+    paths:
+      - ".claude/**"
+      - "docs/**"
+      - "CLAUDE.md"
+      - "AGENTS.md"
+      - "scripts/validate-agent-kit.sh"
+  push:
+    paths:
+      - ".claude/**"
+      - "docs/**"
+      - "CLAUDE.md"
+      - "AGENTS.md"
+      - "scripts/validate-agent-kit.sh"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Validate Claude agents and skills
+        run: bash scripts/validate-agent-kit.sh .
+

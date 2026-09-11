@@ -83,3 +83,13 @@ export function previewInvoiceNumber(
 ): string {
   return buildInvoiceNumber(format || DEFAULT_INVOICE_FORMAT, ctx, 1);
 }
+
+/**
+ * Clé du compteur persistant : le modèle avec sa partie fixe résolue et le
+ * compteur laissé en {N} (« 2026-{N} »). Deux périodes qui partagent la même
+ * partie fixe partagent donc la même série.
+ */
+export function counterScope(format: string, ctx: NumberContext): string {
+  const { prefix, suffix } = splitFormat(format, ctx);
+  return `${prefix}{N}${suffix}`;
+}

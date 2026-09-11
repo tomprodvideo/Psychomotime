@@ -4,8 +4,10 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSettings } from "@/lib/data";
 import { computeInvoice } from "@/lib/calc";
+import { MONTHS } from "@/lib/constants";
 import {
   buildInvoiceNumber,
+  counterScope,
   DEFAULT_INVOICE_FORMAT,
   nextSeq,
   splitFormat,
@@ -22,29 +24,82 @@ function str(v: FormDataEntryValue | null): string | null {
   return s === "" ? null : s;
 }
 
+type Numbering = {
+  format: string;
+  scope: string;
+  /** Plus grand rang déjà présent dans les factures (amorçage du compteur). */
+  floor: number;
+  ctx: { year: number; month: number };
+};
+
+/** Rassemble tout ce qu'il faut pour numéroter une facture de cette période. */
+async function numbering(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  year: number,
+  month: number,
+): Promise<Numbering> {
+  const settings = await getSettings();
+  const format =
+    settings.profile?.invoice_number_format?.trim() || DEFAULT_INVOICE_FORMAT;
+  const ctx = { year, month };
+  const { prefix, suffix } = splitFormat(format, ctx);
+
+  const { data } = await supabase.from("invoices").select("invoice_number");
+  const floor =
+    nextSeq(
+      (data ?? []).map((r) => r.invoice_number as string | null),
+      prefix,
+      suffix,
+    ) - 1;
+
+  return { format, scope: counterScope(format, ctx), floor, ctx };
+}
+
 /**
- * Prochain numéro disponible pour la période donnée, d'après le modèle
- * enregistré dans Paramètres › Comptabilité.
+ * Prochain numéro disponible pour la période donnée — LECTURE SEULE.
+ * Sert à l'aperçu dans le formulaire : ouvrir puis annuler ne consomme aucun
+ * numéro, ce qui éviterait des trous dans la série.
  */
 export async function nextInvoiceNumber(
   year: number,
   month: number,
 ): Promise<string> {
   const supabase = await createClient();
-  const settings = await getSettings();
-  const format =
-    settings.profile?.invoice_number_format?.trim() || DEFAULT_INVOICE_FORMAT;
+  const n = await numbering(supabase, year, month);
 
-  const ctx = { year, month };
-  const { prefix, suffix } = splitFormat(format, ctx);
+  const { data: counter } = await supabase
+    .from("invoice_counters")
+    .select("last_seq")
+    .eq("scope", n.scope)
+    .maybeSingle();
 
-  const { data } = await supabase.from("invoices").select("invoice_number");
-  const seq = nextSeq(
-    (data ?? []).map((r) => r.invoice_number as string | null),
-    prefix,
-    suffix,
-  );
-  return buildInvoiceNumber(format, ctx, seq);
+  const seq = Math.max(counter?.last_seq ?? 0, n.floor) + 1;
+  return buildInvoiceNumber(n.format, n.ctx, seq);
+}
+
+/**
+ * Réserve définitivement le numéro suivant. Le compteur est incrémenté côté
+ * base de façon atomique : un numéro attribué ne sera jamais réutilisé, même
+ * si la facture est supprimée ensuite.
+ */
+async function reserveInvoiceNumber(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  year: number,
+  month: number,
+): Promise<string> {
+  const n = await numbering(supabase, year, month);
+
+  const { data: seq, error } = await supabase.rpc("next_invoice_seq", {
+    p_scope: n.scope,
+    p_min: n.floor,
+  });
+
+  // Repli si la migration 010 n'a pas encore été lancée : on retombe sur le
+  // plus grand numéro existant + 1 (sans garantie contre la réutilisation).
+  if (error || typeof seq !== "number") {
+    return buildInvoiceNumber(n.format, n.ctx, n.floor + 1);
+  }
+  return buildInvoiceNumber(n.format, n.ctx, seq);
 }
 
 export async function saveInvoice(formData: FormData) {
@@ -65,6 +120,21 @@ export async function saveInvoice(formData: FormData) {
     if (p) patientName = `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim();
   }
 
+  const billingYear = formData.get("billing_year")
+    ? parseInt(String(formData.get("billing_year")), 10)
+    : new Date().getFullYear();
+  const monthIndex = MONTHS.indexOf(String(formData.get("billing_month") ?? ""));
+
+  // À la création, le numéro est réservé sur le compteur ; en édition on
+  // conserve celui déjà attribué (modifiable à la main si besoin).
+  const invoiceNumber = id
+    ? str(formData.get("invoice_number"))
+    : await reserveInvoiceNumber(
+        supabase,
+        billingYear,
+        monthIndex < 0 ? new Date().getMonth() : monthIndex,
+      );
+
   // Rétrocession et URSSAF ne sont plus saisies par facture : elles découlent
   // des réglages (Paramètres › Comptabilité).
   const gross = num(formData.get("revenue_gross"));
@@ -74,11 +144,9 @@ export async function saveInvoice(formData: FormData) {
   const payload = {
     patient_id: patientId,
     patient_name: patientName,
-    invoice_number: str(formData.get("invoice_number")),
+    invoice_number: invoiceNumber,
     billing_month: str(formData.get("billing_month")),
-    billing_year: formData.get("billing_year")
-      ? parseInt(String(formData.get("billing_year")), 10)
-      : null,
+    billing_year: formData.get("billing_year") ? billingYear : null,
     has_pco: formData.get("has_pco") === "on",
     revenue_gross: gross,
     revenue_gross_paid: num(formData.get("revenue_gross_paid")),

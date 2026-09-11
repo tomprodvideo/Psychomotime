@@ -772,13 +772,16 @@ function InvoiceDialog({
                 name="invoice_number"
                 value={number}
                 onChange={(e) => setManualNumber(e.target.value)}
-                className={inputCls}
+                readOnly={!invoice}
+                className={`${inputCls} ${
+                  invoice ? "" : "bg-slate-100 text-slate-500"
+                }`}
                 placeholder={numberLoading ? "Attribution…" : "Ex. 2026-001"}
               />
               {!invoice && (
                 <p className="text-xs text-slate-400 mt-1">
-                  Attribué automatiquement · modèle réglable dans Paramètres ›
-                  Comptabilité.
+                  Réservé à l&apos;enregistrement, jamais réutilisé · modèle
+                  réglable dans Paramètres › Comptabilité.
                 </p>
               )}
             </div>

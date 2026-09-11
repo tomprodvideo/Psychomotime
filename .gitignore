@@ -39,3 +39,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# --- Kit d'agents Claude ---
+
+# Mémoire locale Claude non partagée
+.claude/agent-memory-local/
+CLAUDE.local.md
+
+# Exemple d'environnement volontairement versionné (exception à `.env*` ci-dessus)
+!.env.example
+
+# Artefacts locaux d'audit susceptibles de contenir des informations sensibles
+artifacts/private/
+reports/private/
