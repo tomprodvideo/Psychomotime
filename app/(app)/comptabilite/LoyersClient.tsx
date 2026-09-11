@@ -1,27 +1,45 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { House, Plus, Trash2, X } from "lucide-react";
+import { House, Plus, Trash2, Wand2, X } from "lucide-react";
 import type { Expense } from "@/lib/types";
 import { euro, frDate } from "@/lib/format";
 import { MONTHS } from "@/lib/constants";
-import { expensePeriod, ymKey, MONTHS_SHORT } from "@/lib/period";
-import { saveExpense, deleteExpense } from "./actions";
+import { expensePeriod, monthIndex, ymKey, MONTHS_SHORT, type YM } from "@/lib/period";
+import { saveExpense, deleteExpense, addConfiguredRent } from "./actions";
 
 export default function LoyersClient({
   expenses,
   defaultYear,
   defaultMonth,
   periodLabel,
+  chargeMode,
+  monthlyRent,
+  rentMonths,
 }: {
   expenses: Expense[];
   defaultYear: number;
   defaultMonth: number;
   periodLabel: string;
+  /** Mode de charges défini dans Paramètres › Comptabilité. */
+  chargeMode: "retrocession" | "loyer";
+  /** Loyer mensuel configuré. */
+  monthlyRent: number;
+  /** Mois de la période en cours, jusqu'au mois courant inclus. */
+  rentMonths: YM[];
 }) {
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
   const total = expenses.reduce((s, e) => s + (e.amount || 0), 0);
+
+  // Mois de la période où le loyer configuré n'a pas encore été enregistré.
+  const rentSet = new Set(
+    expenses
+      .filter((e) => (e.type ?? "loyer") === "loyer")
+      .map((e) => `${e.period_year}-${monthIndex(e.period_month)}`),
+  );
+  const missing = rentMonths.filter((ym) => !rentSet.has(`${ym.y}-${ym.m}`));
+  const rentConfigured = chargeMode === "loyer" && monthlyRent > 0;
 
   const sorted = [...expenses].sort(
     (a, b) => ymKey(expensePeriod(b)) - ymKey(expensePeriod(a)),
@@ -48,6 +66,15 @@ export default function LoyersClient({
             <p className="text-xs text-slate-500">
               {periodLabel} · total{" "}
               <strong className="text-violet-600">{euro(total)}</strong>
+              {rentConfigured && (
+                <>
+                  {" · loyer configuré "}
+                  <strong className="text-violet-600">
+                    {euro(monthlyRent)}
+                  </strong>
+                  {" / mois"}
+                </>
+              )}
             </p>
           </div>
         </div>
@@ -59,6 +86,27 @@ export default function LoyersClient({
           Ajouter
         </button>
       </div>
+
+      {/* Le loyer défini dans les Paramètres n'est pas enregistré tout seul :
+          on signale les mois qui lui manquent et on propose de les créer. */}
+      {rentConfigured && missing.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 bg-amber-50 border-b border-amber-100">
+          <p className="text-xs text-amber-800">
+            {missing.length === 1
+              ? "1 mois de cette période n'a pas de loyer enregistré"
+              : `${missing.length} mois de cette période n'ont pas de loyer enregistré`}{" "}
+            ({missing.map((m) => `${MONTHS_SHORT[m.m]} ${String(m.y).slice(2)}`).join(", ")}).
+          </p>
+          <button
+            onClick={() => start(() => addConfiguredRent(missing).then(() => {}))}
+            disabled={pending}
+            className="shrink-0 inline-flex items-center gap-1.5 text-xs font-medium text-amber-900 bg-white border border-amber-200 hover:bg-amber-100 px-3 py-1.5 rounded-lg disabled:opacity-60"
+          >
+            <Wand2 className="h-3.5 w-3.5" />
+            Enregistrer {euro(monthlyRent)} pour ces mois
+          </button>
+        </div>
+      )}
 
       {sorted.length === 0 ? (
         <p className="text-sm text-slate-400 px-5 py-6 text-center">
@@ -136,6 +184,7 @@ export default function LoyersClient({
                     type="number"
                     step="0.01"
                     required
+                    defaultValue={rentConfigured ? monthlyRent : ""}
                     className={inputCls}
                   />
                 </div>

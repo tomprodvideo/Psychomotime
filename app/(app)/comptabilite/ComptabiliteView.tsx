@@ -10,7 +10,10 @@ import {
   periodLabel,
   periodToParams,
   invoicePeriod,
+  monthsBetween,
   previousPeriod,
+  rangeKeys,
+  type YM,
   type Bucket,
   type Period,
 } from "@/lib/period";
@@ -35,7 +38,10 @@ export default function ComptabiliteView({
   invoices: Invoice[];
   expenses: Expense[];
   patients: PatientLite[];
-  settings: Pick<Settings, "retrocession_rate" | "urssaf_rate" | "charge_mode">;
+  settings: Pick<
+    Settings,
+    "retrocession_rate" | "urssaf_rate" | "charge_mode" | "monthly_rent"
+  >;
   initialParams: {
     mode?: string;
     month?: string;
@@ -99,6 +105,23 @@ export default function ComptabiliteView({
       expWithPeriod.filter((x) => inPeriod(prev, x.p)).map((x) => x.exp),
     );
   }, [period, invWithPeriod, expWithPeriod]);
+
+  /* ---- Mois couverts par la sélection (pour le loyer configuré) ----
+     On s'arrête au mois courant : pas de loyer créé d'avance. */
+  const rentMonths = useMemo<YM[]>(() => {
+    const nowKey = now.getFullYear() * 12 + now.getMonth();
+    let months: YM[] = [];
+    if (period.mode === "month")
+      months = [{ y: period.year, m: period.month }];
+    else if (period.mode === "year")
+      months = Array.from({ length: 12 }, (_, m) => ({ y: period.year, m }));
+    else if (period.mode === "range") {
+      const [a, b] = rangeKeys(period);
+      months = monthsBetween(a, b, 36);
+    }
+    return months.filter((ym) => ym.y * 12 + ym.m <= nowKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [period]);
 
   /* ---- Clic sur une barre du graphique ---- */
   function pickBucket(b: Bucket) {
@@ -181,6 +204,9 @@ export default function ComptabiliteView({
           defaultYear={period.mode === "all" ? now.getFullYear() : period.year}
           defaultMonth={period.mode === "month" ? period.month : now.getMonth()}
           periodLabel={periodLabel(period)}
+          chargeMode={settings.charge_mode}
+          monthlyRent={settings.monthly_rent}
+          rentMonths={rentMonths}
         />
       </div>
 

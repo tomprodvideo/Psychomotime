@@ -50,6 +50,7 @@ export default async function ComptabilitePage({
         retrocession_rate: settings.retrocession_rate,
         urssaf_rate: settings.urssaf_rate,
         charge_mode: settings.charge_mode,
+        monthly_rent: settings.monthly_rent,
       }}
       initialParams={params}
     />

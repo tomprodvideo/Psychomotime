@@ -9,7 +9,6 @@ import {
   ChevronRight,
   FileText,
   Layers,
-  Pencil,
   Plus,
   Trash2,
   X,
@@ -278,7 +277,9 @@ export default function ComptaClient({
                 onSort={toggleSort}
                 right
               />
-              <Th className="text-right">Actions</Th>
+              <Th className="text-right sticky right-0 bg-brand-600 z-20 shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.25)]">
+                Actions
+              </Th>
             </tr>
           </thead>
 
@@ -306,7 +307,7 @@ export default function ComptaClient({
               <tbody key={g.key}>
                 {g.key >= 0 && (
                   <tr
-                    className="bg-slate-50/80 border-t border-slate-100 cursor-pointer hover:bg-slate-100/70"
+                    className="bg-slate-100 border-t border-slate-200 cursor-pointer hover:bg-slate-200/70"
                     onClick={() => toggleGroup(g.key)}
                   >
                     <td colSpan={4} className="px-3 py-2">
@@ -343,7 +344,7 @@ export default function ComptaClient({
                     <td className="px-3 py-2 text-right font-semibold text-brand-700 tabular-nums">
                       {euro(gs.net)}
                     </td>
-                    <td />
+                    <td className="sticky right-0 bg-inherit shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.12)]" />
                   </tr>
                 )}
 
@@ -356,15 +357,22 @@ export default function ComptaClient({
                       <tr
                         key={inv.id}
                         className={`border-t border-slate-100 ${
-                          i % 2 ? "bg-slate-50/40" : ""
-                        } hover:bg-brand-50/40`}
+                          i % 2 ? "bg-slate-50" : "bg-white"
+                        } hover:bg-brand-50`}
                       >
                         <td
                           className={`p-0 w-1 ${style.dot}`}
                           title={PAYMENT_LABELS[st]}
                         />
-                        <Td className="font-medium text-slate-700">
-                          {inv.patient_name || "—"}
+                        <Td className="font-medium">
+                          <button
+                            type="button"
+                            onClick={() => openEdit(inv)}
+                            title="Modifier cette facture"
+                            className="text-left text-slate-700 hover:text-brand-700 hover:underline underline-offset-2"
+                          >
+                            {inv.patient_name || "—"}
+                          </button>
                         </Td>
                         <Td className="text-slate-500">
                           {inv.invoice_number || "—"}
@@ -435,22 +443,15 @@ export default function ComptaClient({
                         <Td className="text-right font-semibold text-brand-700 tabular-nums">
                           {euro(inv.net_revenue)}
                         </Td>
-                        <Td className="text-right whitespace-nowrap">
+                        <Td className="text-right whitespace-nowrap sticky right-0 bg-inherit shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.12)]">
                           <Link
                             href={`/comptabilite/${inv.id}/facture`}
-                            className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded inline-block"
-                            aria-label="Éditer la facture"
-                            title="Éditer / envoyer la facture"
+                            className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded inline-block align-middle"
+                            aria-label="Voir la facture"
+                            title="Voir / imprimer la facture"
                           >
                             <FileText className="h-4 w-4" />
                           </Link>
-                          <button
-                            onClick={() => openEdit(inv)}
-                            className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded"
-                            aria-label="Modifier"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </button>
                           <DeleteButton id={inv.id} />
                         </Td>
                       </tr>
@@ -488,7 +489,7 @@ function TotalRow({
   const s = summarize(invoices, []);
   return (
     <tfoot>
-      <tr className="border-t-2 border-brand-100 bg-brand-50/60 font-semibold text-slate-700">
+      <tr className="border-t-2 border-brand-100 bg-brand-50 font-semibold text-slate-700">
         <td />
         <td className="px-3 py-3" colSpan={3}>
           Total ({s.count} facture{s.count > 1 ? "s" : ""})
@@ -516,7 +517,7 @@ function TotalRow({
         <td className="px-3 py-3 text-right text-brand-700 tabular-nums">
           {euro(s.net)}
         </td>
-        <td />
+        <td className="sticky right-0 bg-inherit shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.12)]" />
       </tr>
     </tfoot>
   );
