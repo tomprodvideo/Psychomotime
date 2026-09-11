@@ -6,6 +6,13 @@ import { getSettings } from "@/lib/data";
 import { computeInvoice } from "@/lib/calc";
 import { MONTHS } from "@/lib/constants";
 import { monthIndex } from "@/lib/period";
+import { emailConfig, sendMail } from "@/lib/email";
+import {
+  invoiceEmailText,
+  invoiceFileName,
+  renderInvoicePdf,
+} from "@/lib/invoicePdf";
+import type { Invoice, Patient, Settings } from "@/lib/types";
 import {
   buildInvoiceNumber,
   counterScope,
@@ -169,6 +176,90 @@ export async function saveInvoice(formData: FormData) {
   revalidatePath("/comptabilite");
   revalidatePath("/patients");
   revalidatePath("/");
+}
+
+export type SendInvoiceResult =
+  | { ok: true; email: string }
+  | {
+      ok: false;
+      reason: "not-configured" | "no-email" | "not-found" | "error";
+      message: string;
+    };
+
+/**
+ * Envoie une facture par e-mail au patient, PDF en pièce jointe.
+ * Une facture à la fois : l'envoi groupé est piloté depuis le navigateur, ce
+ * qui évite les délais d'exécution côté serveur et permet d'afficher
+ * l'avancement.
+ */
+export async function sendInvoiceEmail(id: string): Promise<SendInvoiceResult> {
+  const config = emailConfig();
+  if (!config) {
+    return {
+      ok: false,
+      reason: "not-configured",
+      message:
+        "Envoi d'e-mails non configuré : renseignez RESEND_API_KEY et INVOICE_FROM_EMAIL.",
+    };
+  }
+
+  const supabase = await createClient();
+  const { data: invoiceRaw } = await supabase
+    .from("invoices")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!invoiceRaw) {
+    return { ok: false, reason: "not-found", message: "Facture introuvable." };
+  }
+  const invoice = invoiceRaw as Invoice;
+
+  let patient: Patient | null = null;
+  if (invoice.patient_id) {
+    const { data } = await supabase
+      .from("patients")
+      .select("*")
+      .eq("id", invoice.patient_id)
+      .maybeSingle();
+    patient = (data as Patient) ?? null;
+  }
+
+  const to = patient?.email?.trim();
+  if (!to) {
+    return {
+      ok: false,
+      reason: "no-email",
+      message: `${invoice.patient_name || "Ce patient"} n'a pas d'adresse e-mail.`,
+    };
+  }
+
+  const settings = (await getSettings()) as Settings;
+
+  let pdf: Buffer;
+  try {
+    pdf = await renderInvoicePdf({ invoice, patient, settings });
+  } catch (e) {
+    return {
+      ok: false,
+      reason: "error",
+      message: `Génération du PDF impossible : ${
+        e instanceof Error ? e.message : "erreur inconnue"
+      }`,
+    };
+  }
+
+  const { subject, text } = invoiceEmailText(invoice, settings);
+  const error = await sendMail(config, {
+    to,
+    subject,
+    text,
+    replyTo: settings.profile?.business_email,
+    attachments: [{ filename: invoiceFileName(invoice), content: pdf }],
+  });
+
+  if (error) return { ok: false, reason: "error", message: error };
+  return { ok: true, email: to };
 }
 
 export async function deleteInvoice(formData: FormData) {

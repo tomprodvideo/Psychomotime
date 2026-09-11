@@ -9,6 +9,7 @@ import {
   ChevronRight,
   FileText,
   Layers,
+  Mail,
   Plus,
   Trash2,
   X,
@@ -26,7 +27,13 @@ import {
   PAYMENT_STYLES,
 } from "./summary";
 import QuickPatientDialog from "./QuickPatientDialog";
-import { saveInvoice, deleteInvoice, nextInvoiceNumber } from "./actions";
+import SendInvoicesDialog from "./SendInvoicesDialog";
+import {
+  saveInvoice,
+  deleteInvoice,
+  nextInvoiceNumber,
+  sendInvoiceEmail,
+} from "./actions";
 
 type PatientLite = PatientContact;
 type SortKey = "period" | "patient" | "number" | "gross" | "paid" | "net";
@@ -54,6 +61,7 @@ export default function ComptaClient({
 }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Invoice | null>(null);
+  const [sendingAll, setSendingAll] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("period");
   const [sortAsc, setSortAsc] = useState(false);
   const [grouped, setGrouped] = useState(true);
@@ -210,6 +218,16 @@ export default function ComptaClient({
             Par mois
           </button>
         )}
+
+        <button
+          onClick={() => setSendingAll(true)}
+          disabled={visible.length === 0}
+          title="Envoyer par e-mail les factures affichées"
+          className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border bg-white border-slate-200 text-slate-500 hover:bg-slate-50 transition disabled:opacity-40"
+        >
+          <Mail className="h-3.5 w-3.5" />
+          Envoyer les factures
+        </button>
 
         <button
           onClick={openNew}
@@ -452,6 +470,7 @@ export default function ComptaClient({
                           >
                             <FileText className="h-4 w-4" />
                           </Link>
+                          <SendButton invoice={inv} />
                           <DeleteButton id={inv.id} />
                         </Td>
                       </tr>
@@ -464,6 +483,14 @@ export default function ComptaClient({
           {visible.length > 0 && <TotalRow invoices={visible} showRetro={showRetro} />}
         </table>
       </div>
+
+      {sendingAll && (
+        <SendInvoicesDialog
+          invoices={visible}
+          patients={patients}
+          onClose={() => setSendingAll(false)}
+        />
+      )}
 
       {open && (
         <InvoiceDialog
@@ -520,6 +547,31 @@ function TotalRow({
         <td className="sticky right-0 bg-inherit shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.12)]" />
       </tr>
     </tfoot>
+  );
+}
+
+/** Envoi d'une seule facture, sans ouvrir la page. */
+function SendButton({ invoice }: { invoice: Invoice }) {
+  const [pending, start] = useTransition();
+
+  return (
+    <button
+      type="button"
+      disabled={pending}
+      aria-label="Envoyer la facture par e-mail"
+      title="Envoyer la facture par e-mail"
+      onClick={() => {
+        const who = invoice.patient_name || "ce patient";
+        if (!confirm(`Envoyer la facture de ${who} par e-mail ?`)) return;
+        start(async () => {
+          const r = await sendInvoiceEmail(invoice.id);
+          alert(r.ok ? `Facture envoyée à ${r.email}.` : r.message);
+        });
+      }}
+      className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded align-middle disabled:opacity-40"
+    >
+      <Mail className="h-4 w-4" />
+    </button>
   );
 }
 
