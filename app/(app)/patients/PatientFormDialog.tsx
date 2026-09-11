@@ -8,10 +8,8 @@ import { savePatient } from "./actions";
 
 export default function PatientFormDialog({
   patient,
-  trigger,
 }: {
   patient?: Patient;
-  trigger?: "button" | "link";
 }) {
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();

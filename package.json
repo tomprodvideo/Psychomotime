@@ -7,7 +7,15 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --import ./scripts/test-hooks.mjs --test \"lib/**/*.test.mts\""
+    "typecheck": "tsc --noEmit",
+    "test": "npm run test:unit && npm run db:test",
+    "test:unit": "node --import ./scripts/test-hooks.mjs --test \"lib/**/*.test.mts\"",
+    "db:reset": "node scripts/db.mjs reset",
+    "db:migrate": "node scripts/db.mjs migrate",
+    "db:seed": "node scripts/db.mjs seed",
+    "db:test": "node scripts/db.mjs test",
+    "db:psql": "node scripts/db.mjs psql",
+    "verify": "npm run lint && npm run typecheck && npm test"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.2",

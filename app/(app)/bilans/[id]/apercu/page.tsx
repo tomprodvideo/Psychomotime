@@ -252,7 +252,6 @@ export default async function BilanApercuPage({
           <header className="mb-6">
             <div className="flex items-start gap-4">
               {profile.logo_url && (
-                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={profile.logo_url}
                   alt="Logo"

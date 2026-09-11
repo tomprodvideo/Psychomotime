@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAccess } from "@/lib/data";
 import type { Subscription } from "@/lib/types";
+import { isTrialRunning } from "@/lib/subscription";
 import { PageHeader, StatCard } from "@/components/ui";
 import { frDate } from "@/lib/format";
 import { setSubscription } from "./actions";
@@ -42,12 +43,11 @@ export default async function AdminPage() {
 
   const subs = (data ?? []) as Subscription[];
   const clients = subs.filter((s) => !s.is_admin);
+  // La règle d'accès vit dans `lib/subscription.ts`, en un seul exemplaire.
   const activeCount = clients.filter(
     (s) => s.manual_override || s.status === "active",
   ).length;
-  const trialCount = clients.filter(
-    (s) => s.status === "trialing" && s.trial_end && new Date(s.trial_end).getTime() > Date.now(),
-  ).length;
+  const trialCount = clients.filter((s) => isTrialRunning(s)).length;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
