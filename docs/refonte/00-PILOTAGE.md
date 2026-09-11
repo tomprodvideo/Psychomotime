@@ -3,7 +3,7 @@
 > Document de continuité. Il doit permettre à un autre contexte de reprendre le
 > travail sans perte. Mis à jour à chaque fin de lot.
 
-**Dernière mise à jour :** 2026-09-11 — L0 partiellement livré
+**Dernière mise à jour :** 2026-09-11 — L0 et L1 livrés, bascule appliquée en production
 **Base de départ :** `main` @ `d8af516` — audit fonctionnel du 2026-09-11.
 
 ---
@@ -87,7 +87,7 @@ Tout document de cette refonte utilise ces marqueurs, sans exception :
 | Lot | Intitulé | État |
 |---|---|---|
 | L0 | Socle : migrations reproductibles, tenancy cabinet, RLS refus par défaut, harnais de tests | **livré** |
-| L1 | Dossier patient, entourage, rôles, parcours de soin | à faire |
+| L1 | Dossier patient, entourage, rôles, parcours de soin | **livré et en service** |
 | L2 | Agenda, séances, présences, objectifs | à faire |
 | L3 | Moteur de bilans configurable + registre d'instruments | à faire |
 | L4 | Composition documentaire, statuts, versions, exports | à faire |
@@ -109,6 +109,11 @@ Détail : `docs/refonte/02-LOTS.md`.
 | Couverture RLS automatique | `supabase/tests/010_couverture_rls.sql` — refuse toute table sans RLS, sans RLS forcée, sans politique, toute fonction `security definer` au `search_path` libre, tout privilège `anon`, et toute adhérence directe à `auth.*` |
 | Garanties transactionnelles | `supabase/tests/030_garanties_socle.sql` — création atomique, dernier propriétaire, journal en ajout seul, paramètres non réécrivables, abonnement, configuration fiscale unique, identifiants datés |
 | Seeds entièrement fictifs, micro-BNC et société | `supabase/seed/0001_cabinets_fictifs.sql` |
+| Dossier patient : entourage à rôles multiples et datés, parcours, objectifs, notes, consentements | `0002_dossier_patient.sql` — 7 tables, `040_dossier_patient.sql` — 12 scénarios |
+| Bascule v1 → cible répétée sur base jetable | `npm run db:cutover` — 30 vérifications, dont le maintien des liens bilans et factures |
+| **Bascule appliquée en production le 2026-09-11** | 2 cabinets, 7 dossiers repris avec leurs identifiants, 4 bilans et 9 factures toujours rattachés, `patients_v1` conservée |
+| Âge calculé à une date donnée, jamais à l'horloge | `lib/age.ts` + 8 tests |
+| Privilèges de fonction et de table remis à plat | `0004_durcissement_privileges.sql`, vérifié en production |
 | Arithmétique monétaire en centimes entiers | `lib/money.ts` + 15 tests, dont la preuve du défaut corrigé |
 | Règle d'accès unique et fermée par défaut | `lib/subscription.ts` + `app.subscription_is_active` |
 
@@ -116,13 +121,30 @@ Commandes : `npm run verify` (lint + typecheck + 42 tests unitaires + 3 fichiers
 
 ## 8. Prochaine action exacte
 
-Lot 0 **terminé**. R-01 et R-02 sont tranchés (voir § 9).
+Lots 0 et 1 **terminés et en service**.
 
-Lot 1 — dossier patient : `patients`, `contacts`, `patient_contacts` avec rôles
-multiples et datés, responsables légaux multiples, prescripteur, adresseur,
-payeur et destinataires distincts `[C-03]` ; `care_pathways` `[C-04]` ;
-rattachement relationnel des documents `[A-10]` ; archivage et effacement
-raisonné `[A-29]` ; recherche, filtres, détection de doublons.
+Lot 2 — agenda et séances : `appointments`, `sessions`, présence / absence /
+annulation avec motif, liste d'attente, notes de suivi datées et attribuées
+`[C-05]`. Une séance réalisée sera la seule source possible d'une attestation
+de présence.
+
+### Ce qui n'a pas pu être vérifié
+
+L'interface connectée n'a pas été parcourue au navigateur : je n'ai pas de
+session sur le projet. Ce qui EST vérifié : le build, les 62 tests unitaires,
+les 4 fichiers de tests SQL, la répétition de bascule, l'état de la base après
+bascule, et l'isolation exécutée sur la base de production avec les droits
+réels d'un utilisateur connecté. Ce qui ne l'est pas : le rendu et les
+interactions des écrans une fois connecté.
+
+### Deux réglages à faire dans la console Supabase
+
+1. **Protection contre les mots de passe compromis** — désactivée. Elle vérifie
+   les mots de passe contre HaveIBeenPwned et couvrirait bien plus de cas que la
+   liste locale de `lib/auth/password.ts`. Authentication → Policies.
+2. **Confirmation de changement d'adresse sur l'ancienne adresse**
+   (« Secure email change ») — état non observable depuis le dépôt. Sans elle,
+   l'ancienne adresse n'est pas prévenue d'un changement.
 
 ## 9. Risques ouverts
 
