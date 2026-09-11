@@ -574,3 +574,189 @@ export async function validateBandSet(bandSetId: string): Promise<string[]> {
   }
   return ((data ?? []) as { probleme: string }[]).map((r) => r.probleme);
 }
+
+/* ==========================================================================
+ *  Tableau de bord
+ * ========================================================================== */
+
+export interface JourneeResume {
+  /** Rendez-vous du jour demandé, dans l'ordre. */
+  aujourdhui: AppointmentWithPatient[];
+  /** Créneaux passés dont l'issue n'a pas été constatée. */
+  aQualifier: AppointmentWithPatient[];
+  /** Rendez-vous à venir sur les sept jours suivants. */
+  semaineCount: number;
+  /** Parcours en liste d'attente, le plus ancien d'abord. */
+  attente: {
+    id: string;
+    patient_id: string;
+    label: string | null;
+    waitlisted_on: string | null;
+    waitlist_priority: string | null;
+    patient: { id: string; first_name: string; last_name: string; preferred_name: string | null } | null;
+  }[];
+  /** Parcours actifs, tous patients confondus. */
+  parcoursActifs: number;
+  /** Dossiers actifs. */
+  patientsActifs: number;
+}
+
+/**
+ * Tout ce qu'il faut pour la page d'accueil, en une passe.
+ *
+ * `maintenant` est un paramètre : la page choisit son instant une fois, et
+ * toutes les bornes en découlent. Aucune lecture d'horloge n'est cachée ici.
+ */
+export async function getJourneeResume(
+  practice: PracticeContext,
+  maintenant: Date,
+): Promise<JourneeResume> {
+  const supabase = await createClient();
+
+  const debutJour = new Date(maintenant);
+  debutJour.setHours(0, 0, 0, 0);
+  const finJour = new Date(debutJour);
+  finJour.setDate(finJour.getDate() + 1);
+  const finSemaine = new Date(debutJour);
+  finSemaine.setDate(finSemaine.getDate() + 7);
+
+  const [aujourdhui, aQualifier, semaine, attente, parcoursActifs, patientsActifs] =
+    await Promise.all([
+      listAppointments(practice, debutJour, finJour),
+      listAppointmentsToQualify(practice, maintenant, 10),
+      supabase
+        .from("appointments")
+        .select("id", { count: "exact", head: true })
+        .eq("practice_id", practice.practiceId)
+        .gte("starts_at", finJour.toISOString())
+        .lt("starts_at", finSemaine.toISOString())
+        .then((r) => r.count ?? 0),
+      supabase
+        .from("care_pathways")
+        .select(
+          "id, patient_id, label, waitlisted_on, waitlist_priority, " +
+            "patient:patients(id, first_name, last_name, preferred_name)",
+        )
+        .eq("practice_id", practice.practiceId)
+        .eq("status", "liste_attente")
+        .order("waitlisted_on", { ascending: true, nullsFirst: false })
+        .limit(8)
+        .then((r) => {
+          if (r.error) {
+            console.error("[accueil] liste d'attente refusée :", r.error);
+            return [];
+          }
+          return (r.data ?? []) as unknown as JourneeResume["attente"];
+        }),
+      supabase
+        .from("care_pathways")
+        .select("id", { count: "exact", head: true })
+        .eq("practice_id", practice.practiceId)
+        .eq("status", "actif")
+        .then((r) => r.count ?? 0),
+      supabase
+        .from("patients")
+        .select("id", { count: "exact", head: true })
+        .eq("practice_id", practice.practiceId)
+        .eq("status", "actif")
+        .then((r) => r.count ?? 0),
+    ]);
+
+  return {
+    aujourdhui,
+    aQualifier,
+    semaineCount: semaine,
+    attente,
+    parcoursActifs,
+    patientsActifs,
+  };
+}
+
+/* ==========================================================================
+ *  Pièces rattachées à un dossier
+ * ========================================================================== */
+
+export interface PieceBilan {
+  id: string;
+  title: string;
+  bilan_date: string | null;
+  status: string;
+  type: "psychomoteur" | "sensoriel";
+}
+
+export interface PieceFacture {
+  id: string;
+  invoice_number: string | null;
+  issue_date: string | null;
+  billing_month: string | null;
+  billing_year: number | null;
+  revenue_gross: number;
+  revenue_gross_paid: number;
+}
+
+/**
+ * Bilans et factures d'un patient.
+ *
+ * Ces deux tables vivent encore sur le modèle v1 : leur isolation repose sur
+ * `user_id`, pas sur l'appartenance au cabinet. Le filtre par patient suffit
+ * donc ici, la RLS faisant le reste — mais c'est une dépendance à retirer avec
+ * la reprise de la comptabilité et du moteur de bilans.
+ *
+ * On ne lit QUE les colonnes affichées : le jsonb `content` d'un bilan porte
+ * des images encodées, et les charger pour n'afficher qu'un titre était l'un
+ * des défauts relevés.
+ */
+export async function listPatientPieces(
+  patientId: string,
+): Promise<{ bilans: PieceBilan[]; factures: PieceFacture[] }> {
+  const supabase = await createClient();
+
+  const [bilansRes, facturesRes] = await Promise.all([
+    supabase
+      .from("bilans")
+      .select("id, title, bilan_date, status, content")
+      .eq("patient_id", patientId)
+      .order("bilan_date", { ascending: false, nullsFirst: false })
+      .limit(30),
+    supabase
+      .from("invoices")
+      .select(
+        "id, invoice_number, issue_date, billing_month, billing_year, " +
+          "revenue_gross, revenue_gross_paid",
+      )
+      .eq("patient_id", patientId)
+      .order("issue_date", { ascending: false, nullsFirst: false })
+      .limit(30),
+  ]);
+
+  if (bilansRes.error) {
+    console.error("[dossier] lecture des bilans refusée :", bilansRes.error);
+  }
+  if (facturesRes.error) {
+    console.error("[dossier] lecture des factures refusée :", facturesRes.error);
+  }
+
+  const bilans = ((bilansRes.data ?? []) as {
+    id: string;
+    title: string;
+    bilan_date: string | null;
+    status: string;
+    content: Record<string, unknown> | null;
+  }[]).map((b) => ({
+    id: b.id,
+    title: b.title,
+    bilan_date: b.bilan_date,
+    status: b.status,
+    // Le type vit encore dans le contenu, ce qui est précisément le défaut que
+    // le moteur de bilans corrigera par une colonne explicite.
+    type:
+      b.content?.["__type__"] === "sensoriel"
+        ? ("sensoriel" as const)
+        : ("psychomoteur" as const),
+  }));
+
+  return {
+    bilans,
+    factures: (facturesRes.data ?? []) as unknown as PieceFacture[],
+  };
+}

@@ -14,6 +14,7 @@ import {
   listObjectives,
   listPathways,
   listPatientAppointments,
+  listPatientPieces,
   listPatientContacts,
 } from "@/lib/dossier/queries";
 import { patientName } from "@/lib/dossier/types";
@@ -24,6 +25,7 @@ import ParcoursSection from "./ParcoursSection";
 import NotesSection from "./NotesSection";
 import ConsentementsSection from "./ConsentementsSection";
 import SeancesSection from "./SeancesSection";
+import PiecesSection from "./PiecesSection";
 
 export default async function FichePatientPage({
   params,
@@ -49,6 +51,7 @@ export default async function FichePatientPage({
     doublons,
     rendezVous,
     comptes,
+    pieces,
   ] = await Promise.all([
     listPatientContacts(practice, patient.id),
     listPathways(practice, patient.id),
@@ -58,6 +61,7 @@ export default async function FichePatientPage({
     findPossibleDuplicates(practice, patient),
     listPatientAppointments(practice, patient.id),
     countPatientSessions(practice, patient.id, maintenant),
+    listPatientPieces(patient.id),
   ]);
 
   const objectifs = await listObjectives(
@@ -239,6 +243,8 @@ export default async function FichePatientPage({
             </p>
           </section>
         )}
+
+        <PiecesSection bilans={pieces.bilans} factures={pieces.factures} />
 
         <ConsentementsSection
           patientId={patient.id}
