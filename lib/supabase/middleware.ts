@@ -1,8 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-// /facture/<jeton> : consultation par le patient, qui n'a pas de compte.
-const PUBLIC_PATHS = ["/login", "/auth", "/facture"];
+// /facture/<jeton>   : consultation par le patient, qui n'a pas de compte.
+// /mot-de-passe/...  : on y arrive justement parce qu'on ne peut plus se
+//                      connecter. Les écrans eux-mêmes exigent ce qu'il faut :
+//                      /nouveau redirige sans la session créée par le lien.
+const PUBLIC_PATHS = ["/login", "/auth", "/facture", "/mot-de-passe"];
 
 export async function updateSession(request: NextRequest) {
   // Tant que la clé Supabase n'est pas renseignée, on laisse passer

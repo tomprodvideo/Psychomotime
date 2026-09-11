@@ -5,9 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getSettings } from "@/lib/data";
 import { computeInvoice } from "@/lib/calc";
 import { MONTHS } from "@/lib/constants";
-import { headers } from "next/headers";
 import { emailConfig, sendMail } from "@/lib/email";
 import { newShareToken, shareExpiry } from "@/lib/invoiceShare";
+import { siteOrigin } from "@/lib/siteOrigin";
 import {
   invoiceLinesTotal,
   normalizeInvoiceLines,
@@ -316,14 +316,6 @@ export type SendInvoiceResult =
       reason: "not-configured" | "no-email" | "not-found" | "error";
       message: string;
     };
-
-/** Origine publique du site, déduite de la requête en cours. */
-async function siteOrigin(): Promise<string> {
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
-  const proto = h.get("x-forwarded-proto") ?? "https";
-  return `${proto}://${host}`;
-}
 
 /**
  * Renvoie le lien de consultation de la facture, en créant le jeton si la

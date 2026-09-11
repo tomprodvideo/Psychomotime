@@ -1,7 +1,9 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import Link from "next/link";
 import { signIn, signUp, type AuthState } from "./actions";
+import { MIN_PASSWORD_LENGTH } from "@/lib/auth/password";
 import { Activity, Lock, Mail, User } from "lucide-react";
 
 const initial: AuthState = {};
@@ -81,6 +83,13 @@ export default function LoginPage() {
               required
             />
 
+            {mode === "signup" && (
+              <p className="text-xs text-slate-500">
+                Mot de passe : au moins {MIN_PASSWORD_LENGTH} caractères. Une
+                phrase dont vous vous souvenez fait un très bon mot de passe.
+              </p>
+            )}
+
             {state.error && (
               <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
                 {state.error}
@@ -104,10 +113,18 @@ export default function LoginPage() {
                   : "Créer mon compte"}
             </button>
           </form>
+
+          {mode === "signin" && (
+            <p className="text-center text-sm text-slate-500 mt-5">
+              <Link
+                href="/mot-de-passe/oublie"
+                className="underline hover:text-brand-700"
+              >
+                Mot de passe oublié ?
+              </Link>
+            </p>
+          )}
         </div>
-        <p className="text-center text-xs text-slate-400 mt-6">
-          Vos données sont privées et sécurisées.
-        </p>
       </div>
     </div>
   );

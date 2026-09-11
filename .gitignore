@@ -55,3 +55,7 @@ CLAUDE.local.md
 # Artefacts locaux d'audit susceptibles de contenir des informations sensibles
 artifacts/private/
 reports/private/
+
+# Documents de travail : un compte rendu, même fictif, n'a pas sa place dans Git.
+*.pdf
+!docs/**/*.pdf
