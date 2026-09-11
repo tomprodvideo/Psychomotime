@@ -77,7 +77,22 @@ as $$
 
   union all
 
-  -- 6. Privilèges accordés à `anon` sur une table du schéma public : à
+  -- 6. Fonction du schéma public exécutable par `anon`. PostgREST l'expose
+  --    alors en `/rest/v1/rpc/...` à un visiteur sans session. Seules les
+  --    fonctions délibérément publiques doivent y figurer — aujourd'hui la
+  --    seule légitime est la consultation d'une facture par son jeton.
+  select format('Fonction %I.%I : exécutable par anon (exposée en RPC sans session).',
+                n.nspname, p.proname)
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'public'
+    and p.prokind = 'f'
+    and has_function_privilege('anon', p.oid, 'execute')
+    and p.proname not in ('invoice_by_token')
+
+  union all
+
+  -- 7. Privilèges accordés à `anon` sur une table du schéma public : à
   --    n'autoriser qu'en connaissance de cause.
   select format('Table %I.%I : privilège %s accordé à anon.', n.nspname, c.relname, a.privilege_type)
   from pg_class c

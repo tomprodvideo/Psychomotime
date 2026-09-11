@@ -12,7 +12,22 @@
 --  il n'est jamais envoyé au projet distant.
 -- ============================================================================
 
-create extension if not exists pgcrypto;
+-- Supabase installe ses extensions dans le schéma `extensions`, jamais dans
+-- `public`. On reproduit ce placement : sinon `gen_salt`, `crypt` et les autres
+-- se retrouvent exposées en RPC ici et pas là-bas, et le test ment.
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
+grant usage on schema extensions to anon, authenticated, service_role;
+-- `gen_random_uuid()` doit rester résolvable sans préfixe dans les valeurs par
+-- défaut de colonnes, comme sur Supabase — qui place `extensions` dans le
+-- search_path des rôles.
+do $$
+begin
+  execute format(
+    'alter database %I set search_path = "$user", public, extensions',
+    current_database());
+end
+$$;
 
 -- ---------- rôles PostgREST ----------
 do $$
@@ -82,6 +97,17 @@ grant select on auth.users to authenticated, service_role;
 
 -- `authenticated` doit pouvoir se connecter au schéma applicatif.
 grant usage on schema public to anon, authenticated, service_role;
+
+-- PRIVILÈGES PAR DÉFAUT — reproduits à l'identique de Supabase.
+--  Sans eux, le stub est PLUS SÉVÈRE que la production : une fonction créée
+--  dans `public` y reçoit automatiquement EXECUTE pour anon et authenticated,
+--  et un `revoke all ... from public` ne le retire pas. C'est exactement
+--  l'écart qui a laissé passer des fonctions appelables sans session, détecté
+--  par l'analyseur Supabase et non par le test local. Le stub doit donc être
+--  aussi permissif que la production pour que le test soit sincère.
+alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
+alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
 
 -- ---------- schéma storage ----------
 --  Minimum permettant aux migrations v1 de s'appliquer telles quelles pendant

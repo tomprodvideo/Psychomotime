@@ -88,7 +88,10 @@ begin
            'a1111111-1111-4111-8111-111111111111'),
     'Écrire directement dans le journal doit être refusé.');
   -- Le journal ne reçoit AUCUN privilège UPDATE ni DELETE : PostgreSQL refuse
-  -- avant même d'évaluer une politique. C'est plus fort qu'un filtrage muet.
+  -- avant même d'évaluer une politique. C'est plus fort qu'un filtrage muet,
+  -- et c'est la SECONDE couche — la première étant l'absence de politique
+  -- d'écriture. La migration 0004 a dû rétablir ce privilège après que les
+  -- valeurs par défaut de Supabase l'eurent accordé silencieusement.
   perform tests.assert_fails(
     format('update public.audit_events set action = ''réécrit'' where id = %s', v_id),
     'Modifier une entrée de journal doit être impossible.');

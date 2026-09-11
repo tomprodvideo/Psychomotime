@@ -17,7 +17,16 @@
 --      émise puisse être relue avec les paramètres en vigueur à sa date.
 -- ============================================================================
 
-create extension if not exists pgcrypto;
+-- `pgcrypto` fournit `gen_random_uuid()`. Supabase l'installe dans le schéma
+-- `extensions` dès la création du projet ; on ne la réinstalle donc PAS dans
+-- `public`, ce qui exposerait `crypt`, `gen_salt` et `hmac` en RPC.
+do $$
+begin
+  if not exists (select 1 from pg_extension where extname = 'pgcrypto') then
+    create extension pgcrypto with schema extensions;
+  end if;
+end
+$$;
 
 -- ============================================================================
 --  SCHÉMA app — fonctions internes, hors de la surface d'API
