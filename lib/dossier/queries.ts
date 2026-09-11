@@ -2,14 +2,18 @@ import { createClient } from "@/lib/supabase/server";
 import type {
   Appointment,
   AppointmentWithPatient,
+  BandSetRow,
   CareObjective,
   CarePathway,
   Contact,
   Patient,
   PatientConsent,
   PatientContactWithContact,
+  Instrument,
+  InstrumentScale,
   PatientNote,
   PracticeContext,
+  Vocabulary,
 } from "./types";
 
 /**
@@ -453,4 +457,120 @@ export async function countPatientSessions(
   ]);
 
   return { realisees, aVenir, absences, aQualifier };
+}
+
+/* ==========================================================================
+ *  Registre d'instruments — lectures
+ * ========================================================================== */
+
+export async function listInstruments(
+  practice: PracticeContext,
+): Promise<Instrument[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("instruments")
+    .select("*")
+    .eq("practice_id", practice.practiceId)
+    .order("name", { ascending: true });
+
+  if (error) {
+    console.error("[instruments] lecture refusée :", error);
+    return [];
+  }
+  return (data ?? []) as Instrument[];
+}
+
+export async function getInstrument(
+  practice: PracticeContext,
+  id: string,
+): Promise<Instrument | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("instruments")
+    .select("*")
+    .eq("id", id)
+    .eq("practice_id", practice.practiceId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[instruments] lecture refusée :", error);
+    return null;
+  }
+  return (data as Instrument) ?? null;
+}
+
+export async function listScales(
+  practice: PracticeContext,
+  instrumentId: string,
+): Promise<InstrumentScale[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("instrument_scales")
+    .select("*")
+    .eq("instrument_id", instrumentId)
+    .eq("practice_id", practice.practiceId)
+    .order("name", { ascending: true });
+
+  if (error) {
+    console.error("[instruments] lecture des échelles refusée :", error);
+    return [];
+  }
+  return (data ?? []) as InstrumentScale[];
+}
+
+/** Découpages d'une échelle, bandes comprises, le plus récent d'abord. */
+export async function listBandSets(
+  practice: PracticeContext,
+  scaleId: string,
+): Promise<BandSetRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("scale_band_sets")
+    .select("*, bands:scale_bands(*)")
+    .eq("scale_id", scaleId)
+    .eq("practice_id", practice.practiceId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[instruments] lecture des découpages refusée :", error);
+    return [];
+  }
+  return ((data ?? []) as unknown as BandSetRow[]).map((s) => ({
+    ...s,
+    bands: [...(s.bands ?? [])].sort((a, b) => a.position - b.position),
+  }));
+}
+
+export async function listVocabularies(
+  practice: PracticeContext,
+): Promise<Vocabulary[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("band_vocabularies")
+    .select("*, labels:band_vocabulary_labels(key, text)")
+    .eq("practice_id", practice.practiceId)
+    .order("name", { ascending: true });
+
+  if (error) {
+    console.error("[instruments] lecture des vocabulaires refusée :", error);
+    return [];
+  }
+  return ((data ?? []) as unknown as Vocabulary[]).map((v) => ({
+    ...v,
+    labels: [...(v.labels ?? [])].sort((a, b) => a.key.localeCompare(b.key)),
+  }));
+}
+
+/** Problèmes empêchant un découpage de devenir actif. Vide = exploitable. */
+export async function validateBandSet(bandSetId: string): Promise<string[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("validate_band_set", {
+    p_band_set_id: bandSetId,
+  });
+
+  if (error) {
+    console.error("[instruments] validation refusée :", error);
+    return ["Le découpage n'a pas pu être vérifié."];
+  }
+  return ((data ?? []) as { probleme: string }[]).map((r) => r.probleme);
 }

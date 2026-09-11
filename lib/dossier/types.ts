@@ -1,3 +1,5 @@
+import type { Band, Scale } from "@/lib/scales";
+
 /**
  * Types du dossier patient — modèle cible.
  *
@@ -416,3 +418,112 @@ export function isRealisedSession(a: Pick<Appointment, "attendance" | "kind" | "
 }
 
 export type WaitlistPriority = "normale" | "prioritaire";
+
+/* ==========================================================================
+ *  Registre d'instruments
+ *
+ *  Le registre stocke des DÉSIGNATIONS et des propriétés déclarées, jamais du
+ *  matériel : ni items, ni consignes, ni feuilles de cotation, ni tables
+ *  d'étalonnage. Toute propriété y est conçue pour pouvoir être publiée telle
+ *  quelle sans reproduire un manuel.
+ * ========================================================================== */
+
+export type LicenceStatus =
+  | "reference_seule"
+  | "scores_saisis_par_le_praticien"
+  | "integration_editeur_autorisee"
+  | "outil_libre_valide";
+
+export interface Instrument {
+  id: string;
+  practice_id: string;
+  name: string;
+  publisher: string | null;
+  edition: string | null;
+  form: string | null;
+  language: string | null;
+  age_min_months: number | null;
+  age_max_months: number | null;
+  normative_population: string | null;
+  domains: string[];
+  licence_status: LicenceStatus;
+  licence_scope: string | null;
+  licence_reference: string | null;
+  licence_url: string | null;
+  licence_expires_on: string | null;
+  licence_checked_on: string | null;
+  licence_checked_by: string | null;
+  validity_warnings: string | null;
+  note: string | null;
+  active: boolean;
+}
+
+export interface InstrumentScale extends Scale {
+  practice_id: string;
+  instrument_id: string;
+  note: string | null;
+  active: boolean;
+}
+
+export interface BandSetRow {
+  id: string;
+  practice_id: string;
+  scale_id: string;
+  vocabulary_id: string;
+  version: string;
+  origin: "manuel_editeur" | "publication_citee" | "convention_praticien";
+  source: string;
+  source_checked_on: string | null;
+  active: boolean;
+  validated_by: string | null;
+  validated_on: string | null;
+  bands: Band[];
+}
+
+export interface Vocabulary {
+  id: string;
+  practice_id: string;
+  name: string;
+  usage: "interne" | "document_remis";
+  validated_by: string | null;
+  validated_on: string | null;
+  note: string | null;
+  labels: { key: string; text: string }[];
+}
+
+/** Ce que chaque statut de licence autorise, et ce qu'il interdit. */
+export const LICENCE_LABELS: Record<LicenceStatus, string> = {
+  reference_seule: "Référence seule",
+  scores_saisis_par_le_praticien: "Scores saisis par vous",
+  integration_editeur_autorisee: "Intégration autorisée par l'éditeur",
+  outil_libre_valide: "Outil libre vérifié",
+};
+
+export const LICENCE_EXPLICATIONS: Record<
+  LicenceStatus,
+  { autorise: string; interdit: string }
+> = {
+  reference_seule: {
+    autorise:
+      "L'instrument est nommé, sa plage d'âge est rappelée, et vous écrivez vos résultats en texte libre.",
+    interdit:
+      "Aucune échelle, aucun résultat structuré, aucune bande, aucune couleur.",
+  },
+  scores_saisis_par_le_praticien: {
+    autorise:
+      "Vous décrivez vos propres échelles et vos propres découpages, et vous y recopiez les scores que vous avez cotés vous-même.",
+    interdit:
+      "Le logiciel ne fournit ni intitulés d'épreuves, ni grille, ni découpage repris d'un manuel. Il ne convertit aucune échelle en une autre.",
+  },
+  integration_editeur_autorisee: {
+    autorise: "Exactement ce que votre accord écrit énumère, et rien de plus.",
+    interdit:
+      "Tout usage non énuméré, même « évident ». Sans référence, date et nom de vérificateur, le statut retombe automatiquement au précédent.",
+  },
+  outil_libre_valide: {
+    autorise:
+      "Stocker et afficher les intitulés et la grille, dans le respect de l'attribution exigée.",
+    interdit:
+      "Traiter comme libre un outil simplement trouvé en ligne. « Librement accessible » n'est pas « libre de droits ».",
+  },
+};

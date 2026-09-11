@@ -89,7 +89,7 @@ Tout document de cette refonte utilise ces marqueurs, sans exception :
 | L0 | Socle : migrations reproductibles, tenancy cabinet, RLS refus par défaut, harnais de tests | **livré** |
 | L1 | Dossier patient, entourage, rôles, parcours de soin | **livré et en service** |
 | L2 | Agenda, séances, présences, objectifs | **livré et en service** |
-| L3 | Moteur de bilans configurable + registre d'instruments | à faire |
+| L3 | Moteur de bilans configurable + registre d'instruments | **registre livré** ; moteur suspendu à des arbitrages cliniques |
 | L4 | Composition documentaire, statuts, versions, exports | à faire |
 | L5 | Devis, factures, avoirs, paiements, attestations, PCO | à faire |
 | L6 | Assistance IA encadrée | à faire |
@@ -117,6 +117,8 @@ Détail : `docs/refonte/02-LOTS.md`.
 | Agenda, séances et présences | `0005_agenda_seances.sql`, `/agenda`, section Séances de la fiche |
 | Source unique d'une attestation de présence | vue `realised_sessions` — exclut par construction les rendez-vous à venir, annulés, non qualifiés et sans patient |
 | Surface anonyme réduite à deux fonctions nommées | `0006`, vérifié en production |
+| Registre d'instruments, échelles, vocabulaires et découpages | `0007_registre_instruments.sql`, `/parametres/instruments` |
+| Règle de cotation UNIQUE, sortie du code | `lib/scales.ts` + test d'architecture qui interdit toute autre autorité |
 | Arithmétique monétaire en centimes entiers | `lib/money.ts` + 15 tests, dont la preuve du défaut corrigé |
 | Règle d'accès unique et fermée par défaut | `lib/subscription.ts` + `app.subscription_is_active` |
 
