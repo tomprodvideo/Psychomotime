@@ -4,13 +4,18 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PATIENT_DOSSIER_FIELDS } from "@/lib/constants";
+import type { PatientContact } from "@/lib/types";
 
 function str(v: FormDataEntryValue | null): string | null {
   const s = String(v ?? "").trim();
   return s === "" ? null : s;
 }
 
-export async function savePatient(formData: FormData) {
+/** Enregistre un patient (création ou édition) et renvoie son id, pour que
+ *  l'appelant puisse le sélectionner aussitôt (ex. dialogue de facture). */
+export async function savePatient(
+  formData: FormData,
+): Promise<{ id: string | null; patient: PatientContact | null }> {
   const supabase = await createClient();
   const id = str(formData.get("id"));
 
@@ -40,24 +45,34 @@ export async function savePatient(formData: FormData) {
 
   const run = async (data: Record<string, unknown>) =>
     id
-      ? supabase.from("patients").update(data).eq("id", id)
-      : supabase.from("patients").insert(data);
+      ? supabase
+          .from("patients")
+          .update(data)
+          .eq("id", id)
+          .select("id, first_name, last_name, birth_date, email, phone, address")
+          .single()
+      : supabase.from("patients").insert(data).select("id, first_name, last_name, birth_date, email, phone, address").single();
 
   // Repli progressif si guardian/dossier n'existent pas encore (migrations 006/007).
   // PostgREST renvoie PGRST204 (écriture) ou 42703 (colonne inconnue).
   const missingCol = (e: { code?: string } | null) =>
     e?.code === "PGRST204" || e?.code === "42703";
 
-  let { error } = await run({ ...base, guardian, dossier });
+  let { data, error } = await run({ ...base, guardian, dossier });
   if (missingCol(error)) {
-    ({ error } = await run({ ...base, guardian }));
+    ({ data, error } = await run({ ...base, guardian }));
   }
   if (missingCol(error)) {
-    await run(base);
+    ({ data, error } = await run(base));
   }
 
+  const patient = (data as PatientContact | null) ?? null;
+  const savedId = patient?.id ?? id ?? null;
+
   revalidatePath("/patients");
-  if (id) revalidatePath(`/patients/${id}`);
+  revalidatePath("/comptabilite");
+  if (savedId) revalidatePath(`/patients/${savedId}`);
+  return { id: savedId, patient };
 }
 
 export async function deletePatient(formData: FormData) {

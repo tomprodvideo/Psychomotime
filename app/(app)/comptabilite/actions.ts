@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getSettings } from "@/lib/data";
+import { computeInvoice } from "@/lib/calc";
 
 function num(v: FormDataEntryValue | null): number {
   if (v == null) return 0;
@@ -14,52 +16,29 @@ function str(v: FormDataEntryValue | null): string | null {
   return s === "" ? null : s;
 }
 
-/**
- * Retrouve un patient existant par son nom (insensible à la casse),
- * sinon le crée automatiquement. Renvoie son id.
- */
-async function ensurePatient(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  name: string,
-): Promise<string | null> {
-  const clean = name.trim();
-  if (!clean) return null;
-
-  const { data: existing } = await supabase
-    .from("patients")
-    .select("id, first_name, last_name");
-
-  const match = (existing ?? []).find(
-    (p) =>
-      `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim().toLowerCase() ===
-      clean.toLowerCase(),
-  );
-  if (match) return match.id;
-
-  const parts = clean.split(/\s+/);
-  const first_name = parts.shift() ?? clean;
-  const last_name = parts.join(" ");
-
-  const { data: created } = await supabase
-    .from("patients")
-    .insert({ first_name, last_name })
-    .select("id")
-    .single();
-
-  return created?.id ?? null;
-}
-
 export async function saveInvoice(formData: FormData) {
   const supabase = await createClient();
   const id = str(formData.get("id"));
 
-  const patientName = String(formData.get("patient_name") ?? "").trim();
-  let patientId = str(formData.get("patient_id"));
+  const patientId = str(formData.get("patient_id"));
 
-  // Auto-création / liaison du patient si aucun n'est lié.
-  if (!patientId && patientName) {
-    patientId = await ensurePatient(supabase, patientName);
+  // Le nom affiché sur la facture suit la fiche patient quand il y en a une ;
+  // sinon on conserve le texte envoyé (anciennes factures non rattachées).
+  let patientName = String(formData.get("patient_name") ?? "").trim();
+  if (patientId) {
+    const { data: p } = await supabase
+      .from("patients")
+      .select("first_name, last_name")
+      .eq("id", patientId)
+      .maybeSingle();
+    if (p) patientName = `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim();
   }
+
+  // Rétrocession et URSSAF ne sont plus saisies par facture : elles découlent
+  // des réglages (Paramètres › Comptabilité).
+  const gross = num(formData.get("revenue_gross"));
+  const settings = await getSettings();
+  const { retrocession, urssaf } = computeInvoice(gross, settings);
 
   const payload = {
     patient_id: patientId,
@@ -70,14 +49,14 @@ export async function saveInvoice(formData: FormData) {
       ? parseInt(String(formData.get("billing_year")), 10)
       : null,
     has_pco: formData.get("has_pco") === "on",
-    revenue_gross: num(formData.get("revenue_gross")),
+    revenue_gross: gross,
     revenue_gross_paid: num(formData.get("revenue_gross_paid")),
     payment_method: str(formData.get("payment_method")),
     payment_date: str(formData.get("payment_date")),
     issue_date: str(formData.get("issue_date")),
     service_label: str(formData.get("service_label")),
-    retrocession_amount: num(formData.get("retrocession_amount")),
-    urssaf_amount: num(formData.get("urssaf_amount")),
+    retrocession_amount: retrocession,
+    urssaf_amount: urssaf,
     notes: str(formData.get("notes")),
   };
 

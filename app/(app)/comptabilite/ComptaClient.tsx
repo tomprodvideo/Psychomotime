@@ -14,8 +14,8 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import type { Invoice, Patient, Settings } from "@/lib/types";
-import { euro, frDate } from "@/lib/format";
+import type { Invoice, PatientContact, Settings } from "@/lib/types";
+import { ageFromBirth, euro, frDate } from "@/lib/format";
 import { computeInvoice } from "@/lib/calc";
 import { MONTHS, PAYMENT_METHODS } from "@/lib/constants";
 import { invoicePeriod, ymKey, MONTHS_SHORT } from "@/lib/period";
@@ -26,9 +26,10 @@ import {
   PAYMENT_LABELS,
   PAYMENT_STYLES,
 } from "./summary";
+import PatientFormDialog from "../patients/PatientFormDialog";
 import { saveInvoice, deleteInvoice } from "./actions";
 
-type PatientLite = Pick<Patient, "id" | "first_name" | "last_name">;
+type PatientLite = PatientContact;
 type SortKey = "period" | "patient" | "number" | "gross" | "paid" | "net";
 export type PayFilter = "all" | "paid" | "unpaid";
 
@@ -583,44 +584,33 @@ function InvoiceDialog({
 }) {
   const [pending, start] = useTransition();
 
-  const [patientName, setPatientName] = useState(invoice?.patient_name ?? "");
   const [patientId, setPatientId] = useState(invoice?.patient_id ?? "");
+  const [newPatientOpen, setNewPatientOpen] = useState(false);
+  // Patient tout juste créé : évite d'attendre le rafraîchissement du serveur
+  // pour pouvoir l'afficher et le sélectionner.
+  const [justCreated, setJustCreated] = useState<PatientLite | null>(null);
   const [gross, setGross] = useState<number>(invoice?.revenue_gross ?? 0);
   const [paid, setPaid] = useState<number>(
     invoice?.revenue_gross_paid ?? invoice?.revenue_gross ?? 0,
   );
-  // Montants saisis à la main (utilisés uniquement en mode « Manuel »).
-  const [retroManual, setRetroManual] = useState<number>(
-    invoice?.retrocession_amount ?? 0,
-  );
-  const [urssafManual, setUrssafManual] = useState<number>(
-    invoice?.urssaf_amount ?? 0,
-  );
-  // En création : auto-calcul. En édition : on respecte les valeurs existantes.
-  const [retroAuto, setRetroAuto] = useState(!invoice);
-  const [urssafAuto, setUrssafAuto] = useState(!invoice);
 
-  // Rétrocession / URSSAF / net sont dérivés à chaque rendu : en mode « Auto »
-  // ils suivent le brut, en mode « Manuel » c'est la saisie qui fait foi.
-  const { retrocession: retro, afterRetro, urssaf, net } = computeInvoice(
-    gross,
-    settings,
-    {
-      retrocession: retroAuto ? undefined : retroManual,
-      urssaf: urssafAuto ? undefined : urssafManual,
-    },
-  );
+  const options = useMemo(() => {
+    if (!justCreated || patients.some((p) => p.id === justCreated.id))
+      return patients;
+    return [...patients, justCreated].sort((a, b) =>
+      (a.last_name ?? "").localeCompare(b.last_name ?? ""),
+    );
+  }, [patients, justCreated]);
+
+  const selectedPatient = options.find((p) => p.id === patientId) ?? null;
+  // Ancienne facture saisie en texte libre, sans fiche patient rattachée.
+  const orphanName = patientId ? "" : (invoice?.patient_name ?? "");
+
+  // Rétrocession et URSSAF sont définies dans Paramètres › Comptabilité et
+  // recalculées par le serveur à l'enregistrement : ici on ne fait qu'afficher
+  // le montant qui restera.
+  const { afterRetro, net } = computeInvoice(gross, settings);
   const due = Math.round(Math.max(0, gross - paid) * 100) / 100;
-
-  // Passer en « Manuel » repart de la valeur calculée affichée.
-  function toggleRetroAuto() {
-    if (retroAuto) setRetroManual(retro);
-    setRetroAuto(!retroAuto);
-  }
-  function toggleUrssafAuto() {
-    if (urssafAuto) setUrssafManual(urssaf);
-    setUrssafAuto(!urssafAuto);
-  }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -649,48 +639,86 @@ function InvoiceDialog({
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {invoice && <input type="hidden" name="id" value={invoice.id} />}
           <input type="hidden" name="patient_id" value={patientId} />
+          <input
+            type="hidden"
+            name="patient_name"
+            value={
+              selectedPatient
+                ? `${selectedPatient.first_name} ${selectedPatient.last_name}`.trim()
+                : orphanName
+            }
+          />
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
-              <Label>Patient (prénom / nom)</Label>
-              <input
-                name="patient_name"
-                required
-                value={patientName}
-                onChange={(e) => {
-                  setPatientName(e.target.value);
-                  setPatientId("");
-                }}
-                list="patients-list"
-                className={inputCls}
-                placeholder="Ex. Léa Martin"
-              />
-              <datalist id="patients-list">
-                {patients.map((p) => (
-                  <option
-                    key={p.id}
-                    value={`${p.first_name} ${p.last_name}`.trim()}
-                  />
-                ))}
-              </datalist>
-              {patients.length > 0 && (
+              <Label>Patient</Label>
+              <div className="flex gap-2">
                 <select
-                  className={`${inputCls} mt-2 text-slate-500`}
                   value={patientId}
-                  onChange={(e) => {
-                    const p = patients.find((x) => x.id === e.target.value);
-                    setPatientId(e.target.value);
-                    if (p)
-                      setPatientName(`${p.first_name} ${p.last_name}`.trim());
-                  }}
+                  required
+                  onChange={(e) => setPatientId(e.target.value)}
+                  className={`${inputCls} flex-1`}
                 >
-                  <option value="">— Lier à un patient existant (option) —</option>
-                  {patients.map((p) => (
+                  <option value="">— Sélectionner un patient —</option>
+                  {options.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.first_name} {p.last_name}
+                      {`${p.first_name} ${p.last_name}`.trim()}
                     </option>
                   ))}
                 </select>
+                <button
+                  type="button"
+                  onClick={() => setNewPatientOpen(true)}
+                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-brand-700 border border-brand-200 hover:bg-brand-50 rounded-lg transition"
+                >
+                  <Plus className="h-4 w-4" />
+                  Nouveau
+                </button>
+              </div>
+
+              {/* Informations reprises du patient sélectionné. */}
+              {selectedPatient ? (
+                <div className="mt-2 bg-brand-50 border border-brand-100 rounded-xl p-3 flex items-start gap-3">
+                  <div className="h-10 w-10 shrink-0 rounded-full bg-brand-600 text-white flex items-center justify-center font-semibold uppercase">
+                    {(selectedPatient.first_name?.[0] ?? "") +
+                      (selectedPatient.last_name?.[0] ?? "")}
+                  </div>
+                  <div className="min-w-0 text-sm">
+                    <p className="font-semibold text-slate-800">
+                      {`${selectedPatient.first_name} ${selectedPatient.last_name}`.trim()}
+                    </p>
+                    <p className="text-slate-500">
+                      {selectedPatient.birth_date
+                        ? `Né(e) le ${frDate(selectedPatient.birth_date)} · ${ageFromBirth(selectedPatient.birth_date)}`
+                        : "Date de naissance non renseignée"}
+                    </p>
+                    {(selectedPatient.phone || selectedPatient.email) && (
+                      <p className="text-slate-500 truncate">
+                        {[selectedPatient.phone, selectedPatient.email]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    )}
+                    {selectedPatient.address ? (
+                      <p className="text-slate-500 truncate">
+                        {selectedPatient.address}
+                      </p>
+                    ) : (
+                      <p className="text-amber-600">
+                        Adresse manquante — elle n&apos;apparaîtra pas sur la
+                        facture.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                orphanName && (
+                  <p className="mt-2 text-xs text-amber-600">
+                    Cette facture était rattachée à «&nbsp;{orphanName}&nbsp;»
+                    sans fiche patient. Sélectionnez le patient ou créez sa
+                    fiche.
+                  </p>
+                )
               )}
             </div>
 
@@ -838,53 +866,12 @@ function InvoiceDialog({
             </div>
           </div>
 
-          {/* Bloc calculs */}
-          <div className="bg-slate-50 rounded-xl p-4 grid sm:grid-cols-2 gap-4">
-            <div>
-              <div className="flex items-center justify-between">
-                <Label>Rétrocession (€)</Label>
-                <ToggleAuto auto={retroAuto} onToggle={toggleRetroAuto} />
-              </div>
-              <input
-                name="retrocession_amount"
-                type="number"
-                step="0.01"
-                value={retro || ""}
-                onChange={(e) => {
-                  setRetroManual(parseFloat(e.target.value) || 0);
-                  setRetroAuto(false);
-                }}
-                className={inputCls}
-              />
-              <p className="text-xs text-slate-400 mt-1">
-                {settings.charge_mode === "loyer"
-                  ? "Mode loyer : 0 par défaut (loyer géré à part)."
-                  : `Auto : ${Math.round(settings.retrocession_rate * 100)} % du brut.`}
-              </p>
-            </div>
-            <div>
-              <div className="flex items-center justify-between">
-                <Label>URSSAF (€)</Label>
-                <ToggleAuto auto={urssafAuto} onToggle={toggleUrssafAuto} />
-              </div>
-              <input
-                name="urssaf_amount"
-                type="number"
-                step="0.01"
-                value={urssaf || ""}
-                onChange={(e) => {
-                  setUrssafManual(parseFloat(e.target.value) || 0);
-                  setUrssafAuto(false);
-                }}
-                className={inputCls}
-              />
-              <p className="text-xs text-slate-400 mt-1">
-                Auto : {(settings.urssaf_rate * 100).toFixed(2)} % de l&apos;après-rétro.
-              </p>
-            </div>
-            <div className="sm:col-span-2 flex flex-wrap gap-x-6 gap-y-1 text-sm pt-1">
+          {/* Récapitulatif en lecture seule. Rétrocession et URSSAF sont
+              définies une fois pour toutes dans Paramètres › Comptabilité. */}
+          <div className="bg-slate-50 rounded-xl p-4">
+            <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
               <span className="text-slate-500">
-                Après rétro :{" "}
+                Après rétrocession :{" "}
                 <strong className="text-slate-700">{euro(afterRetro)}</strong>
               </span>
               <span className="text-slate-500">
@@ -892,6 +879,12 @@ function InvoiceDialog({
                 <strong className="text-brand-700">{euro(net)}</strong>
               </span>
             </div>
+            <p className="text-xs text-slate-400 mt-1.5">
+              {settings.charge_mode === "loyer"
+                ? "Mode loyer (le loyer est géré à part)"
+                : `Rétrocession ${Math.round(settings.retrocession_rate * 100)} %`}
+              {` · URSSAF ${(settings.urssaf_rate * 100).toFixed(2)} % · réglé dans Paramètres › Comptabilité.`}
+            </p>
           </div>
 
           <div>
@@ -921,27 +914,18 @@ function InvoiceDialog({
           </div>
         </form>
       </div>
-    </div>
-  );
-}
 
-function ToggleAuto({
-  auto,
-  onToggle,
-}: {
-  auto: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className={`text-xs px-2 py-0.5 rounded-full transition ${
-        auto ? "bg-brand-100 text-brand-700" : "bg-slate-200 text-slate-500"
-      }`}
-    >
-      {auto ? "Auto" : "Manuel"}
-    </button>
+      <PatientFormDialog
+        hideTrigger
+        zClass="z-[60]"
+        open={newPatientOpen}
+        onOpenChange={setNewPatientOpen}
+        onSaved={(p) => {
+          setJustCreated(p);
+          setPatientId(p.id);
+        }}
+      />
+    </div>
   );
 }
 

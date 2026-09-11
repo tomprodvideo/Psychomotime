@@ -32,7 +32,7 @@ export default async function ComptabilitePage({
         .order("expense_date", { ascending: true }),
       supabase
         .from("patients")
-        .select("id, first_name, last_name")
+        .select("id, first_name, last_name, birth_date, email, phone, address")
         .order("last_name"),
     ]);
 
@@ -41,7 +41,10 @@ export default async function ComptabilitePage({
       invoices={(invoicesRaw ?? []) as Invoice[]}
       expenses={(expensesRaw ?? []) as Expense[]}
       patients={
-        (patientsRaw ?? []) as Pick<Patient, "id" | "first_name" | "last_name">[]
+        (patientsRaw ?? []) as Pick<
+  Patient,
+  "id" | "first_name" | "last_name" | "birth_date" | "email" | "phone" | "address"
+>[]
       }
       settings={{
         retrocession_rate: settings.retrocession_rate,

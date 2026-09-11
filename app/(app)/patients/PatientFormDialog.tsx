@@ -2,18 +2,39 @@
 
 import { Fragment, useState, useTransition } from "react";
 import { Plus, X } from "lucide-react";
-import type { Patient } from "@/lib/types";
+import type { Patient, PatientContact } from "@/lib/types";
 import { DOSSIER_GROUPS, PATIENT_DOSSIER_FIELDS } from "@/lib/constants";
 import { savePatient } from "./actions";
 
 export default function PatientFormDialog({
   patient,
   trigger,
+  open: openProp,
+  onOpenChange,
+  onSaved,
+  hideTrigger = false,
+  zClass = "z-50",
 }: {
   patient?: Patient;
   trigger?: "button" | "link";
+  /** Ouverture pilotée par le parent. Omis = le dialogue gère son propre état. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Appelé avec la fiche enregistrée (création ou édition). */
+  onSaved?: (patient: PatientContact) => void;
+  /** Masque le bouton déclencheur intégré (ouverture pilotée de l'extérieur). */
+  hideTrigger?: boolean;
+  /** Empilement : à monter au-dessus d'un dialogue déjà ouvert. */
+  zClass?: string;
 }) {
-  const [open, setOpen] = useState(false);
+  const [openState, setOpenState] = useState(false);
+  const controlled = openProp !== undefined;
+  const open = controlled ? openProp : openState;
+  const setOpen = (v: boolean) => {
+    if (!controlled) setOpenState(v);
+    onOpenChange?.(v);
+  };
+
   const [pending, start] = useTransition();
   const dossier = (patient?.dossier ?? {}) as Record<
     string,
@@ -24,14 +45,15 @@ export default function PatientFormDialog({
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     start(async () => {
-      await savePatient(fd);
+      const { patient: saved } = await savePatient(fd);
+      if (saved) onSaved?.(saved);
       setOpen(false);
     });
   }
 
   return (
     <>
-      {patient ? (
+      {hideTrigger ? null : patient ? (
         <button
           onClick={() => setOpen(true)}
           className="text-sm font-medium text-brand-700 hover:bg-brand-50 px-3 py-1.5 rounded-lg"
@@ -49,7 +71,9 @@ export default function PatientFormDialog({
       )}
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-slate-900/40 p-4">
+        <div
+          className={`fixed inset-0 ${zClass} flex items-start sm:items-center justify-center bg-slate-900/40 p-4`}
+        >
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 z-10 bg-white flex items-center justify-between px-6 py-4 border-b border-slate-100 rounded-t-2xl">
               <h2 className="font-semibold text-slate-800">

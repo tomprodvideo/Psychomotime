@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Download } from "lucide-react";
-import type { Expense, Invoice, Patient, Settings } from "@/lib/types";
+import type { Expense, Invoice, PatientContact, Settings } from "@/lib/types";
 import {
   expensePeriod,
   inPeriod,
@@ -23,7 +23,7 @@ import LoyersClient from "./LoyersClient";
 import { summarize } from "./summary";
 import { buildCsv, downloadCsv } from "./csv";
 
-type PatientLite = Pick<Patient, "id" | "first_name" | "last_name">;
+type PatientLite = PatientContact;
 
 export default function ComptabiliteView({
   invoices,

@@ -190,6 +190,12 @@ export interface DocumentFile {
   created_at: string;
 }
 
+/** Patient réduit à ce qu'il faut pour l'afficher et l'imprimer sur une facture. */
+export type PatientContact = Pick<
+  Patient,
+  "id" | "first_name" | "last_name" | "birth_date" | "email" | "phone" | "address"
+>;
+
 export type BilanStatus = "brouillon" | "finalisé";
 
 export interface MabcScore {
