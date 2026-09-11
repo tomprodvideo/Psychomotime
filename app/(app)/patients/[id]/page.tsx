@@ -1,318 +1,246 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, FileDown, FileText, Plus, Receipt } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
-import type { Bilan, Invoice, Patient } from "@/lib/types";
-import { ageFromBirth, euro, frDate } from "@/lib/format";
+import { AlertTriangle, ArrowLeft, Archive } from "lucide-react";
+import { frDate } from "@/lib/format";
+import { formatAgeAt } from "@/lib/age";
+import { getCurrentPractice } from "@/lib/dossier/practice";
 import {
-  BILAN_TYPE_ORDER,
-  BILAN_TYPE_UI,
-  bilanTypeOf,
-  DOSSIER_GROUPS,
-  PATIENT_DOSSIER_FIELDS,
-} from "@/lib/constants";
-import { Card } from "@/components/ui";
-import ConfirmDeleteButton from "@/components/ConfirmDeleteButton";
+  findPossibleDuplicates,
+  getPatient,
+  listConsents,
+  listContacts,
+  listNotes,
+  listObjectives,
+  listPathways,
+  listPatientContacts,
+} from "@/lib/dossier/queries";
+import { patientName } from "@/lib/dossier/types";
 import PatientFormDialog from "../PatientFormDialog";
-import { deletePatient } from "../actions";
+import ArchiveControls from "./ArchiveControls";
+import EntourageSection from "./EntourageSection";
+import ParcoursSection from "./ParcoursSection";
+import NotesSection from "./NotesSection";
+import ConsentementsSection from "./ConsentementsSection";
 
-export default async function PatientDetailPage({
+export default async function FichePatientPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
+  const practice = await getCurrentPractice();
+  if (!practice) notFound();
 
-  const { data: patient } = await supabase
-    .from("patients")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
-
+  const patient = await getPatient(practice, id);
   if (!patient) notFound();
-  const p = patient as Patient;
 
-  const [{ data: invoicesRaw }, { data: bilansRaw }] = await Promise.all([
-    supabase
-      .from("invoices")
-      .select("*")
-      .eq("patient_id", id)
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("bilans")
-      .select("*")
-      .eq("patient_id", id)
-      .order("bilan_date", { ascending: false }),
-  ]);
+  // Toutes les lectures du dossier en parallèle : elles ne dépendent pas
+  // les unes des autres, et les enchaîner n'apporterait qu'un écran plus lent.
+  const [entourage, parcours, notes, consentements, contacts, doublons] =
+    await Promise.all([
+      listPatientContacts(practice, patient.id),
+      listPathways(practice, patient.id),
+      listNotes(practice, patient.id),
+      listConsents(practice, patient.id),
+      listContacts(practice),
+      findPossibleDuplicates(practice, patient),
+    ]);
 
-  const invoices = (invoicesRaw ?? []) as Invoice[];
-  const bilans = (bilansRaw ?? []) as Bilan[];
-
-  // Les bilans du patient sont regroupés par type (psychomoteur / sensoriel).
-  const bilanGroups = BILAN_TYPE_ORDER.map((type) => ({
-    type,
-    ui: BILAN_TYPE_UI[type],
-    list: bilans.filter((b) => bilanTypeOf(b.content) === type),
-  })).filter((g) => g.list.length > 0);
-  const totalNet = invoices.reduce((s, i) => s + (i.net_revenue || 0), 0);
-
-  const dossier = (p.dossier ?? {}) as Record<string, string | null | undefined>;
-  const hasDossier = PATIENT_DOSSIER_FIELDS.some(
-    (f) => (dossier[f.id] ?? "").toString().trim() !== "",
+  const objectifs = await listObjectives(
+    practice,
+    parcours.map((p) => p.id),
   );
+
+  const aujourdhui = new Date();
+  const age = formatAgeAt(patient.birth_date, aujourdhui);
+  const archive = patient.status === "archive";
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
       <Link
         href="/patients"
-        className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-brand-700 mb-4"
+        className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-4"
       >
-        <ArrowLeft className="h-4 w-4" />
-        Retour aux patients
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        Tous les dossiers
       </Link>
 
-      <Card className="p-6 mb-6">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-4">
-            <div className="h-14 w-14 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center font-semibold text-lg uppercase">
-              {(p.first_name?.[0] ?? "") + (p.last_name?.[0] ?? "")}
-            </div>
-            <div>
-              <h1 className="text-2xl font-semibold text-slate-800">
-                {p.first_name} {p.last_name}
-              </h1>
-              <p className="text-sm text-slate-500">
-                {p.birth_date
-                  ? `Né(e) le ${frDate(p.birth_date)} · ${ageFromBirth(p.birth_date)}`
-                  : "Date de naissance non renseignée"}
-              </p>
-            </div>
-          </div>
+      {/* ------------------------------------------------------------ en-tête */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-800">
+            {patientName(patient)}
+          </h1>
+          <p className="text-sm text-slate-500 mt-0.5">
+            {patient.birth_date ? (
+              <>
+                Né(e) le {frDate(patient.birth_date)}
+                {age && <> · {age} aujourd&apos;hui</>}
+              </>
+            ) : (
+              "Date de naissance non renseignée"
+            )}
+          </p>
+          {patient.birth_name && (
+            <p className="text-xs text-slate-400 mt-0.5">
+              Nom de naissance : {patient.birth_name}
+            </p>
+          )}
+        </div>
+        {practice.canWrite && (
           <div className="flex items-center gap-2">
-            <Link
-              href={`/patients/${p.id}/fiche`}
-              className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:bg-slate-100 px-3 py-1.5 rounded-lg"
-            >
-              <FileDown className="h-4 w-4" />
-              Exporter PDF
-            </Link>
-            <PatientFormDialog patient={p} />
-            <ConfirmDeleteButton
-              id={p.id}
-              action={deletePatient}
-              message="Supprimer ce patient ? (ses factures et bilans seront conservés mais dissociés)"
+            <PatientFormDialog patient={patient} />
+            <ArchiveControls
+              patientId={patient.id}
+              archived={archive}
+              reason={patient.archive_reason}
             />
           </div>
-        </div>
-
-        {(p.email || p.phone || p.notes) && (
-          <div className="mt-4 pt-4 border-t border-slate-100 grid sm:grid-cols-3 gap-3 text-sm">
-            {p.phone && (
-              <div>
-                <p className="text-xs text-slate-400">Téléphone</p>
-                <p className="text-slate-700">{p.phone}</p>
-              </div>
-            )}
-            {p.email && (
-              <div>
-                <p className="text-xs text-slate-400">Email</p>
-                <p className="text-slate-700">{p.email}</p>
-              </div>
-            )}
-            {p.notes && (
-              <div className="sm:col-span-3">
-                <p className="text-xs text-slate-400">Notes</p>
-                <p className="text-slate-700 whitespace-pre-wrap">{p.notes}</p>
-              </div>
-            )}
-          </div>
         )}
+      </div>
 
-        {p.guardian &&
-          (p.guardian.first_name ||
-            p.guardian.last_name ||
-            p.guardian.phone ||
-            p.guardian.email ||
-            p.guardian.address) && (
-            <div className="mt-4 pt-4 border-t border-slate-100">
-              <p className="text-xs font-semibold uppercase tracking-wider text-brand-600 mb-2">
-                Tuteur / Parent
-              </p>
-              <div className="grid sm:grid-cols-3 gap-3 text-sm">
-                <div>
-                  <p className="text-xs text-slate-400">Nom</p>
-                  <p className="text-slate-700">
-                    {[p.guardian.first_name, p.guardian.last_name]
-                      .filter(Boolean)
-                      .join(" ") || "—"}
-                    {p.guardian.relation ? ` (${p.guardian.relation})` : ""}
-                  </p>
-                </div>
-                {p.guardian.phone && (
-                  <div>
-                    <p className="text-xs text-slate-400">Téléphone</p>
-                    <p className="text-slate-700">{p.guardian.phone}</p>
-                  </div>
-                )}
-                {p.guardian.email && (
-                  <div>
-                    <p className="text-xs text-slate-400">Email</p>
-                    <p className="text-slate-700">{p.guardian.email}</p>
-                  </div>
-                )}
-                {p.guardian.address && (
-                  <div className="sm:col-span-3">
-                    <p className="text-xs text-slate-400">Adresse</p>
-                    <p className="text-slate-700">{p.guardian.address}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-      </Card>
-
-      {hasDossier && (
-        <Card className="p-6 mb-6">
-          <h2 className="font-semibold text-slate-800 mb-4">Dossier de suivi</h2>
-          {DOSSIER_GROUPS.map((group) => {
-            const fields = PATIENT_DOSSIER_FIELDS.filter(
-              (f) =>
-                f.group === group &&
-                (dossier[f.id] ?? "").toString().trim() !== "",
-            );
-            if (fields.length === 0) return null;
-            return (
-              <div key={group} className="mb-4 last:mb-0">
-                <p className="text-xs font-semibold uppercase tracking-wider text-brand-600 mb-2">
-                  {group}
-                </p>
-                <div className="grid sm:grid-cols-2 gap-3 text-sm">
-                  {fields.map((f) => (
-                    <div
-                      key={f.id}
-                      className={f.type === "long" ? "sm:col-span-2" : ""}
-                    >
-                      <p className="text-xs text-slate-400">{f.label}</p>
-                      <p className="text-slate-700 whitespace-pre-wrap">
-                        {f.type === "date"
-                          ? frDate(dossier[f.id])
-                          : dossier[f.id]}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </Card>
+      {archive && (
+        <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 mb-6">
+          <Archive
+            className="h-5 w-5 shrink-0 text-slate-400 mt-0.5"
+            aria-hidden="true"
+          />
+          <div className="text-sm text-slate-600">
+            <p className="font-medium text-slate-700">Dossier archivé</p>
+            <p>
+              {patient.archived_at && `Archivé le ${frDate(patient.archived_at.slice(0, 10))}. `}
+              {patient.archive_reason ?? "Aucun motif renseigné."}
+            </p>
+            <p className="text-xs text-slate-500 mt-1">
+              Rien n&apos;a été effacé : le dossier reste consultable, et ses
+              pièces comptables avec lui.
+            </p>
+          </div>
+        </div>
       )}
 
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Bilans */}
-        <Card className="p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-slate-800 flex items-center gap-2">
-              <FileText className="h-4 w-4 text-brand-600" />
-              Bilans ({bilans.length})
-            </h2>
-            <Link
-              href={`/bilans/nouveau?patient=${p.id}`}
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50 px-3 py-1.5 rounded-lg"
-            >
-              <Plus className="h-4 w-4" />
-              Nouveau
-            </Link>
-          </div>
-          {bilans.length === 0 ? (
-            <p className="text-sm text-slate-400 py-4 text-center">
-              Aucun bilan pour ce patient.
-            </p>
-          ) : (
-            bilanGroups.map(({ type, ui, list }) => (
-              <div key={type} className="mb-4 last:mb-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <p
-                    className={`text-xs font-semibold uppercase tracking-wider ${ui.accent}`}
-                  >
-                    {ui.plural}
-                  </p>
-                  <span className="text-xs text-slate-400">{list.length}</span>
-                  <div className="h-px flex-1 bg-slate-100" />
-                </div>
-                <ul className="divide-y divide-slate-100">
-                  {list.map((b) => (
-                    <li key={b.id}>
-                      <Link
-                        href={`/bilans/${b.id}`}
-                        className="flex items-center justify-between gap-2 py-3 hover:bg-slate-50 -mx-2 px-2 rounded-lg"
-                      >
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-slate-700 truncate">
-                            {b.title}
-                          </p>
-                          <p className="text-xs text-slate-400">
-                            {frDate(b.bilan_date)}
-                          </p>
-                        </div>
-                        <span
-                          className={`shrink-0 text-xs px-2 py-0.5 rounded-full ${
-                            b.status === "finalisé"
-                              ? "bg-brand-100 text-brand-700"
-                              : "bg-amber-100 text-amber-700"
-                          }`}
-                        >
-                          {b.status}
-                        </span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))
-          )}
-        </Card>
-
-        {/* Factures */}
-        <Card className="p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-slate-800 flex items-center gap-2">
-              <Receipt className="h-4 w-4 text-brand-600" />
-              Factures ({invoices.length})
-            </h2>
-            <span className="text-sm text-slate-500">
-              Net : <strong className="text-brand-700">{euro(totalNet)}</strong>
-            </span>
-          </div>
-          {invoices.length === 0 ? (
-            <p className="text-sm text-slate-400 py-4 text-center">
-              Aucune facture liée. Liez un patient lors de la saisie d&apos;une
-              facture.
-            </p>
-          ) : (
-            <ul className="divide-y divide-slate-100">
-              {invoices.map((inv) => (
-                <li
-                  key={inv.id}
-                  className="flex items-center justify-between py-3 text-sm"
-                >
-                  <div>
-                    <p className="font-medium text-slate-700">
-                      {inv.invoice_number || "Facture"}
-                    </p>
-                    <p className="text-xs text-slate-400 capitalize">
-                      {inv.billing_month} {inv.billing_year}
-                    </p>
-                  </div>
-                  <span className="font-semibold text-brand-700">
-                    {euro(inv.net_revenue)}
-                  </span>
-                </li>
+      {doublons.length > 0 && (
+        <div
+          role="status"
+          className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 mb-6"
+        >
+          <AlertTriangle
+            className="h-5 w-5 shrink-0 text-amber-500 mt-0.5"
+            aria-hidden="true"
+          />
+          <div className="text-sm text-amber-900">
+            <p className="font-medium">Doublon possible</p>
+            <p>
+              {doublons.length === 1 ? "Un autre dossier porte" : `${doublons.length} autres dossiers portent`}{" "}
+              le même nom et la même date de naissance :{" "}
+              {doublons.map((d, i) => (
+                <span key={d.id}>
+                  {i > 0 && ", "}
+                  <Link href={`/patients/${d.id}`} className="underline font-medium">
+                    {patientName(d)}
+                  </Link>
+                </span>
               ))}
-            </ul>
-          )}
-        </Card>
+              .
+            </p>
+            <p className="text-xs text-amber-800 mt-1">
+              Deux homonymes nés le même jour existent : c&apos;est un signalement,
+              pas un blocage. Rien n&apos;est fusionné automatiquement.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-6">
+        {/* ------------------------------------------------------- coordonnées */}
+        {(patient.email ||
+          patient.phone ||
+          patient.address_line1 ||
+          patient.administrative_notes) && (
+          <section
+            aria-labelledby="titre-coordonnees"
+            className="bg-white rounded-xl border border-slate-100 shadow-sm p-5"
+          >
+            <h2
+              id="titre-coordonnees"
+              className="font-semibold text-slate-800 mb-3"
+            >
+              Coordonnées et organisation
+            </h2>
+            <dl className="grid sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+              {patient.email && <Ligne terme="E-mail" valeur={patient.email} />}
+              {patient.phone && <Ligne terme="Téléphone" valeur={patient.phone} />}
+              {patient.address_line1 && (
+                <Ligne
+                  terme="Adresse"
+                  valeur={[
+                    patient.address_line1,
+                    patient.address_line2,
+                    [patient.postal_code, patient.city].filter(Boolean).join(" "),
+                  ]
+                    .filter(Boolean)
+                    .join(", ")}
+                />
+              )}
+            </dl>
+            {patient.administrative_notes && (
+              <p className="text-sm text-slate-600 whitespace-pre-wrap mt-3 pt-3 border-t border-slate-100">
+                {patient.administrative_notes}
+              </p>
+            )}
+          </section>
+        )}
+
+        <EntourageSection
+          patientId={patient.id}
+          liens={entourage}
+          contacts={contacts}
+          canWrite={practice.canWrite}
+        />
+
+        <ParcoursSection
+          patientId={patient.id}
+          parcours={parcours}
+          objectifs={objectifs}
+          contacts={contacts}
+          canWrite={practice.canWrite}
+          canReadClinical={practice.canReadClinical}
+        />
+
+        {practice.canReadClinical ? (
+          <NotesSection
+            patientId={patient.id}
+            notes={notes}
+            parcours={parcours}
+            canWrite={practice.canWrite}
+          />
+        ) : (
+          <section className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
+            <h2 className="font-semibold text-slate-800">Notes cliniques</h2>
+            <p className="text-sm text-slate-500 mt-1">
+              Votre rôle dans ce cabinet ne donne pas accès aux notes cliniques
+              ni aux objectifs thérapeutiques. Ce n&apos;est pas un défaut
+              d&apos;affichage : la base elle-même les refuse.
+            </p>
+          </section>
+        )}
+
+        <ConsentementsSection
+          patientId={patient.id}
+          consentements={consentements}
+          contacts={contacts}
+          canWrite={practice.canWrite}
+        />
       </div>
+    </div>
+  );
+}
+
+function Ligne({ terme, valeur }: { terme: string; valeur: string }) {
+  return (
+    <div>
+      <dt className="text-xs text-slate-400">{terme}</dt>
+      <dd className="text-slate-700">{valeur}</dd>
     </div>
   );
 }

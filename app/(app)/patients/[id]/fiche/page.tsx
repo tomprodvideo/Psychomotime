@@ -4,73 +4,116 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getSettings } from "@/lib/data";
-import type { Bilan, Patient } from "@/lib/types";
+import type { Bilan } from "@/lib/types";
+import { BILAN_TYPE_ORDER, BILAN_TYPE_UI, bilanTypeOf } from "@/lib/constants";
+import { frDate } from "@/lib/format";
+import { formatAgeAt } from "@/lib/age";
+import { getCurrentPractice } from "@/lib/dossier/practice";
 import {
-  BILAN_TYPE_ORDER,
-  BILAN_TYPE_UI,
-  bilanTypeOf,
-  DOSSIER_GROUPS,
-  PATIENT_DOSSIER_FIELDS,
-} from "@/lib/constants";
-import { ageFromBirth, frDate } from "@/lib/format";
+  getPatient,
+  listConsents,
+  listNotes,
+  listPathways,
+  listPatientContacts,
+} from "@/lib/dossier/queries";
+import {
+  contactName,
+  CONSENT_LABELS,
+  FUNDING_LABELS,
+  LEGAL_BASIS_LABELS,
+  PATHWAY_STATUS_LABELS,
+  patientName,
+  ROLE_LABELS,
+} from "@/lib/dossier/types";
 import PrintButton from "./PrintButton";
 
-export default async function FichePatientPage({
+/**
+ * Fiche patient imprimable.
+ *
+ * DEUX RÈGLES TENUES ICI.
+ *
+ * 1. **Une donnée absente est OMISE.** Jamais « — », jamais « N/A », jamais une
+ *    valeur neutre. C'est la règle de sécurité clinique la mieux tenue du
+ *    produit, et elle ne doit pas se perdre dans une réécriture.
+ *
+ * 2. **Les informations marquées « venant d'un tiers » ne sont pas imprimées.**
+ *    L'article L1111-7 du code de la santé publique exclut du droit d'accès du
+ *    patient les informations recueillies auprès d'un tiers n'intervenant pas
+ *    dans la prise en charge, ou concernant un tel tiers. Ce document étant
+ *    destiné à sortir du cabinet, il applique cette exclusion par défaut — et
+ *    le dit, pour que le praticien sache ce qu'il ne tient pas en main.
+ */
+export default async function FichePatientImprimable({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
+  const practice = await getCurrentPractice();
+  if (!practice) notFound();
+
+  const patient = await getPatient(practice, id);
+  if (!patient) notFound();
+
   const settings = await getSettings();
   const profile = settings.profile ?? {};
   const accent = profile.theme_color || "#2f8a82";
 
-  const { data } = await supabase
-    .from("patients")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
+  const supabase = await createClient();
+  const [entourage, parcours, notes, consentements, bilansRaw] = await Promise.all([
+    listPatientContacts(practice, patient.id),
+    listPathways(practice, patient.id),
+    listNotes(practice, patient.id, 50),
+    listConsents(practice, patient.id),
+    supabase
+      .from("bilans")
+      .select("id, title, bilan_date, status, content")
+      .eq("patient_id", patient.id)
+      .order("bilan_date", { ascending: false }),
+  ]);
 
-  if (!data) notFound();
-  const p = data as Patient;
-  const g = p.guardian ?? {};
-  const dossier = (p.dossier ?? {}) as Record<string, string | null | undefined>;
-
-  const { data: bilansRaw } = await supabase
-    .from("bilans")
-    .select("id, title, bilan_date, status, content")
-    .eq("patient_id", id)
-    .order("bilan_date", { ascending: false });
-  const bilans = (bilansRaw ?? []) as Pick<
+  const bilans = (bilansRaw.data ?? []) as Pick<
     Bilan,
     "id" | "title" | "bilan_date" | "status" | "content"
   >[];
-
-  // Regroupement par type : psychomoteur et sensoriel sont listés séparément.
-  const bilanGroups = BILAN_TYPE_ORDER.map((type) => ({
+  const groupesBilans = BILAN_TYPE_ORDER.map((type) => ({
     type,
     ui: BILAN_TYPE_UI[type],
     list: bilans.filter((b) => bilanTypeOf(b.content) === type),
-  })).filter((grp) => grp.list.length > 0);
+  })).filter((g) => g.list.length > 0);
 
-  const guardianName = [g.first_name, g.last_name].filter(Boolean).join(" ");
-  const hasGuardian =
-    guardianName || g.phone || g.email || g.address || g.relation;
+  // Le document est daté du jour de son édition : l'âge s'y lit donc à cette
+  // date, explicitement, et non par une lecture d'horloge cachée.
+  const edite = new Date();
+  const age = formatAgeAt(patient.birth_date, edite);
+
+  const liensActifs = entourage.filter((l) => !l.valid_to);
+  const notesPubliables = notes.filter((n) => !n.third_party_information);
+  const notesRetenues = notes.length - notesPubliables.length;
+  const consentementsActifs = consentements.filter((c) => !c.withdrawn_on);
 
   return (
     <div className="bg-slate-100 min-h-screen">
       <div className="no-print sticky top-0 z-10 bg-white border-b border-slate-200 px-4 py-3">
         <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
           <Link
-            href={`/patients/${p.id}`}
+            href={`/patients/${patient.id}`}
             className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-brand-700"
           >
-            <ArrowLeft className="h-4 w-4" />
-            Retour à la fiche
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            Retour au dossier
           </Link>
           <PrintButton />
         </div>
+        {notesRetenues > 0 && (
+          <p className="max-w-3xl mx-auto text-xs text-amber-800 bg-amber-50 rounded-lg px-3 py-2 mt-3">
+            {notesRetenues} note{notesRetenues > 1 ? "s" : ""} marquée
+            {notesRetenues > 1 ? "s" : ""} « information d&apos;un tiers » n&apos;
+            {notesRetenues > 1 ? "apparaissent" : "apparaît"} pas sur ce document.
+            L&apos;article L1111-7 du code de la santé publique les exclut du droit
+            d&apos;accès du patient.
+          </p>
+        )}
       </div>
 
       <div className="py-8 px-4 print:p-0">
@@ -78,30 +121,23 @@ export default async function FichePatientPage({
           className="print-area max-w-3xl mx-auto bg-white shadow-sm border border-slate-200 rounded-lg px-12 py-10 print:shadow-none print:border-0 text-[13px] leading-relaxed text-slate-800"
           style={{ ["--accent" as string]: accent } as React.CSSProperties}
         >
-          {/* En-tête */}
           <header className="mb-6">
             <div className="flex items-start gap-4">
               {profile.logo_url && (
                 <img
                   src={profile.logo_url}
-                  alt="Logo"
+                  alt=""
                   className="h-16 w-16 object-contain"
                 />
               )}
               <div className="text-[12px] leading-snug text-slate-700">
                 <p className="font-semibold text-slate-900">
-                  {settings.display_name ?? "Psychomotricien(ne)"}
+                  {settings.display_name ?? practice.practiceName}
                 </p>
                 {profile.address &&
-                  profile.address
-                    .split("\n")
-                    .map((l, i) => <p key={i}>{l}</p>)}
+                  profile.address.split("\n").map((l, i) => <p key={i}>{l}</p>)}
                 {(profile.postal_code || profile.city) && (
-                  <p>
-                    {[profile.postal_code, profile.city]
-                      .filter(Boolean)
-                      .join(" ")}
-                  </p>
+                  <p>{[profile.postal_code, profile.city].filter(Boolean).join(" ")}</p>
                 )}
                 {profile.business_phone && <p>{profile.business_phone}</p>}
                 {profile.business_email && <p>{profile.business_email}</p>}
@@ -114,84 +150,126 @@ export default async function FichePatientPage({
             >
               FICHE PATIENT
             </h1>
+            <p className="text-center text-[11px] text-slate-500 mt-1">
+              Éditée le {frDate(edite.toISOString().slice(0, 10))}
+              {patient.status === "archive" && " · dossier archivé"}
+            </p>
           </header>
 
-          {/* Identité */}
           <Section>Identité</Section>
           <div className="grid grid-cols-2 gap-y-1 gap-x-6 mb-5">
-            <Line label="Nom et prénom" value={`${p.first_name} ${p.last_name}`} />
-            <Line
+            <Ligne label="Nom et prénom" valeur={patientName(patient)} />
+            <Ligne
               label="Date de naissance"
-              value={
-                p.birth_date
-                  ? `${frDate(p.birth_date)} (${ageFromBirth(p.birth_date)})`
-                  : ""
+              valeur={
+                patient.birth_date
+                  ? `${frDate(patient.birth_date)}${age ? ` (${age} à cette date)` : ""}`
+                  : null
               }
             />
-            <Line label="Téléphone" value={p.phone} />
-            <Line label="Email" value={p.email} />
-            <Line label="Adresse" value={p.address} full />
-            <Line label="Notes" value={p.notes} full />
+            <Ligne label="Nom de naissance" valeur={patient.birth_name} />
+            <Ligne label="Téléphone" valeur={patient.phone} />
+            <Ligne label="Courriel" valeur={patient.email} />
+            <Ligne
+              label="Adresse"
+              valeur={[
+                patient.address_line1,
+                patient.address_line2,
+                [patient.postal_code, patient.city].filter(Boolean).join(" "),
+              ]
+                .filter(Boolean)
+                .join(", ") || null}
+              pleineLargeur
+            />
           </div>
 
-          {/* Tuteur / Parent */}
-          {hasGuardian && (
+          {liensActifs.length > 0 && (
             <>
-              <Section>Tuteur / Parent</Section>
-              <div className="grid grid-cols-2 gap-y-1 gap-x-6 mb-5">
-                <Line
-                  label="Nom"
-                  value={
-                    guardianName
-                      ? `${guardianName}${g.relation ? ` (${g.relation})` : ""}`
-                      : g.relation ?? ""
-                  }
-                />
-                <Line label="Téléphone" value={g.phone} />
-                <Line label="Email" value={g.email} />
-                <Line label="Adresse" value={g.address} full />
+              <Section>Entourage</Section>
+              <div className="mb-5 space-y-1">
+                {liensActifs.map((l) => (
+                  <div key={l.id} className="flex flex-wrap gap-x-2">
+                    <span className="text-slate-500">{ROLE_LABELS[l.role]} :</span>
+                    <span className="font-medium">{contactName(l.contact)}</span>
+                    <span className="text-slate-500">
+                      {[
+                        l.relationship,
+                        l.legal_basis ? LEGAL_BASIS_LABELS[l.legal_basis] : null,
+                        l.contact.phone,
+                        l.contact.email,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  </div>
+                ))}
               </div>
             </>
           )}
 
-          {/* Dossier de suivi */}
-          {DOSSIER_GROUPS.map((group) => {
-            const fields = PATIENT_DOSSIER_FIELDS.filter(
-              (f) =>
-                f.group === group &&
-                (dossier[f.id] ?? "").toString().trim() !== "",
-            );
-            if (fields.length === 0) return null;
-            return (
-              <div key={group}>
-                <Section>{group}</Section>
-                <div className="grid grid-cols-2 gap-y-1 gap-x-6 mb-5">
-                  {fields.map((f) => (
-                    <Line
-                      key={f.id}
-                      label={f.label}
-                      value={
-                        f.type === "date"
-                          ? frDate(dossier[f.id])
-                          : dossier[f.id]
-                      }
-                      full={f.type === "long"}
-                    />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-
-          {/* Bilans */}
-          {bilans.length > 0 && (
+          {parcours.length > 0 && (
             <>
-              <Section>Bilans réalisés</Section>
-              {bilanGroups.map(({ type, ui, list }) => (
-                <div key={type} className="mb-4 last:mb-5 break-inside-avoid">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
-                    {ui.plural} ({list.length})
-                  </p>
+              <Section>Parcours de prise en soin</Section>
+              <div className="mb-5 space-y-3">
+                {parcours.map((p) => (
+                  <div key={p.id}>
+                    <p className="font-medium">
+                      {p.label ?? "Parcours"}{" "}
+                      <span className="font-normal text-slate-500">
+                        — {PATHWAY_STATUS_LABELS[p.status]}
+                        {p.funding_scheme && ` · ${FUNDING_LABELS[p.funding_scheme]}`}
+                      </span>
+                    </p>
+                    <div className="grid grid-cols-2 gap-y-0.5 gap-x-6">
+                      <Ligne
+                        label="Période"
+                        valeur={
+                          p.started_on
+                            ? `du ${frDate(p.started_on)}${p.ended_on ? ` au ${frDate(p.ended_on)}` : ""}`
+                            : null
+                        }
+                      />
+                      <Ligne
+                        label="Prescription"
+                        valeur={
+                          p.prescription_date ? frDate(p.prescription_date) : null
+                        }
+                      />
+                      <Ligne label="Motif" valeur={p.referral_reason} pleineLargeur />
+                      <Ligne label="Motif de fin" valeur={p.end_reason} pleineLargeur />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {consentementsActifs.length > 0 && (
+            <>
+              <Section>Autorisations en cours</Section>
+              <ul className="mb-5 space-y-1">
+                {consentementsActifs.map((c) => (
+                  <li key={c.id}>
+                    <span className="font-medium">{CONSENT_LABELS[c.kind]}</span>
+                    {c.scope && <span className="text-slate-600"> — {c.scope}</span>}
+                    {c.granted_on && (
+                      <span className="text-slate-500">
+                        {" "}
+                        (accordée le {frDate(c.granted_on)})
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          {groupesBilans.length > 0 && (
+            <>
+              <Section>Bilans</Section>
+              {groupesBilans.map(({ type, ui, list }) => (
+                <div key={type} className="mb-3">
+                  <p className="text-slate-500 mb-1">{ui.label}</p>
                   <ul className="space-y-1">
                     {list.map((b) => (
                       <li key={b.id} className="flex justify-between">
@@ -207,8 +285,22 @@ export default async function FichePatientPage({
             </>
           )}
 
+          {notesPubliables.length > 0 && (
+            <>
+              <Section>Notes</Section>
+              <div className="mb-5 space-y-2">
+                {notesPubliables.map((n) => (
+                  <div key={n.id}>
+                    <p className="text-slate-500 text-[11px]">{frDate(n.written_on)}</p>
+                    <p className="whitespace-pre-wrap">{n.body}</p>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
           <footer className="mt-8 pt-4 border-t border-slate-100 text-[11px] text-slate-400 text-center">
-            Document confidentiel · {p.first_name} {p.last_name}
+            Document confidentiel · {patientName(patient)}
           </footer>
         </article>
       </div>
@@ -227,20 +319,26 @@ function Section({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Line({
+/**
+ * Une ligne du document.
+ *
+ * Une valeur absente ne rend RIEN — pas un tiret, pas « non renseigné ». C'est
+ * l'invariant : l'absence de donnée n'est jamais convertie en information.
+ */
+function Ligne({
   label,
-  value,
-  full,
+  valeur,
+  pleineLargeur,
 }: {
   label: string;
-  value?: string | null;
-  full?: boolean;
+  valeur?: string | null;
+  pleineLargeur?: boolean;
 }) {
-  if (!value) return null;
+  if (!valeur) return null;
   return (
-    <div className={full ? "col-span-2" : ""}>
+    <div className={pleineLargeur ? "col-span-2" : ""}>
       <span className="text-slate-500">{label} : </span>
-      <span className="text-slate-800 whitespace-pre-wrap">{value}</span>
+      <span className="text-slate-800 whitespace-pre-wrap">{valeur}</span>
     </div>
   );
 }
