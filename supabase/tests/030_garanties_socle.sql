@@ -233,3 +233,43 @@ begin
 end
 $$;
 rollback;
+
+-- ---------------------------------------------------------------------------
+--  9. Supprimer un cabinet reste possible, malgré le garde du dernier
+--     propriétaire
+-- ---------------------------------------------------------------------------
+--  Le garde-fou protège le dernier propriétaire ACTIF d'un cabinet qui
+--  subsiste. Il ne doit pas rendre le cabinet lui-même indestructible : sans
+--  cette distinction, un cabinet créé par erreur ne pouvait plus être nettoyé.
+begin;
+do $$
+declare
+  v_membres bigint;
+begin
+  -- Suppression directe, comme le ferait une opération d'administration.
+  delete from public.practices where id = 'a1111111-1111-4111-8111-111111111111';
+
+  select count(*) into v_membres from public.practice_members
+   where practice_id = 'a1111111-1111-4111-8111-111111111111';
+  perform tests.assert_equals(v_membres, 0::bigint,
+    'La suppression du cabinet doit emporter ses appartenances.');
+
+  perform tests.assert_rows(
+    'select 1 from public.patients where practice_id = ''a1111111-1111-4111-8111-111111111111''',
+    0, 'La suppression du cabinet doit emporter ses dossiers.');
+end
+$$;
+rollback;
+
+-- Mais un cabinet qui SUBSISTE garde son dernier propriétaire.
+begin;
+select tests.authenticate_as('a0000000-0000-4000-8000-000000000001'::uuid);
+do $$
+begin
+  perform tests.assert_fails(
+    format('delete from public.practice_members where id = %L',
+           'a2222222-2222-4222-8222-222222222221'),
+    'Retirer le dernier propriétaire d''un cabinet vivant reste refusé.');
+end
+$$;
+rollback;

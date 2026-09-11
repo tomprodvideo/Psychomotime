@@ -139,14 +139,31 @@ décisions humaines : les seuils et le vocabulaire imprimés sur un document
 remis à une famille ne peuvent être arbitrés que par une psychomotricienne
 (`01-TRACABILITE.md`, section D).
 
-### Ce qui n'a pas pu être vérifié
+### Vérification au navigateur, 2026-09-11
 
-L'interface connectée n'a pas été parcourue au navigateur : je n'ai pas de
-session sur le projet. Ce qui EST vérifié : le build, les 62 tests unitaires,
-les 4 fichiers de tests SQL, la répétition de bascule, l'état de la base après
-bascule, et l'isolation exécutée sur la base de production avec les droits
-réels d'un utilisateur connecté. Ce qui ne l'est pas : le rendu et les
-interactions des écrans une fois connecté.
+Un compte de vérification a été créé par le formulaire public, utilisé, puis
+supprimé avec toutes ses données. État de la base restauré à l'identique :
+5 comptes, 2 cabinets, 7 patients.
+
+Parcours réellement parcourus, connecté :
+
+| Écran | Constat |
+|---|---|
+| Inscription | La politique de mot de passe s'applique ; le compte neuf est conduit vers la création de son cabinet |
+| Création de cabinet | Cabinet, appartenance propriétaire, profil et période d'essai créés en une transaction |
+| Liste des dossiers | Recherche, filtres actif/archivé/tous, état vide explicite |
+| Création de dossier | Le formulaire ne contient plus ni responsable légal ni dossier de suivi |
+| Fiche patient | Âge correct à la date du jour ; les cinq sections rendent leur état vide avec son explication |
+| Entourage | Rôle, fondement juridique conditionnel, lien et contact principal enregistrés et affichés |
+| Agenda | Navigation par jour et semaine, état vide |
+| Registre d'instruments | Avertissement sur l'absence de matériel de test, état vide |
+| Accueil | Journée, dossiers actifs, liste d'attente, facturé/encaissé distingués |
+
+Aucune erreur console, aucune erreur serveur.
+
+**Un défaut trouvé par cette vérification** : `app.guard_last_owner` rendait un
+cabinet indestructible, en refusant le départ du dernier propriétaire même
+lorsque le cabinet lui-même était supprimé. Corrigé par la migration `0008`.
 
 ### Deux réglages à faire dans la console Supabase
 
