@@ -1,9 +1,11 @@
 /**
  * Génération du PDF d'une facture, côté serveur.
  *
- * La mise en page reprend celle de la page /comptabilite/[id]/facture, à
- * l'identique sur le fond : en-tête praticien, bloc « Facturé à », ligne de
- * prestation, total et mentions légales.
+ * Le contenu vient du modèle de document partagé (lib/invoiceDocument.ts) : ce
+ * fichier ne décide plus rien du document, il ne fait que le mettre en page en
+ * A4 avec les primitives de react-pdf. Restent ici, parce qu'ils ne sont pas des
+ * règles de document : la feuille de style, le garde `usableImage`, la
+ * pagination et le titre du fichier PDF.
  */
 import {
   Document,
@@ -15,8 +17,14 @@ import {
   renderToBuffer,
 } from "@react-pdf/renderer";
 import type { SharedInvoice } from "@/lib/invoiceShare";
-import { euro, frDate } from "@/lib/format";
+import {
+  buildInvoiceDocument,
+  type InvoiceDocument,
+  type InvoiceDocumentText,
+} from "@/lib/invoiceDocument";
 
+/** brand-500. L'écran titre « FACTURE » en brand-700 (#1d5854) : divergence
+ *  connue, conservée telle quelle, à trancher dans une étape séparée. */
 const BRAND = "#2f8a82";
 
 const s = StyleSheet.create({
@@ -81,103 +89,100 @@ const s = StyleSheet.create({
  *  l'URSSAF ou le net, qui ne regardent pas le patient. */
 export type InvoicePdfInput = SharedInvoice;
 
-/** Une image n'est embarquée que si sa source est exploitable par react-pdf. */
+/** Une image n'est embarquée que si sa source est exploitable par react-pdf.
+ *  Contrainte de react-pdf, pas règle de document : elle reste ici. */
 const usableImage = (src: string | null | undefined): src is string =>
   !!src && (src.startsWith("data:image/") || /^https?:\/\//.test(src));
 
-function InvoiceDocument({ invoice: inv, patient, settings }: InvoicePdfInput) {
-  const profile = settings.profile;
-  const issueDate =
-    inv.issue_date ?? inv.payment_date ?? new Date().toISOString().slice(0, 10);
-  const service = inv.service_label ?? "Séance de psychomotricité";
-  const amount = inv.revenue_gross ?? 0;
+/**
+ * Assemblage d'un bloc du modèle. Les fragments sont posés côte à côte sans
+ * jamais être concaténés : un fragment atténué devient un `<Text>` imbriqué, et
+ * react-pdf crêne une chaîne unique autrement que deux fragments voisins.
+ */
+const fragments = (block: InvoiceDocumentText) =>
+  block.segments.map((seg, i) =>
+    seg.muted ? (
+      <Text key={i} style={s.muted}>
+        {seg.text}
+      </Text>
+    ) : (
+      seg.text
+    ),
+  );
 
+/** Mise en page A4 du modèle de document. react-pdf respecte les « \n »
+ *  nativement : l'indication `multiline` du modèle n'a rien à appliquer ici. */
+function InvoiceSheet({ doc }: { doc: InvoiceDocument }) {
   return (
-    <Document title={`Facture ${inv.invoice_number ?? ""}`.trim()}>
-      <Page size="A4" style={s.page}>
-        <View style={s.header}>
-          <View style={s.identity}>
-            {usableImage(profile.logo_url) && (
-              // Image de react-pdf, pas une balise <img> : pas d'attribut alt.
-              // eslint-disable-next-line jsx-a11y/alt-text
-              <Image src={profile.logo_url} style={s.logo} />
-            )}
-            <View>
-              <Text style={s.name}>
-                {settings.display_name ?? "Psychomotricien(ne)"}
-              </Text>
-              {profile.address && <Text style={s.line}>{profile.address}</Text>}
-              {(profile.postal_code || profile.city) && (
-                <Text style={s.line}>
-                  {[profile.postal_code, profile.city].filter(Boolean).join(" ")}
-                </Text>
-              )}
-              {profile.business_phone && (
-                <Text style={s.line}>Tél. {profile.business_phone}</Text>
-              )}
-              {profile.business_email && (
-                <Text style={s.line}>{profile.business_email}</Text>
-              )}
-              {profile.siret && <Text style={s.line}>SIRET : {profile.siret}</Text>}
-              {profile.adeli && <Text style={s.line}>N° ADELI : {profile.adeli}</Text>}
-            </View>
-          </View>
-
-          <View>
-            <Text style={s.title}>FACTURE</Text>
-            {inv.invoice_number && (
-              <Text style={s.meta}>N° {inv.invoice_number}</Text>
-            )}
-            <Text style={s.meta}>Date : {frDate(issueDate)}</Text>
-          </View>
-        </View>
-
-        <View style={s.billed}>
-          <Text style={s.billedLabel}>Facturé à</Text>
-          <Text style={s.billedName}>{inv.patient_name || "—"}</Text>
-          {patient?.address && <Text>{patient.address}</Text>}
-        </View>
-
-        <View style={s.thead}>
-          <Text style={s.cellLabel}>Désignation</Text>
-          <Text style={s.cellAmount}>Montant</Text>
-        </View>
-        <View style={s.row}>
-          <Text style={s.cellLabel}>
-            {service}
-            {inv.billing_month && (
-              <Text style={s.muted}>
-                {` — ${inv.billing_month}${inv.billing_year ? ` ${inv.billing_year}` : ""}`}
-              </Text>
-            )}
-            {inv.has_pco && <Text style={s.muted}> (PCO)</Text>}
-          </Text>
-          <Text style={s.cellAmount}>{euro(amount)}</Text>
-        </View>
-
-        <View style={s.totalBox}>
-          <View style={s.totalRow}>
-            <Text>Total à payer</Text>
-            <Text>{euro(amount)}</Text>
-          </View>
-          {inv.payment_method && (
-            <Text style={s.totalNote}>
-              Règlement : {inv.payment_method}
-              {inv.payment_date ? ` le ${frDate(inv.payment_date)}` : ""}
-            </Text>
+    <Page size="A4" style={s.page}>
+      <View style={s.header}>
+        <View style={s.identity}>
+          {usableImage(doc.issuer.logoUrl) && (
+            // Image de react-pdf, pas une balise <img> : pas d'attribut alt.
+            // eslint-disable-next-line jsx-a11y/alt-text
+            <Image src={doc.issuer.logoUrl} style={s.logo} />
           )}
+          <View>
+            <Text style={s.name}>{doc.issuer.name ?? "Psychomotricien(ne)"}</Text>
+            {doc.issuer.lines.map((l, i) => (
+              <Text key={i} style={s.line}>
+                {fragments(l)}
+              </Text>
+            ))}
+          </View>
         </View>
 
-        {profile.legal_mentions && (
-          <Text style={s.legal}>{profile.legal_mentions}</Text>
+        <View>
+          <Text style={s.title}>{doc.header.title}</Text>
+          {doc.header.number && (
+            <Text style={s.meta}>{fragments(doc.header.number)}</Text>
+          )}
+          <Text style={s.meta}>{fragments(doc.header.date)}</Text>
+        </View>
+      </View>
+
+      <View style={s.billed}>
+        <Text style={s.billedLabel}>{doc.billedTo.label}</Text>
+        <Text style={s.billedName}>{doc.billedTo.name || "—"}</Text>
+        {doc.billedTo.address && <Text>{fragments(doc.billedTo.address)}</Text>}
+      </View>
+
+      <View style={s.thead}>
+        <Text style={s.cellLabel}>{doc.table.designationHeader}</Text>
+        <Text style={s.cellAmount}>{doc.table.amountHeader}</Text>
+      </View>
+      <View style={s.row}>
+        <Text style={s.cellLabel}>{fragments(doc.table.line.designation)}</Text>
+        <Text style={s.cellAmount}>{doc.table.line.amount}</Text>
+      </View>
+
+      <View style={s.totalBox}>
+        <View style={s.totalRow}>
+          <Text>{doc.total.label}</Text>
+          <Text>{doc.total.amount}</Text>
+        </View>
+        {doc.total.note && (
+          <Text style={s.totalNote}>{fragments(doc.total.note)}</Text>
         )}
-      </Page>
-    </Document>
+      </View>
+
+      {doc.legalMentions && (
+        <Text style={s.legal}>{fragments(doc.legalMentions)}</Text>
+      )}
+    </Page>
   );
 }
 
 export async function renderInvoicePdf(input: InvoicePdfInput): Promise<Buffer> {
-  return renderToBuffer(<InvoiceDocument {...input} />);
+  const doc = buildInvoiceDocument(input);
+  // Métadonnée du fichier, pas contenu du document : elle reste ici.
+  const title = `Facture ${input.invoice.invoice_number ?? ""}`.trim();
+
+  return renderToBuffer(
+    <Document title={title}>
+      <InvoiceSheet doc={doc} />
+    </Document>,
+  );
 }
 
 /** Nom du fichier téléchargé depuis la page publique. */
