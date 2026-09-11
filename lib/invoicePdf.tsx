@@ -14,7 +14,7 @@ import {
   View,
   renderToBuffer,
 } from "@react-pdf/renderer";
-import type { Invoice, Patient, Settings } from "@/lib/types";
+import type { SharedInvoice } from "@/lib/invoiceShare";
 import { euro, frDate } from "@/lib/format";
 
 const BRAND = "#2f8a82";
@@ -77,22 +77,20 @@ const s = StyleSheet.create({
   muted: { color: "#94a3b8" },
 });
 
-export type InvoicePdfInput = {
-  invoice: Invoice;
-  patient: Pick<Patient, "address"> | null;
-  settings: Settings;
-};
+/** Le PDF ne reçoit que les champs imprimés : rien sur la rétrocession,
+ *  l'URSSAF ou le net, qui ne regardent pas le patient. */
+export type InvoicePdfInput = SharedInvoice;
 
 /** Une image n'est embarquée que si sa source est exploitable par react-pdf. */
-const usableImage = (src: string | undefined): src is string =>
+const usableImage = (src: string | null | undefined): src is string =>
   !!src && (src.startsWith("data:image/") || /^https?:\/\//.test(src));
 
 function InvoiceDocument({ invoice: inv, patient, settings }: InvoicePdfInput) {
-  const profile = settings.profile ?? {};
+  const profile = settings.profile;
   const issueDate =
     inv.issue_date ?? inv.payment_date ?? new Date().toISOString().slice(0, 10);
   const service = inv.service_label ?? "Séance de psychomotricité";
-  const amount = inv.revenue_gross;
+  const amount = inv.revenue_gross ?? 0;
 
   return (
     <Document title={`Facture ${inv.invoice_number ?? ""}`.trim()}>
@@ -182,21 +180,11 @@ export async function renderInvoicePdf(input: InvoicePdfInput): Promise<Buffer> 
   return renderToBuffer(<InvoiceDocument {...input} />);
 }
 
-/** Nom de fichier de la pièce jointe. */
-export function invoiceFileName(inv: Invoice): string {
+/** Nom du fichier téléchargé depuis la page publique. */
+export function invoiceFileName(inv: {
+  invoice_number: string | null;
+  patient_name: string | null;
+}): string {
   const base = inv.invoice_number || inv.patient_name || "facture";
   return `Facture-${base.replace(/[^\w.-]+/g, "-")}.pdf`;
-}
-
-/** Objet et corps du message, alignés sur ceux de la page facture. */
-export function invoiceEmailText(inv: Invoice, settings: Settings) {
-  const service = inv.service_label ?? "Séance de psychomotricité";
-  return {
-    subject: `Facture ${inv.invoice_number ?? ""} - ${service}`.trim(),
-    text:
-      `Bonjour,\n\nVeuillez trouver votre facture ${
-        inv.invoice_number ? `n° ${inv.invoice_number} ` : ""
-      }d'un montant de ${euro(inv.revenue_gross)}, jointe à ce message.\n\n` +
-      `Bien cordialement,\n${settings.display_name ?? ""}`,
-  };
 }

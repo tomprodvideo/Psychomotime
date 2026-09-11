@@ -6,12 +6,9 @@ import { getSettings } from "@/lib/data";
 import { computeInvoice } from "@/lib/calc";
 import { MONTHS } from "@/lib/constants";
 import { monthIndex } from "@/lib/period";
+import { headers } from "next/headers";
 import { emailConfig, sendMail } from "@/lib/email";
-import {
-  invoiceEmailText,
-  invoiceFileName,
-  renderInvoicePdf,
-} from "@/lib/invoicePdf";
+import { newShareToken, shareExpiry } from "@/lib/invoiceShare";
 import type { Invoice, Patient, Settings } from "@/lib/types";
 import {
   buildInvoiceNumber,
@@ -186,11 +183,47 @@ export type SendInvoiceResult =
       message: string;
     };
 
+/** Origine publique du site, déduite de la requête en cours. */
+async function siteOrigin(): Promise<string> {
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  return `${proto}://${host}`;
+}
+
 /**
- * Envoie une facture par e-mail au patient, PDF en pièce jointe.
- * Une facture à la fois : l'envoi groupé est piloté depuis le navigateur, ce
- * qui évite les délais d'exécution côté serveur et permet d'afficher
- * l'avancement.
+ * Renvoie le lien de consultation de la facture, en créant le jeton si la
+ * facture n'en a pas encore ou si le précédent a expiré.
+ */
+async function shareLink(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  invoice: Invoice,
+): Promise<string | null> {
+  const current = invoice.share_token;
+  const expires = invoice.share_expires_at;
+
+  const stillValid =
+    !!current && (!expires || new Date(expires).getTime() > Date.now());
+
+  let token = current ?? null;
+  if (!stillValid) {
+    token = newShareToken();
+    const { error } = await supabase
+      .from("invoices")
+      .update({ share_token: token, share_expires_at: shareExpiry() })
+      .eq("id", invoice.id);
+    // Colonnes absentes : migration 011 non lancée.
+    if (error) return null;
+  }
+
+  return `${await siteOrigin()}/facture/${token}`;
+}
+
+/**
+ * Prévient le patient que sa facture est disponible, par un lien vers cette
+ * application. Volontairement, ni le PDF ni la nature de l'acte ne sont mis
+ * dans le message : aucune donnée de santé ne transite par le prestataire
+ * d'e-mail.
  */
 export async function sendInvoiceEmail(id: string): Promise<SendInvoiceResult> {
   const config = emailConfig();
@@ -234,31 +267,31 @@ export async function sendInvoiceEmail(id: string): Promise<SendInvoiceResult> {
     };
   }
 
-  const settings = (await getSettings()) as Settings;
-
-  let pdf: Buffer;
-  try {
-    pdf = await renderInvoicePdf({ invoice, patient, settings });
-  } catch (e) {
+  const link = await shareLink(supabase, invoice);
+  if (!link) {
     return {
       ok: false,
       reason: "error",
-      message: `Génération du PDF impossible : ${
-        e instanceof Error ? e.message : "erreur inconnue"
-      }`,
+      message:
+        "Lien de consultation impossible à créer : la migration 011 n'a pas été lancée.",
     };
   }
 
-  const { subject, text } = invoiceEmailText(invoice, settings);
+  const settings = (await getSettings()) as Settings;
+  const num = invoice.invoice_number ? ` n° ${invoice.invoice_number}` : "";
+
   const error = await sendMail(config, {
     to,
-    subject,
-    text,
+    subject: `Votre facture${num}`,
+    text:
+      `Bonjour,\n\nVotre facture${num} est disponible à cette adresse :\n${link}\n\n` +
+      `Ce lien vous est personnel, il expire dans 90 jours.\n\n` +
+      `Bien cordialement,\n${settings.display_name ?? ""}`,
     replyTo: settings.profile?.business_email,
-    attachments: [{ filename: invoiceFileName(invoice), content: pdf }],
   });
 
   if (error) return { ok: false, reason: "error", message: error };
+  revalidatePath("/comptabilite");
   return { ok: true, email: to };
 }
 

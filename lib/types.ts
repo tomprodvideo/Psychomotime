@@ -158,6 +158,9 @@ export interface Invoice {
   net_revenue: number; // colonne générée
   notes: string | null;
   created_at: string;
+  // Lien de consultation envoyé au patient (migration 011).
+  share_token?: string | null;
+  share_expires_at?: string | null;
 }
 
 export interface Expense {

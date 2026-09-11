@@ -1,7 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/auth"];
+// /facture/<jeton> : consultation par le patient, qui n'a pas de compte.
+const PUBLIC_PATHS = ["/login", "/auth", "/facture"];
 
 export async function updateSession(request: NextRequest) {
   // Tant que la clé Supabase n'est pas renseignée, on laisse passer

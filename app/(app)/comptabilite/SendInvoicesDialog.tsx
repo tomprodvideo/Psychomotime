@@ -95,7 +95,7 @@ export default function SendInvoicesDialog({
                   ? "Aucune facture de cette sélection ne peut être envoyée."
                   : `${targets.length} facture${targets.length > 1 ? "s" : ""} ${
                       targets.length > 1 ? "seront envoyées" : "sera envoyée"
-                    } au patient concerné, avec le PDF en pièce jointe.`}
+                    } au patient concerné : un message sobre contenant un lien vers sa facture, sans pièce jointe.`}
               </p>
 
               {targets.length > 0 && (
