@@ -34,6 +34,7 @@ export interface Profile {
   business_phone?: string;
   legal_mentions?: string;
   invoice_number_format?: string; // gabarit des numéros de facture
+  recurring_expenses?: RecurringExpense[]; // dépenses récurrentes du cabinet
   theme_color?: string; // couleur d'accent des bilans (hex)
   bilan_font?: string; // 'sans' | 'serif'
   bilan_title_style?: string; // 'underline' | 'boxed' | 'plain'
@@ -50,6 +51,16 @@ export interface Profile {
   bilan_sections?: BilanSectionConfig[]; // trame du bilan psychomoteur
   bilan_sections_sensoriel?: BilanSectionConfig[]; // trame du bilan sensoriel
   bilan_settings?: Partial<Record<"psychomoteur" | "sensoriel", BilanTypeSettings>>; // apparence par type
+}
+
+/** Dépense récurrente du cabinet (abonnement, assurance, loyer…). */
+export interface RecurringExpense {
+  id: string;
+  label: string;
+  amount: number;
+  period: "mensuel" | "annuel";
+  /** Décochée, la dépense reste enregistrée mais n'entre pas dans les calculs. */
+  active: boolean;
 }
 
 /** Réglages d'apparence propres à un type de bilan. */

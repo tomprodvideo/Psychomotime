@@ -73,6 +73,7 @@ export async function updateSettings(formData: FormData) {
     business_phone: str("business_phone"),
     legal_mentions: str("legal_mentions"),
     invoice_number_format: str("invoice_number_format"),
+    recurring_expenses: parseJson("recurring_expenses"),
     bilan_settings,
     bilan_sections: parseJson("bilan_sections"),
     bilan_sections_sensoriel: parseJson("bilan_sections_sensoriel"),

@@ -37,14 +37,17 @@ export function buildCsv({
   period,
   invoices,
   expenses,
+  extraCharges = 0,
   showRetro,
 }: {
   period: Period;
   invoices: Invoice[];
   expenses: Expense[];
+  /** Dépenses récurrentes ramenées à la période. */
+  extraCharges?: number;
   showRetro: boolean;
 }): string {
-  const s = summarize(invoices, expenses);
+  const s = summarize(invoices, expenses, extraCharges);
   const rows: string[] = [];
 
   /* --- Récapitulatif --- */
@@ -66,8 +69,8 @@ export function buildCsv({
   }
   rows.push(line(["URSSAF", fmt(s.urssaf)]));
   rows.push(line(["Revenu net", fmt(s.net)]));
-  rows.push(line(["Loyers & charges", fmt(s.charges)]));
-  rows.push(line(["Net après loyers & charges", fmt(s.netApresCharges)]));
+  rows.push(line(["Charges", fmt(s.charges)]));
+  rows.push(line(["Net après charges", fmt(s.netApresCharges)]));
 
   /* --- Détail des factures --- */
   rows.push("");
@@ -140,7 +143,7 @@ export function buildCsv({
     ]),
   );
 
-  /* --- Loyers & charges --- */
+  /* --- Charges --- */
   rows.push("");
   rows.push(line(["LOYERS & CHARGES"]));
   rows.push(line(["Intitulé", "Type", "Mois", "Année", "Date", "Montant"]));
@@ -174,7 +177,7 @@ export function buildCsv({
       ...(showRetro ? ["Rétrocession"] : []),
       "URSSAF",
       "Net",
-      "Loyers & charges",
+      "Charges",
       "Net après charges",
     ]),
   );

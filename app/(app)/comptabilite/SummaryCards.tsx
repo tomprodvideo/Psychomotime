@@ -127,7 +127,7 @@ export default function SummaryCards({
         {!showRetro && (
           <Metric
             icon={<House className="h-4 w-4" />}
-            label="Loyers"
+            label="Charges"
             value={euro(s.charges)}
             accent="violet"
           />
@@ -149,7 +149,7 @@ export default function SummaryCards({
         {showRetro && (
           <Metric
             icon={<House className="h-4 w-4" />}
-            label="Loyers & charges"
+            label="Charges"
             value={euro(s.charges)}
             accent="violet"
           />
@@ -175,7 +175,7 @@ function Repartition({
       ? [{ key: "retro", label: "Rétro", v: s.retrocession, cls: "bg-rose-300" }]
       : []),
     ...(s.charges > 0
-      ? [{ key: "loyer", label: "Loyers", v: s.charges, cls: "bg-violet-300" }]
+      ? [{ key: "charges", label: "Charges", v: s.charges, cls: "bg-violet-300" }]
       : []),
     ...(s.urssaf > 0
       ? [{ key: "urssaf", label: "URSSAF", v: s.urssaf, cls: "bg-amber-300" }]

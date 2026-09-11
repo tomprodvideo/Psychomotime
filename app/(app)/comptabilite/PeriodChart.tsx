@@ -29,6 +29,7 @@ export default function PeriodChart({
   expenses,
   years,
   showRetro,
+  monthlyRecurring,
   onPick,
 }: {
   period: Period;
@@ -36,6 +37,8 @@ export default function PeriodChart({
   expenses: Expense[];
   years: number[];
   showRetro: boolean;
+  /** Coût mensuel des dépenses récurrentes, réparti sur chaque barre. */
+  monthlyRecurring: number;
   onPick: (b: Bucket) => void;
 }) {
   const buckets = chartBuckets(period, years);
@@ -51,7 +54,8 @@ export default function PeriodChart({
     });
     return {
       ...b,
-      summary: summarize(inv, exp),
+      // Une barre annuelle porte douze mois de dépenses récurrentes.
+      summary: summarize(inv, exp, monthlyRecurring * (b.m == null ? 12 : 1)),
       selected:
         b.m == null
           ? // barre annuelle : sélectionnée si un mois de l'année l'est
@@ -78,7 +82,7 @@ export default function PeriodChart({
           <Legend cls="bg-brand-500" label="Net" />
           <Legend cls="bg-amber-300" label="URSSAF" />
           {showRetro && <Legend cls="bg-rose-300" label="Rétro" />}
-          <Legend cls="bg-violet-300" label="Loyers" />
+          <Legend cls="bg-violet-300" label="Charges" />
         </div>
       </div>
       <p className="text-xs text-slate-400 mb-4">
@@ -100,7 +104,7 @@ export default function PeriodChart({
               b.m == null ? b.y : `${MONTHS[b.m]} ${b.y}`
             }\nBrut : ${euro(s.brut)}\nURSSAF : ${euro(
               s.urssaf,
-            )}\nLoyers : ${euro(s.charges)}\nNet après charges : ${euro(
+            )}\nCharges : ${euro(s.charges)}\nNet après charges : ${euro(
               s.netApresCharges,
             )}`;
 

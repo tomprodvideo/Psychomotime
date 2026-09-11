@@ -5,6 +5,7 @@ import {
   Calculator,
   Check,
   FileText,
+  Receipt,
   User,
   UserCog,
 } from "lucide-react";
@@ -28,6 +29,7 @@ import {
   INVOICE_TOKENS,
   previewInvoiceNumber,
 } from "@/lib/invoiceNumber";
+import RecurringExpensesEditor from "./RecurringExpensesEditor";
 
 /** Redimensionne une image raster et renvoie un data-URL JPEG léger.
  *  Les SVG (déjà légers et vectoriels) sont conservés tels quels. */
@@ -131,7 +133,7 @@ export default function ParametresForm({
   const [curveError, setCurveError] = useState("");
   const [signatureError, setSignatureError] = useState("");
   const [tab, setTab] = useState<
-    "general" | "bilan" | "compta" | "compte"
+    "general" | "bilan" | "compta" | "depenses" | "compte"
   >("general");
   // Apparence par type de bilan (thème, typo, conclusion, signature, courbe).
   const [bilanSubTab, setBilanSubTab] = useState<BilanType>("psychomoteur");
@@ -222,6 +224,13 @@ export default function ParametresForm({
       label: "Comptabilité",
       icon: Calculator,
       intro: "Charges du cabinet et cotisations.",
+    },
+    {
+      id: "depenses" as const,
+      label: "Dépenses",
+      icon: Receipt,
+      intro:
+        "Vos frais récurrents, déduits de votre résultat dans la comptabilité.",
     },
     {
       id: "compte" as const,
@@ -872,6 +881,22 @@ export default function ParametresForm({
           </p>
         </div>
       </Section>
+      </div>
+
+      {/* Onglet Dépenses */}
+      <div className={tab === "depenses" ? "space-y-6" : "hidden"}>
+        <Section title="Dépenses récurrentes">
+          <p className="text-sm text-slate-500 -mt-2 mb-4">
+            Abonnement téléphonique, assurance, logiciel, loyer… Chaque dépense
+            cochée est déduite de votre résultat sur la période consultée dans
+            la comptabilité. Une dépense annuelle est répartie sur douze mois.
+          </p>
+          <RecurringExpensesEditor
+            initial={settings.profile?.recurring_expenses ?? []}
+            monthlyRent={settings.monthly_rent}
+            chargeMode={mode}
+          />
+        </Section>
       </div>
 
       {/* Onglet Mon compte */}

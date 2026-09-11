@@ -5,7 +5,6 @@ import { createClient } from "@/lib/supabase/server";
 import { getSettings } from "@/lib/data";
 import { computeInvoice } from "@/lib/calc";
 import { MONTHS } from "@/lib/constants";
-import { monthIndex } from "@/lib/period";
 import { headers } from "next/headers";
 import { emailConfig, sendMail } from "@/lib/email";
 import { newShareToken, shareExpiry } from "@/lib/invoiceShare";
@@ -323,44 +322,6 @@ export async function saveExpense(formData: FormData) {
     await supabase.from("expenses").insert(payload);
   }
   revalidatePath("/comptabilite");
-}
-
-/**
- * Crée le loyer configuré (Paramètres › Comptabilité) pour les mois indiqués.
- * Les mois qui ont déjà une ligne de type « loyer » sont ignorés.
- * Renvoie le nombre de lignes créées.
- */
-export async function addConfiguredRent(
-  months: { y: number; m: number }[],
-): Promise<number> {
-  const supabase = await createClient();
-  const settings = await getSettings();
-  if (settings.charge_mode !== "loyer" || !settings.monthly_rent) return 0;
-
-  const { data: existing } = await supabase
-    .from("expenses")
-    .select("type, period_year, period_month");
-
-  const already = new Set(
-    (existing ?? [])
-      .filter((e) => (e.type ?? "loyer") === "loyer")
-      .map((e) => `${e.period_year}-${monthIndex(e.period_month)}`),
-  );
-
-  const rows = months
-    .filter((ym) => !already.has(`${ym.y}-${ym.m}`))
-    .map((ym) => ({
-      type: "loyer",
-      label: "Loyer cabinet",
-      amount: settings.monthly_rent,
-      period_month: MONTHS[ym.m],
-      period_year: ym.y,
-    }));
-
-  if (rows.length === 0) return 0;
-  await supabase.from("expenses").insert(rows);
-  revalidatePath("/comptabilite");
-  return rows.length;
 }
 
 export async function deleteExpense(formData: FormData) {

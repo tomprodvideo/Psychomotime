@@ -2,7 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Download } from "lucide-react";
-import type { Expense, Invoice, PatientContact, Settings } from "@/lib/types";
+import type {
+  Expense,
+  Invoice,
+  PatientContact,
+  RecurringExpense,
+  Settings,
+} from "@/lib/types";
+import { monthlyTotal, recurringOver } from "@/lib/expenses";
 import {
   expensePeriod,
   inPeriod,
@@ -10,10 +17,9 @@ import {
   periodLabel,
   periodToParams,
   invoicePeriod,
-  monthsBetween,
+  periodSpan,
   previousPeriod,
-  rangeKeys,
-  type YM,
+  ymKey,
   type Bucket,
   type Period,
 } from "@/lib/period";
@@ -22,7 +28,6 @@ import PeriodPicker from "./PeriodPicker";
 import SummaryCards from "./SummaryCards";
 import PeriodChart from "./PeriodChart";
 import ComptaClient, { type PayFilter } from "./ComptaClient";
-import LoyersClient from "./LoyersClient";
 import { summarize } from "./summary";
 import { buildCsv, downloadCsv } from "./csv";
 
@@ -33,6 +38,7 @@ export default function ComptabiliteView({
   expenses,
   patients,
   settings,
+  recurringExpenses,
   initialParams,
 }: {
   invoices: Invoice[];
@@ -42,6 +48,7 @@ export default function ComptabiliteView({
     Settings,
     "retrocession_rate" | "urssaf_rate" | "charge_mode" | "monthly_rent"
   >;
+  recurringExpenses: RecurringExpense[];
   initialParams: {
     mode?: string;
     month?: string;
@@ -92,9 +99,24 @@ export default function ComptabiliteView({
     [expWithPeriod, period],
   );
 
+  // Nombre de mois couverts par la sélection : les dépenses récurrentes sont
+  // déduites au prorata. En mode « Tout », on prend l'amplitude des données.
+  const monthCount = useMemo(() => {
+    const span = periodSpan(period);
+    if (span > 0) return span;
+    const keys = [
+      ...invWithPeriod.map((x) => ymKey(x.p)),
+      ...expWithPeriod.map((x) => ymKey(x.p)),
+    ];
+    if (keys.length === 0) return 0;
+    return Math.max(...keys) - Math.min(...keys) + 1;
+  }, [period, invWithPeriod, expWithPeriod]);
+
+  const extraCharges = recurringOver(recurringExpenses, monthCount);
+
   const summary = useMemo(
-    () => summarize(selInvoices, selExpenses),
-    [selInvoices, selExpenses],
+    () => summarize(selInvoices, selExpenses, extraCharges),
+    [selInvoices, selExpenses, extraCharges],
   );
 
   const prevSummary = useMemo(() => {
@@ -103,25 +125,9 @@ export default function ComptabiliteView({
     return summarize(
       invWithPeriod.filter((x) => inPeriod(prev, x.p)).map((x) => x.inv),
       expWithPeriod.filter((x) => inPeriod(prev, x.p)).map((x) => x.exp),
+      extraCharges,
     );
-  }, [period, invWithPeriod, expWithPeriod]);
-
-  /* ---- Mois couverts par la sélection (pour le loyer configuré) ----
-     On s'arrête au mois courant : pas de loyer créé d'avance. */
-  const rentMonths = useMemo<YM[]>(() => {
-    const nowKey = now.getFullYear() * 12 + now.getMonth();
-    let months: YM[] = [];
-    if (period.mode === "month")
-      months = [{ y: period.year, m: period.month }];
-    else if (period.mode === "year")
-      months = Array.from({ length: 12 }, (_, m) => ({ y: period.year, m }));
-    else if (period.mode === "range") {
-      const [a, b] = rangeKeys(period);
-      months = monthsBetween(a, b, 36);
-    }
-    return months.filter((ym) => ym.y * 12 + ym.m <= nowKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [period]);
+  }, [period, invWithPeriod, expWithPeriod, extraCharges]);
 
   /* ---- Clic sur une barre du graphique ---- */
   function pickBucket(b: Bucket) {
@@ -139,6 +145,7 @@ export default function ComptabiliteView({
         period,
         invoices: selInvoices,
         expenses: selExpenses,
+        extraCharges,
         showRetro,
       }),
     );
@@ -194,21 +201,11 @@ export default function ComptabiliteView({
           expenses={expenses}
           years={years}
           showRetro={showRetro}
+          monthlyRecurring={monthlyTotal(recurringExpenses)}
           onPick={pickBucket}
         />
       </div>
 
-      <div className="mt-5 max-w-2xl">
-        <LoyersClient
-          expenses={selExpenses}
-          defaultYear={period.mode === "all" ? now.getFullYear() : period.year}
-          defaultMonth={period.mode === "month" ? period.month : now.getMonth()}
-          periodLabel={periodLabel(period)}
-          chargeMode={settings.charge_mode}
-          monthlyRent={settings.monthly_rent}
-          rentMonths={rentMonths}
-        />
-      </div>
 
       <p className="mt-4 text-xs text-slate-400">
         Période analysée :{" "}

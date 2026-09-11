@@ -23,6 +23,8 @@ export interface Summary {
 export function summarize(
   invoices: Invoice[],
   expenses: Expense[],
+  /** Dépenses récurrentes (Paramètres › Dépenses) ramenées à la période. */
+  extraCharges = 0,
 ): Summary {
   const s: Summary = {
     brut: 0,
@@ -52,6 +54,7 @@ export function summarize(
     else s.countImpayees += 1;
   }
   for (const e of expenses) s.charges += e.amount || 0;
+  s.charges += extraCharges;
 
   s.brut = round2(s.brut);
   s.brutPaye = round2(s.brutPaye);

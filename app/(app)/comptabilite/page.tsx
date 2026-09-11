@@ -52,6 +52,7 @@ export default async function ComptabilitePage({
         charge_mode: settings.charge_mode,
         monthly_rent: settings.monthly_rent,
       }}
+      recurringExpenses={settings.profile?.recurring_expenses ?? []}
       initialParams={params}
     />
   );

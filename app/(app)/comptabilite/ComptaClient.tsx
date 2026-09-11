@@ -164,8 +164,8 @@ export default function ComptaClient({
     });
   }
 
-  // Colonnes : bandeau couleur + 12 (ou 14 avec rétrocession) + actions.
-  const colCount = showRetro ? 15 : 13;
+  // 11 colonnes (13 avec la rétrocession) + la colonne d'actions.
+  const colCount = showRetro ? 14 : 12;
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
@@ -242,7 +242,6 @@ export default function ComptaClient({
         <table className="w-full text-sm min-w-[1120px]">
           <thead>
             <tr className="bg-brand-600 text-white text-left">
-              <Th className="w-1 p-0" />
               <ThSort
                 label="Prénom / Nom"
                 k="patient"
@@ -328,7 +327,7 @@ export default function ComptaClient({
                     className="bg-slate-100 border-t border-slate-200 cursor-pointer hover:bg-slate-200/70"
                     onClick={() => toggleGroup(g.key)}
                   >
-                    <td colSpan={4} className="px-3 py-2">
+                    <td colSpan={3} className="px-3 py-2">
                       <span className="inline-flex items-center gap-1.5 font-semibold text-slate-600">
                         {isCollapsed ? (
                           <ChevronRight className="h-4 w-4 text-slate-400" />
@@ -378,10 +377,6 @@ export default function ComptaClient({
                           i % 2 ? "bg-slate-50" : "bg-white"
                         } hover:bg-brand-50`}
                       >
-                        <td
-                          className={`p-0 w-1 ${style.dot}`}
-                          title={PAYMENT_LABELS[st]}
-                        />
                         <Td className="font-medium">
                           <button
                             type="button"
@@ -401,7 +396,7 @@ export default function ComptaClient({
                         </Td>
                         <Td className="text-center">
                           <span
-                            className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${style.badge}`}
+                            className={`inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-medium px-2 py-0.5 rounded-full ${style.badge}`}
                             title={
                               st === "partial"
                                 ? `Reste ${euro(due)} à encaisser`
@@ -462,16 +457,18 @@ export default function ComptaClient({
                           {euro(inv.net_revenue)}
                         </Td>
                         <Td className="text-right whitespace-nowrap sticky right-0 bg-inherit shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.12)]">
-                          <Link
-                            href={`/comptabilite/${inv.id}/facture`}
-                            className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded inline-block align-middle"
-                            aria-label="Voir la facture"
-                            title="Voir / imprimer la facture"
-                          >
-                            <FileText className="h-4 w-4" />
-                          </Link>
-                          <SendButton invoice={inv} />
-                          <DeleteButton id={inv.id} />
+                          <div className="inline-flex items-center gap-0.5">
+                            <Link
+                              href={`/comptabilite/${inv.id}/facture`}
+                              className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded"
+                              aria-label="Voir la facture"
+                              title="Voir / imprimer la facture"
+                            >
+                              <FileText className="h-4 w-4" />
+                            </Link>
+                            <SendButton invoice={inv} />
+                            <DeleteButton id={inv.id} />
+                          </div>
                         </Td>
                       </tr>
                     );
@@ -517,7 +514,6 @@ function TotalRow({
   return (
     <tfoot>
       <tr className="border-t-2 border-brand-100 bg-brand-50 font-semibold text-slate-700">
-        <td />
         <td className="px-3 py-3" colSpan={3}>
           Total ({s.count} facture{s.count > 1 ? "s" : ""})
         </td>
@@ -568,7 +564,7 @@ function SendButton({ invoice }: { invoice: Invoice }) {
           alert(r.ok ? `Facture envoyée à ${r.email}.` : r.message);
         });
       }}
-      className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded align-middle disabled:opacity-40"
+      className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded disabled:opacity-40"
     >
       <Mail className="h-4 w-4" />
     </button>
