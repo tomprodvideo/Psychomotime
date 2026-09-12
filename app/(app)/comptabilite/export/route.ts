@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth/guard";
 import { getCurrentPractice } from "@/lib/dossier/practice";
 import { listCharges, listDocuments } from "@/lib/compta/queries";
@@ -60,8 +61,34 @@ export async function GET(requete: Request) {
     return NextResponse.json({ error: echec }, { status: 503 });
   }
 
+  /* UN EXPORT SE JOURNALISE. C'est une sortie de données personnelles hors du
+   * logiciel : ce qui a été extrait, quand, et par qui doit rester constatable.
+   * La trace ne porte AUCUN nom — période et nombre de pièces, rien d'autre.
+   *
+   * Elle est posée AVANT l'envoi : un échec de journalisation ne doit pas
+   * empêcher le cabinet d'accéder à sa comptabilité, mais un fichier parti
+   * sans trace ne doit pas être le cas ordinaire. */
+  const supabase = await createClient();
+  const { error: erreurTrace } = await supabase.rpc("log_audit_event", {
+    p_practice_id: practice.practiceId,
+    p_action: "billing.export",
+    p_subject_type: "periode",
+    p_subject_id: null,
+    p_metadata: {
+      periode: periode.libelle,
+      du: periode.du ?? null,
+      au: periode.au ?? null,
+      pieces: pieces.items.length,
+      charges: charges.items.length,
+    },
+  });
+  if (erreurTrace) {
+    console.error("[compta] journalisation de l'export refusée :", erreurTrace);
+  }
+
   const csv = construireCsv({
     libellePeriode: periode.libelle,
+    cabinet: practice.practiceName,
     exporteLe: maintenant.toLocaleDateString("fr-FR"),
     pieces: pieces.items,
     totaux: pieces.totaux,

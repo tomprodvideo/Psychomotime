@@ -72,6 +72,8 @@ function ligne(cellules: Cellule[]): string {
 export interface ExportCompta {
   libellePeriode: string;
   exporteLe: string;
+  /** Nom du cabinet émetteur. Un fichier anonyme ne se rattache à personne. */
+  cabinet?: string;
   pieces: DocumentListItem[];
   totaux: Totaux;
   charges: Charge[];
@@ -82,8 +84,20 @@ export interface ExportCompta {
 export function construireCsv(e: ExportCompta): string {
   const lignes: string[] = [];
 
+  /* UN FICHIER QUI SORT DIT CE QU'IL EST ET OÙ IL VA.
+   *
+   * Celui-ci porte des noms de personnes suivies en psychomotricité : qui
+   * l'ouvre doit savoir ce qu'il manipule, et d'où il vient. Sans cet en-tête,
+   * c'est un tableur anonyme qui traîne dans une boîte aux lettres. */
   lignes.push(ligne([`COMPTABILITÉ — ${e.libellePeriode}`]));
+  if (e.cabinet) lignes.push(ligne(["Cabinet", e.cabinet]));
   lignes.push(ligne(["Exporté le", e.exporteLe]));
+  lignes.push(
+    ligne([
+      "Nature",
+      "Document de travail comptable. Contient des données personnelles (noms des personnes facturées). Destiné au cabinet et à son expert-comptable.",
+    ]),
+  );
   if (e.tronque) {
     lignes.push(
       ligne([

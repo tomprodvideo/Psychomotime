@@ -134,3 +134,17 @@ test("un montant négatif reste un nombre, pas une formule", () => {
   assert.ok(csv.includes(";-20,00;"), "le montant de l'avoir sort en négatif");
   assert.ok(!csv.includes("'-"), "et il n'est jamais préfixé d'une apostrophe");
 });
+
+test("le fichier dit ce qu'il est, d'où il vient et où il va", () => {
+  // Sans cet en-tête, c'est un tableur anonyme qui traîne dans une boîte aux
+  // lettres — alors qu'il porte des noms de personnes suivies.
+  const csv = construireCsv({
+    libellePeriode: "mars 2026",
+    cabinet: "Cabinet Les Trois Ballons (fictif)",
+    exporteLe: "25/03/2026",
+    pieces, totaux, charges,
+  });
+  assert.ok(csv.includes("Cabinet Les Trois Ballons (fictif)"));
+  assert.ok(csv.includes("données personnelles"));
+  assert.ok(csv.includes("expert-comptable"));
+});
