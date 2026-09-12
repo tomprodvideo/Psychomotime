@@ -18,18 +18,31 @@ export const metadata: Metadata = { title: "Bilans · Psychomotime" };
 
 export default async function BilansPage() {
   const supabase = await createClient();
+  /* ON NE LIT QUE LES SIX VALEURS AFFICHÉES.
+   *
+   * `select("*")` ramenait le jsonb `content` de CHAQUE bilan — lequel porte
+   * `__images__`, c'est-à-dire des photographies encodées en base64. La liste
+   * téléchargeait donc toutes les images de tous les bilans pour afficher des
+   * titres et des dates. C'est le temps d'attente AVANT de pouvoir commencer à
+   * travailler, et c'est un défaut que le dépôt a déjà corrigé ailleurs
+   * (`listPatientPieces` le documente explicitement) — il subsistait ici.
+   *
+   * Le type se lit par son chemin dans le jsonb, sans rapatrier le reste. */
   const { data } = await supabase
     .from("bilans")
-    .select("*")
+    .select("id, patient_name, title, bilan_date, status, type:content->>__type__")
     .order("updated_at", { ascending: false });
 
-  const bilans = (data ?? []) as Bilan[];
+  const bilans = (data ?? []) as unknown as (Pick<
+    Bilan,
+    "id" | "patient_name" | "title" | "bilan_date" | "status"
+  > & { type: string | null })[];
 
   // Un groupe par type de bilan : psychomoteur et sensoriel ne sont jamais mêlés.
   const groups = BILAN_TYPE_ORDER.map((type) => ({
     type,
     ui: BILAN_TYPE_UI[type],
-    list: bilans.filter((b) => bilanTypeOf(b.content) === type),
+    list: bilans.filter((b) => bilanTypeOf({ __type__: b.type ?? undefined }) === type),
   }));
 
   const subtitle = groups

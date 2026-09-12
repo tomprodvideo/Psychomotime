@@ -1,8 +1,13 @@
 # Mémoire — expert-bilans-comptes-rendus
 
+## Collaboration
+
+- [Attentes du propriétaire sur les analyses](user_attentes-analyses.md) — brief pré-documenté, lecture du code exigée, tri valeur/effort, trancher plutôt que lister.
+
 ## Modèles et parcours validés
 
 - Aucun modèle de bilan ou compte rendu n'est validé à l'installation.
+- [Moteur de bilans, dernier îlot v1](project_moteur-bilans-ilot-v1.md) — L4 gelé derrière Q-203 (bloc de prose ou registres séparés), non tranchée.
 
 ## Instruments, licences et psychométrie
 

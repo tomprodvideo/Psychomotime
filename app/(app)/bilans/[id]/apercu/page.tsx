@@ -86,6 +86,7 @@ export default async function BilanApercuPage({
     legacyUsed.includes("mabc3");
 
   let patient: Patient | null = null;
+  let prescripteurDuParcours = "";
   if (b.patient_id) {
     const { data: p } = await supabase
       .from("patients")
@@ -93,6 +94,45 @@ export default async function BilanApercuPage({
       .eq("id", b.patient_id)
       .maybeSingle();
     patient = (p as Patient) ?? null;
+
+    /* LE MÉDECIN PRESCRIPTEUR AVAIT DISPARU DU DOCUMENT, EN SILENCE.
+     *
+     * La ligne le cherchait dans `patient.dossier.prescripteur` — une colonne
+     * de la table v1, que la bascule du lot 1 a déversée dans `care_pathways`
+     * et qui n'existe plus. L'accès optionnel faisait que rien ne cassait :
+     * la mention s'est simplement arrêtée d'apparaître sur tous les bilans
+     * postérieurs à la bascule, sans message, sans trace.
+     *
+     * On la relit donc là où elle vit désormais. ET ON NE DEVINE PAS : si le
+     * dossier porte plusieurs parcours désignant des prescripteurs
+     * différents, on n'en choisit aucun. Inscrire le mauvais nom de médecin
+     * sur un compte rendu est pire que de n'en inscrire aucun — le bilan
+     * n'étant rattaché à aucun parcours, rien ne permet de trancher. */
+    const { data: parcours } = await supabase
+      .from("care_pathways")
+      .select("prescriber_contact_id, contacts:contacts!care_pathways_prescriber_contact_id_fkey(first_name, last_name, organisation_name)")
+      .eq("patient_id", b.patient_id)
+      .not("prescriber_contact_id", "is", null);
+
+    const noms = [
+      ...new Set(
+        ((parcours ?? []) as unknown as {
+          contacts: {
+            first_name: string | null;
+            last_name: string | null;
+            organisation_name: string | null;
+          } | null;
+        }[])
+          .map((r) =>
+            r.contacts
+              ? (r.contacts.organisation_name?.trim() ||
+                  `${r.contacts.first_name ?? ""} ${r.contacts.last_name ?? ""}`.trim())
+              : "",
+          )
+          .filter((n) => n !== ""),
+      ),
+    ];
+    prescripteurDuParcours = noms.length === 1 ? noms[0] : "";
   }
 
   const subject = `Bilan psychomoteur - ${b.patient_name}`;
@@ -102,7 +142,16 @@ export default async function BilanApercuPage({
     settings.display_name ?? b.author ?? ""
   }`;
 
-  const author = settings.display_name ?? b.author ?? "Psychomotricien(ne)";
+  /* L'AUTEUR EST CELUI DU BILAN, PAS CELUI D'AUJOURD'HUI.
+   *
+   * La précédence était inversée : les paramètres courants l'emportaient sur
+   * l'auteur enregistré. Changer son nom d'affichage réécrivait donc l'auteur
+   * de TOUS les comptes rendus déjà remis — y compris ceux signés par une
+   * remplaçante. Un document remis ne change pas de signataire.
+   *
+   * Vérifié avant d'inverser : les sept bilans de la base portent un auteur,
+   * donc personne ne perd sa signature au change. */
+  const author = b.author?.trim() || settings.display_name || "Psychomotricien(ne)";
   const birth = patient?.birth_date;
   const usedLabels =
     Object.values(bySection).some((a) => a.length > 0) ||
@@ -139,9 +188,10 @@ export default async function BilanApercuPage({
     : "boxed";
   // Lieu du « Fait à … » : réglé dans le bilan, sinon ville du cabinet.
   const lieu = content.lieu || profile.city || "";
-  // Médecin prescripteur : ancien champ du bilan, sinon depuis la fiche patient.
-  const prescripteur =
-    content.prescripteur || patient?.dossier?.prescripteur || "";
+  // Médecin prescripteur : le champ figé du bilan s'il existe (bilans repris
+  // de la v1), sinon celui du parcours de soin — et seulement s'il n'y a pas
+  // d'ambiguïté.
+  const prescripteur = content.prescripteur || prescripteurDuParcours;
 
   // Formule de fin (« Je reste disponible… »), placée dans la conclusion.
   const closingLine = closingNote.trim() ? (
