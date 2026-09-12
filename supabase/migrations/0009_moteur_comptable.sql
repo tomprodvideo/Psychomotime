@@ -675,7 +675,8 @@ grant execute on function public.document_balance_cents(uuid) to authenticated;
 create or replace function public.issue_billing_document(
   p_document_id uuid,
   p_series text default null,
-  p_number_format text default '{AAAA}-{NNN}'
+  p_number_format text default '{AAAA}-{NNN}',
+  p_issued_on date default null
 )
 returns text
 language plpgsql
@@ -684,9 +685,13 @@ set search_path = public, pg_temp
 as $$
 declare
   d record;
+  v_emission date;
   v_series text;
+  v_format text;
+  v_pad integer;
   v_seq integer;
   v_number text;
+  v_essais integer := 0;
   v_lignes integer;
   v_snapshot jsonb;
 begin
@@ -713,26 +718,77 @@ begin
   -- [VALIDATION HUMAINE] Le BOFiP admet les séries distinctes « lorsque les
   -- conditions d'exercice le justifient » (§ 80). La justification de cette
   -- séparation, comme celle de la remise à zéro annuelle, est à faire valider.
+  -- La date d'émission est un PARAMÈTRE, pas l'horloge. Une pièce établie le 2
+  -- pour les séances de septembre s'émet au 2 septembre ; l'appelant la fournit,
+  -- et c'est elle — non `current_date` — qui détermine ensuite la série et
+  -- l'année imprimée. La v1 les faisait diverger : le mois du numéro pouvait
+  -- venir d'une source, le rattachement d'une autre.
+  v_emission := coalesce(p_issued_on, current_date);
+
   v_series := coalesce(
     p_series,
     case d.kind
       when 'devis' then 'DEVIS'
       when 'avoir' then 'AVOIR'
       else 'FACTURE'
-    end || '-' || to_char(coalesce(d.issued_on, current_date), 'YYYY'));
+    end || '-' || to_char(v_emission, 'YYYY'));
 
-  v_seq := app.next_billing_seq(d.practice_id, v_series);
+  -- Devis et avoirs portent un préfixe. Sans lui, le gabarit par défaut leur
+  -- donnerait le MÊME numéro imprimé qu'une facture — chacun dans sa série,
+  -- donc sans que l'unicité en base s'en aperçoive, et sur des documents remis
+  -- côte à côte à la même famille.
+  -- [DÉCISION D-13] Défaut prudent et réversible : le gabarit reste un
+  -- paramètre, et un cabinet qui numérote autrement passe le sien.
+  v_format := case d.kind
+    when 'devis' then 'D' || p_number_format
+    when 'avoir' then 'A' || p_number_format
+    else p_number_format
+  end;
 
-  v_number := replace(
-    replace(
-      replace(p_number_format, '{AAAA}', to_char(current_date, 'YYYY')),
-      '{MM}', to_char(current_date, 'MM')),
-    '{NNN}', lpad(v_seq::text, 3, '0'));
+  -- Le nombre de N du jeton donne le nombre de chiffres, comme en v1.
+  v_pad := coalesce(length((regexp_match(v_format, '\{(N+)\}'))[1]), 0);
+
+  /* Un numéro déjà porté par une pièce du cabinet ne se réattribue pas, QUELLE
+   * QUE SOIT SA SÉRIE : ce que lit un destinataire, c'est le numéro imprimé,
+   * pas la série interne. On avance donc dans la série jusqu'au premier numéro
+   * libre. Le rang sauté est consommé et ne revient pas — c'est le compteur
+   * interne qui porte le trou, jamais la suite imprimée.
+   *
+   * Ce cas n'est pas théorique : la reprise des factures de la v1 réinstalle
+   * des numéros que le compteur n'a jamais attribués. */
+  loop
+    v_seq := app.next_billing_seq(d.practice_id, v_series);
+
+    v_number := replace(
+      replace(
+        replace(v_format, '{AAAA}', to_char(v_emission, 'YYYY')),
+        '{AA}', to_char(v_emission, 'YY')),
+      '{MM}', to_char(v_emission, 'MM'));
+    if v_pad > 0 then
+      v_number := regexp_replace(v_number, '\{N+\}', lpad(v_seq::text, v_pad, '0'));
+    end if;
+
+    exit when not exists (
+      select 1 from public.billing_documents
+       where practice_id = d.practice_id and number = v_number);
+
+    if v_pad = 0 then
+      raise exception
+        'Le modèle de numéro « % » ne contient pas de compteur : il ne peut produire qu''un seul numéro, déjà attribué.',
+        p_number_format using errcode = 'check_violation';
+    end if;
+
+    v_essais := v_essais + 1;
+    if v_essais > 1000 then
+      raise exception 'Aucun numéro libre trouvé dans la série %.', v_series
+        using errcode = 'check_violation';
+    end if;
+  end loop;
 
   -- Instantané : ce qui vaut à cette date, figé pour toujours. Une pièce
   -- ancienne se relit ainsi avec les paramètres de son époque.
   select jsonb_build_object(
-    'emis_le', current_date,
+    'emis_le', v_emission,
     'cabinet', (select jsonb_build_object('nom', p.name) from public.practices p
                  where p.id = d.practice_id),
     'entite_juridique', (select jsonb_build_object(
@@ -742,15 +798,15 @@ begin
     'identifiants', (select jsonb_agg(jsonb_build_object('type', pi.kind, 'valeur', pi.value))
       from public.professional_identifiers pi
       where pi.practice_id = d.practice_id
-        and (pi.valid_from is null or pi.valid_from <= current_date)
-        and (pi.valid_to is null or pi.valid_to >= current_date)),
+        and (pi.valid_from is null or pi.valid_from <= v_emission)
+        and (pi.valid_to is null or pi.valid_to >= v_emission)),
     'configuration_fiscale', (select jsonb_build_object(
         'regime_fiscal', fc.tax_regime, 'regime_tva', fc.vat_regime,
         'methode_comptable', fc.accounting_method)
       from public.fiscal_configurations fc
       where fc.practice_id = d.practice_id
-        and fc.valid_from <= current_date
-        and (fc.valid_to is null or fc.valid_to > current_date)
+        and fc.valid_from <= v_emission
+        and (fc.valid_to is null or fc.valid_to > v_emission)
       limit 1),
     'payeur', (select jsonb_build_object(
         'nom', coalesce(c.organisation_name,
@@ -767,7 +823,7 @@ begin
      set status = 'emis',
          series = v_series,
          number = v_number,
-         issued_on = coalesce(issued_on, current_date),
+         issued_on = v_emission,
          snapshot = v_snapshot,
          issued_by = app.current_user_id()
    where id = d.id;
@@ -791,8 +847,8 @@ begin
   return v_number;
 end;
 $$;
-revoke all on function public.issue_billing_document(uuid, text, text) from public, anon;
-grant execute on function public.issue_billing_document(uuid, text, text) to authenticated;
+revoke all on function public.issue_billing_document(uuid, text, text, date) from public, anon;
+grant execute on function public.issue_billing_document(uuid, text, text, date) to authenticated;
 
 -- ============================================================================
 --  ROW LEVEL SECURITY

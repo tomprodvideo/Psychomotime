@@ -87,3 +87,158 @@ values ('44444444-4444-4444-8444-000000000001',
         '11111111-1111-4111-8111-000000000001',
         '22222222-2222-4222-8222-000000000001',
         'Marceline Cabriole', 'F2026-001', 65);
+
+-- ============================================================================
+--  FACTURES v1 — les formes que la production peut contenir
+-- ============================================================================
+--  Chaque ligne ci-dessous existe pour un cas que la reprise doit traiter
+--  autrement qu'en le copiant. Elles sont toutes fictives.
+
+-- Payée intégralement, rattachée à un mois, avec PCO et estimations dérivées.
+insert into public.invoices
+  (id, user_id, patient_id, patient_name, invoice_number,
+   billing_month, billing_year, has_pco, revenue_gross, revenue_gross_paid,
+   payment_method, payment_date, issue_date, service_label,
+   retrocession_amount, urssaf_amount, notes)
+values ('44444444-4444-4444-8444-000000000002',
+        '11111111-1111-4111-8111-000000000001',
+        '22222222-2222-4222-8222-000000000001',
+        'Marceline Cabriole', 'F2026-002',
+        'mars', 2026, true, 130, 130,
+        'Virement', date '2026-03-28', date '2026-03-25',
+        'Deux séances de psychomotricité',
+        13, 25.74, 'Réglé sans relance.');
+
+-- Partiellement payée : la v1 ne montrait qu'un total payé, jamais un solde.
+insert into public.invoices
+  (id, user_id, patient_id, patient_name, invoice_number,
+   billing_month, billing_year, revenue_gross, revenue_gross_paid,
+   payment_method, payment_date, issue_date, service_label)
+values ('44444444-4444-4444-8444-000000000003',
+        '11111111-1111-4111-8111-000000000001',
+        '22222222-2222-4222-8222-000000000002',
+        'Gustave Ritournelle', 'F2026-003',
+        'avril', 2026, 90, 45,
+        'Chèque', date '2026-04-12', date '2026-04-02',
+        'Bilan psychomoteur — acompte');
+
+-- Sans numéro et sans patient : la v1 l'autorisait. Rien ne doit être inventé.
+insert into public.invoices
+  (id, user_id, patient_name, revenue_gross, issue_date, service_label)
+values ('44444444-4444-4444-8444-000000000004',
+        '11111111-1111-4111-8111-000000000001',
+        '', 50, date '2026-04-20', '');
+
+-- Numéro EN DOUBLON dans le même compte : aucune contrainte ne l'empêchait.
+insert into public.invoices
+  (id, user_id, patient_id, patient_name, invoice_number,
+   revenue_gross, issue_date, service_label)
+values ('44444444-4444-4444-8444-000000000005',
+        '11111111-1111-4111-8111-000000000001',
+        '22222222-2222-4222-8222-000000000002',
+        'Gustave Ritournelle', 'F2026-001',
+        70, date '2026-05-04', 'Séance de psychomotricité');
+
+-- Plusieurs prestations sur une facture (colonne `lines`, migration v1 013).
+insert into public.invoices
+  (id, user_id, patient_id, patient_name, invoice_number,
+   revenue_gross, issue_date, service_label, lines)
+values ('44444444-4444-4444-8444-000000000006',
+        '11111111-1111-4111-8111-000000000001',
+        '22222222-2222-4222-8222-000000000001',
+        'Marceline Cabriole', 'F2026-004',
+        195, date '2026-05-18', 'Séances et réunion',
+        jsonb_build_array(
+          jsonb_build_object(
+            'id', 'aaaaaaaa-0000-4000-8000-000000000001',
+            'catalog_id', null,
+            'label', 'Séance de psychomotricité',
+            'pricing', 'unitaire', 'unit_price', 45, 'quantity', 3,
+            'dates', jsonb_build_array('2026-05-05', '2026-05-12', '2026-05-19'),
+            'amount', 135, 'date_render', 'par_date',
+            'intro', 'Séances réalisées aux dates suivantes :', 'note', null),
+          jsonb_build_object(
+            'id', 'aaaaaaaa-0000-4000-8000-000000000002',
+            'catalog_id', null,
+            'label', 'Réunion de coordination',
+            'pricing', 'forfait', 'unit_price', 60, 'quantity', 1,
+            'dates', jsonb_build_array('2026-05-22'),
+            'amount', 60, 'date_render', 'liste',
+            'intro', null, 'note', 'À la demande de l''école.')));
+
+-- Encaissé SUPÉRIEUR au brut : le surplus est un trop-perçu, pas une affectation.
+insert into public.invoices
+  (id, user_id, patient_id, patient_name, invoice_number,
+   revenue_gross, revenue_gross_paid, payment_method, payment_date,
+   issue_date, service_label)
+values ('44444444-4444-4444-8444-000000000007',
+        '11111111-1111-4111-8111-000000000001',
+        '22222222-2222-4222-8222-000000000001',
+        'Marceline Cabriole', 'F2026-005',
+        60, 80, 'Espèces', date '2026-06-02', date '2026-06-01',
+        'Séance de psychomotricité');
+
+-- Facture d'un compte pointant le patient d'un AUTRE compte : le lien doit être
+-- coupé, jamais suivi.
+insert into public.invoices
+  (id, user_id, patient_id, patient_name, invoice_number,
+   revenue_gross, issue_date, service_label)
+values ('44444444-4444-4444-8444-000000000008',
+        '11111111-1111-4111-8111-000000000001',
+        '22222222-2222-4222-8222-000000000004',
+        'Isaure Farandole', 'F2026-006',
+        55, date '2026-06-15', 'Séance de psychomotricité');
+
+-- Second compte, MÊME numéro que le premier : l'unicité est par cabinet, ce
+-- numéro doit donc rester intact.
+insert into public.invoices
+  (id, user_id, patient_id, patient_name, invoice_number,
+   revenue_gross, issue_date, service_label)
+values ('44444444-4444-4444-8444-000000000009',
+        '11111111-1111-4111-8111-000000000002',
+        '22222222-2222-4222-8222-000000000004',
+        'Isaure Farandole', 'F2026-001',
+        80, date '2026-06-20', 'Séance de psychomotricité');
+
+-- Le compteur de la v1 : le dernier rang ATTRIBUÉ, plus haut que le plus grand
+-- numéro visible, parce qu'une facture a été supprimée depuis.
+insert into public.invoice_counters (user_id, scope, last_seq)
+values ('11111111-1111-4111-8111-000000000001', 'F2026-{N}', 7),
+       ('11111111-1111-4111-8111-000000000002', 'F2026-{N}', 1)
+on conflict (user_id, scope) do update set last_seq = excluded.last_seq;
+
+-- Réglages du compte : gabarit de numérotation NON standard, taux, et un
+-- catalogue de prestations. Tout doit survivre à la bascule.
+update public.settings
+   set retrocession_rate = 0.25,
+       urssaf_rate = 0.232,
+       charge_mode = 'retrocession',
+       profile = jsonb_build_object(
+         'invoice_number_format', 'F{AAAA}-{NNN}',
+         'service_catalog', jsonb_build_array(
+           jsonb_build_object(
+             'id', 'cccccccc-0000-4000-8000-000000000001',
+             'label', 'Séance de psychomotricité',
+             'unit_price', 45, 'pricing', 'unitaire',
+             'default_date_render', 'par_date',
+             'intro', 'Séances réalisées aux dates suivantes :',
+             'active', true),
+           jsonb_build_object(
+             'id', 'cccccccc-0000-4000-8000-000000000002',
+             'label', 'Réunion de coordination',
+             'unit_price', 60, 'pricing', 'forfait',
+             'default_date_render', 'liste',
+             'intro', '', 'active', false)))
+ where user_id = '11111111-1111-4111-8111-000000000001';
+
+-- La première facture du jeu reçoit sa date d'émission : sans elle, l'ordre de
+-- reprise dépendrait de l'heure d'exécution du test.
+update public.invoices set issue_date = date '2026-02-20'
+ where id = '44444444-4444-4444-8444-000000000001';
+
+-- Les lignes de la facture multi-prestations pointent le catalogue.
+update public.invoices
+   set lines = jsonb_set(
+         jsonb_set(lines, '{0,catalog_id}', '"cccccccc-0000-4000-8000-000000000001"'),
+         '{1,catalog_id}', '"cccccccc-0000-4000-8000-000000000002"')
+ where id = '44444444-4444-4444-8444-000000000006';

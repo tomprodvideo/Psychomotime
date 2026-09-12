@@ -178,6 +178,15 @@ switch (cmd) {
     applyDir(SEED_DIR, "seed  ");
     break;
   case "test":
+    // La base est RECONSTRUITE avant chaque exécution. Sans cela, les tests
+    // s'exécutent sur le schéma laissé par la dernière commande : une migration
+    // corrigée et non rejouée passe alors inaperçue, et le rapport « tous
+    // passent » porte sur du code qui n'est plus celui du dépôt. Le cas s'est
+    // produit ici même.
+    dropAndCreate();
+    applyDir(LOCAL_DIR, "local ");
+    applyDir(MIGRATIONS_DIR, "migr. ");
+    applyDir(SEED_DIR, "seed  ");
     process.exit(runTests());
     break;
   case "concurrence": {

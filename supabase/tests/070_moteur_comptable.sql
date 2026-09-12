@@ -563,3 +563,123 @@ begin
 end
 $$;
 rollback;
+
+-- ---------------------------------------------------------------------------
+--  13. Un devis et une facture ne portent jamais le même numéro imprimé
+-- ---------------------------------------------------------------------------
+--  Les deux séries sont distinctes, donc l'unicité en base ne voit rien. Ce que
+--  lit une famille, c'est le numéro imprimé : deux pièces différentes numérotées
+--  pareil, remises le même jour, sont indiscernables une fois classées.
+begin;
+select tests.authenticate_as(:alpha::uuid);
+do $$
+declare
+  v_devis uuid;
+  v_facture uuid;
+  v_nd text;
+  v_nf text;
+begin
+  insert into public.billing_documents (practice_id, kind, patient_id)
+  values ('a1111111-1111-4111-8111-111111111111', 'devis', 'a6000000-0000-4000-8000-000000000001') returning id into v_devis;
+  insert into public.billing_lines
+    (practice_id, document_id, position, label, unit_price_cents, amount_cents)
+  values ('a1111111-1111-4111-8111-111111111111', v_devis, 1, 'Bilan psychomoteur', 20000, 20000);
+
+  insert into public.billing_documents (practice_id, kind, patient_id)
+  values ('a1111111-1111-4111-8111-111111111111', 'facture', 'a6000000-0000-4000-8000-000000000001') returning id into v_facture;
+  insert into public.billing_lines
+    (practice_id, document_id, position, label, unit_price_cents, amount_cents)
+  values ('a1111111-1111-4111-8111-111111111111', v_facture, 1, 'Bilan psychomoteur', 20000, 20000);
+
+  v_nd := public.issue_billing_document(v_devis);
+  v_nf := public.issue_billing_document(v_facture);
+
+  perform tests.assert(v_nd <> v_nf,
+    'Un devis et une facture émis le même jour ne doivent pas porter le même numéro.');
+  perform tests.assert(v_nd like 'D%',
+    'Le numéro d''un devis doit se distinguer au premier coup d''œil.');
+end
+$$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+--  14. La date d'émission est celle qu'on donne, pas celle de l'horloge
+-- ---------------------------------------------------------------------------
+--  Une facture établie début octobre pour les séances de septembre doit pouvoir
+--  porter sa vraie date. La v1 laissait l'année du numéro et le mois de
+--  rattachement venir de deux sources différentes.
+begin;
+select tests.authenticate_as(:alpha::uuid);
+do $$
+declare
+  v_doc uuid;
+  v_num text;
+  v_emis date;
+  v_serie text;
+begin
+  insert into public.billing_documents (practice_id, kind, patient_id)
+  values ('a1111111-1111-4111-8111-111111111111', 'facture', 'a6000000-0000-4000-8000-000000000001') returning id into v_doc;
+  insert into public.billing_lines
+    (practice_id, document_id, position, label, unit_price_cents, amount_cents)
+  values ('a1111111-1111-4111-8111-111111111111', v_doc, 1, 'Séance de psychomotricité', 4500, 4500);
+
+  v_num := public.issue_billing_document(v_doc, null, '{AAAA}-{MM}-{NNN}', date '2024-11-08');
+
+  select issued_on, series into v_emis, v_serie
+    from public.billing_documents where id = v_doc;
+
+  perform tests.assert_equals(v_emis, date '2024-11-08',
+    'La date d''émission fournie doit être celle de la pièce.');
+  perform tests.assert_equals(v_serie, 'FACTURE-2024',
+    'La série doit suivre l''année d''émission, pas l''année courante.');
+  perform tests.assert(v_num like '2024-11-%',
+    'Le numéro doit porter l''année et le mois de l''émission.');
+
+  -- L'instantané se lit à cette date : une pièce ancienne ne doit pas se relire
+  -- avec la configuration d'aujourd'hui.
+  perform tests.assert_equals(
+    (select snapshot ->> 'emis_le' from public.billing_documents where id = v_doc),
+    '2024-11-08',
+    'L''instantané doit être daté de l''émission.');
+end
+$$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+--  15. Un numéro déjà employé n'est pas réattribué
+-- ---------------------------------------------------------------------------
+--  La reprise des factures de la v1 réinstalle des numéros que le compteur n'a
+--  jamais attribués. Le moteur doit passer au suivant, et non échouer ni
+--  produire un doublon.
+begin;
+select tests.authenticate_as(:alpha::uuid);
+do $$
+declare
+  v_ancienne uuid;
+  v_doc uuid;
+  v_num text;
+begin
+  -- Une pièce « héritée » portant le numéro que le compteur va proposer.
+  insert into public.billing_documents
+    (practice_id, kind, status, series, number, issued_on)
+  values ('a1111111-1111-4111-8111-111111111111', 'facture', 'emis', 'ANCIENNE',
+          to_char(current_date, 'YYYY') || '-001', current_date)
+  returning id into v_ancienne;
+
+  insert into public.billing_documents (practice_id, kind, patient_id)
+  values ('a1111111-1111-4111-8111-111111111111', 'facture', 'a6000000-0000-4000-8000-000000000001') returning id into v_doc;
+  insert into public.billing_lines
+    (practice_id, document_id, position, label, unit_price_cents, amount_cents)
+  values ('a1111111-1111-4111-8111-111111111111', v_doc, 1, 'Séance de psychomotricité', 4500, 4500);
+
+  v_num := public.issue_billing_document(v_doc);
+
+  perform tests.assert(v_num <> to_char(current_date, 'YYYY') || '-001',
+    'Un numéro déjà porté par une autre pièce ne doit pas être réattribué.');
+  perform tests.assert_rows(
+    format('select 1 from public.billing_documents
+             where practice_id = %L and number = %L', 'a1111111-1111-4111-8111-111111111111', v_num),
+    1, 'Le numéro finalement attribué doit être unique dans le cabinet.');
+end
+$$;
+rollback;
