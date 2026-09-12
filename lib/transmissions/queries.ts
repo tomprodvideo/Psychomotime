@@ -81,24 +81,3 @@ export async function getDocumentPublic(
     trop_de_consultations: false,
   };
 }
-
-/** Consultations d'un lien, pour la fiche d'un document. */
-export async function listConsultations(
-  practice: PracticeContext,
-  lienId: string,
-): Promise<string[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("shared_link_accesses")
-    .select("accessed_at")
-    .eq("practice_id", practice.practiceId)
-    .eq("link_id", lienId)
-    .order("accessed_at", { ascending: false })
-    .limit(50);
-
-  if (error) {
-    console.error("[transmissions] lecture des consultations refusée :", error);
-    return [];
-  }
-  return ((data ?? []) as { accessed_at: string }[]).map((a) => a.accessed_at);
-}

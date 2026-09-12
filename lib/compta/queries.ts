@@ -425,29 +425,6 @@ export async function listPayments(
   });
 }
 
-/** Pièces d'un cabinet sur lesquelles un règlement peut encore s'imputer. */
-export async function listDocumentsAReglement(
-  practice: PracticeContext,
-): Promise<{ id: string; number: string | null; kind: DocumentKind; issued_on: string | null; solde_cents: number; patient_nom: string | null }[]> {
-  const { items } = await listDocuments(practice, {});
-  return items
-    .filter(
-      (d) =>
-        d.kind !== "devis" &&
-        d.kind !== "avoir" &&
-        d.status !== "brouillon" &&
-        d.solde_cents > 0,
-    )
-    .map((d) => ({
-      id: d.id,
-      number: d.number,
-      kind: d.kind,
-      issued_on: d.issued_on,
-      solde_cents: d.solde_cents,
-      patient_nom: d.patient_nom,
-    }));
-}
-
 /* ==========================================================================
  *  Réglages comptables du cabinet
  * ========================================================================== */
@@ -581,27 +558,6 @@ export async function listSeancesFacturables(
       .map((d) => d.appointment_id),
   );
   return seances.filter((s) => !facturees.has(s.id));
-}
-
-/** Séances rattachées à une ligne, pour l'afficher et pour l'attestation. */
-export async function listSeancesDeLigne(
-  lineIds: string[],
-): Promise<Map<string, string[]>> {
-  const parLigne = new Map<string, string[]>();
-  if (lineIds.length === 0) return parLigne;
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("billing_line_appointments")
-    .select("line_id, appointment_id")
-    .in("line_id", lineIds);
-  if (error) {
-    console.error("[compta] lecture des séances de ligne refusée :", error);
-    return parLigne;
-  }
-  for (const r of (data ?? []) as { line_id: string; appointment_id: string }[]) {
-    parLigne.set(r.line_id, [...(parLigne.get(r.line_id) ?? []), r.appointment_id]);
-  }
-  return parLigne;
 }
 
 /* ==========================================================================

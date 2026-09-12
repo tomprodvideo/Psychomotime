@@ -37,8 +37,12 @@
 
 do $$
 declare
-  -- Les volumes. Modifier ici, pas ailleurs.
-  n_dossiers   integer := 400;
+  /* Les volumes. Réglables sans toucher au fichier :
+   *   BUDGET_DOSSIERS=2000 npm run db:budget
+   * Le défaut vise un cabinet plausible ; les valeurs hautes servent à
+   * chercher LE POINT DE RUPTURE, qui est une information utile en soi. */
+  n_dossiers   integer := coalesce(
+    nullif(current_setting('budget.dossiers', true), '')::integer, 400);
   n_annees     integer := 8;
   v_patient    uuid;
   v_parcours   uuid;
@@ -49,6 +53,7 @@ declare
   j            integer;
   v_seances    integer;
   v_statut     text;
+  v_ouvert     date;
   v_total      bigint;
 begin
   insert into auth.users (id, email)
@@ -84,6 +89,7 @@ begin
 
     -- Un parcours terminé PORTE SA DATE DE FIN : `care_pathways_fin_ck` l'exige,
     -- et c'est elle qui empêche un dossier clos sans date de clôture.
+    v_ouvert := (now() - make_interval(days => (i * 7) % (n_annees * 365)))::date;
     v_statut := case when i % 11 = 0 then 'liste_attente'
                      when i % 9 = 0 then 'termine' else 'actif' end;
     insert into public.care_pathways
@@ -94,13 +100,18 @@ begin
       v_statut,
       case when v_statut = 'liste_attente'
            then (now() - make_interval(days => i % 200))::date end,
-      (now() - make_interval(days => (i * 7) % (n_annees * 365)))::date,
+      v_ouvert,
       /* La date de fin suit LE STATUT CALCULÉ, pas une seconde condition :
        * les deux divergeaient pour i divisible par 9 et par 11 à la fois, et
        * le modèle refusait — à juste titre — un parcours en liste d'attente
-       * portant une date de clôture. */
+       * portant une date de clôture.
+       *
+       * Elle se DÉDUIT de la date d'ouverture, elle ne se calcule pas à part :
+       * deux formules indépendantes finissaient par se croiser aux grands
+       * volumes, et un parcours se fermait avant de s'ouvrir. Trouvé en
+       * cherchant le point de rupture à 2 000 dossiers. */
       case when v_statut = 'termine'
-           then (now() - make_interval(days => (i * 3) % 300))::date end)
+           then least(v_ouvert + (30 + (i % 400)), current_date) end)
     returning id into v_parcours;
 
     -- Entre 4 et 24 séances par dossier : la dispersion compte, un nombre

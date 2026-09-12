@@ -14,6 +14,19 @@
 --  qui varie d'une ligne à l'autre. C'est l'hypothèse à vérifier, pas à
 --  affirmer — ces mesures sont là pour trancher.
 --
+--  ── CE QUE LA MESURE A CONCLU, ET CE QU'ELLE N'A DONC PAS FAIT FAIRE ──────
+--
+--  Le lot 8 prévoyait « index composites, projections SQL minimales,
+--  suppression des N+1 ». Une fois l'appartenance calculée une seule fois
+--  (migration 0019), plus rien ne dépasse LA MILLISECONDE — y compris à
+--  2 000 dossiers et 28 000 rendez-vous, soit environ cinq fois ce qu'un
+--  cabinet libéral accumule.
+--
+--  Aucun index n'a donc été ajouté. Un index qu'aucune mesure ne réclame coûte
+--  à chaque écriture, occupe de la place, et donne l'illusion d'un travail
+--  fait. Le jour où une mesure d'ici dépassera son plafond, elle dira LEQUEL
+--  ajouter, et pourquoi.
+--
 --  ── COMMENT LIRE UN ÉCHEC ─────────────────────────────────────────────────
 --
 --  Un budget dépassé ne dit pas « c'est lent ». Il dit : à ce volume, sur cette

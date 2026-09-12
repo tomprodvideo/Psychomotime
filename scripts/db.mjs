@@ -331,8 +331,13 @@ switch (cmd) {
     }
 
     const volumetrie = join(PERF_DIR, "0001_volumetrie.sql");
-    console.log(`${C.dim}· jeu volumineux${C.reset}`);
-    const v = psql(scratch, ["-f", volumetrie], { quiet: true });
+    const dossiers = process.env.BUDGET_DOSSIERS || "400";
+    console.log(`${C.dim}· jeu volumineux — ${dossiers} dossiers${C.reset}`);
+    const v = psql(
+      scratch,
+      ["-c", `set budget.dossiers = '${Number(dossiers)}'`, "-f", volumetrie],
+      { quiet: true },
+    );
     if (v.code !== 0) {
       console.error(`${C.red}✗ volumétrie${C.reset}`);
       process.stderr.write(v.stderr);
