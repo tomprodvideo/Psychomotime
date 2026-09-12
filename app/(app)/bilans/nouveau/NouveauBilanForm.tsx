@@ -5,7 +5,8 @@ import { estUneRetouche } from "@/lib/bilans/rattachement";
 import { useFormStatus } from "react-dom";
 import type { Patient } from "@/lib/types";
 import { BILAN_TYPES, type BilanType } from "@/lib/constants";
-import { ageFromBirth, frDate } from "@/lib/format";
+import { frDate } from "@/lib/format";
+import { formatAgeAt } from "@/lib/age";
 import { createBilan } from "../actions";
 
 type PatientLite = Pick<Patient, "id" | "first_name" | "last_name" | "birth_date">;
@@ -76,7 +77,7 @@ export default function NouveauBilanForm({
             </p>
             <p className="text-sm text-slate-500">
               {selected.birth_date
-                ? `Né(e) le ${frDate(selected.birth_date)} · ${ageFromBirth(selected.birth_date)}`
+                ? `Né(e) le ${frDate(selected.birth_date)} · ${formatAgeAt(selected.birth_date, today)}`
                 : "Date de naissance non renseignée"}
             </p>
           </div>

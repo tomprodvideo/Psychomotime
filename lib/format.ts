@@ -20,6 +20,18 @@ export function frDate(iso: string | null | undefined): string {
   return new Intl.DateTimeFormat("fr-FR").format(d);
 }
 
+/**
+ * @deprecated Cette fonction lit l'HORLOGE. Elle rend donc l'âge du jour où on
+ * l'appelle, jamais l'âge à la date qui compte — celle de la passation. Un
+ * bilan passé en février et réimprimé en septembre affichait sept mois de trop,
+ * sur un document dont toute la lecture repose sur des normes par classe d'âge.
+ *
+ * Employer `formatAgeAt(naissance, date)` de `lib/age.ts`, qui EXIGE la date de
+ * référence : oublier de la passer doit être impossible, pas silencieux.
+ *
+ * Plus aucun appelant au 2026-09-12. Conservée le temps de vérifier qu'aucun
+ * écran de la v1 ne s'y adosse encore.
+ */
 export function ageFromBirth(iso: string | null | undefined): string {
   if (!iso) return "";
   const birth = new Date(iso + "T00:00:00");

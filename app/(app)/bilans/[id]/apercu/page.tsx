@@ -20,7 +20,8 @@ import {
   testLabel,
   type MabcRow,
 } from "@/lib/constants";
-import { ageFromBirth, frDate } from "@/lib/format";
+import { frDate } from "@/lib/format";
+import { formatAgeAt } from "@/lib/age";
 import GaussianCurve from "@/components/GaussianCurve";
 import ApercuActions from "./ApercuActions";
 
@@ -336,9 +337,15 @@ export default async function BilanApercuPage({
               <p>
                 <span className="text-slate-500">Enfant concerné : </span>
                 <strong>{b.patient_name || "—"}</strong>
+                {/* L'ÂGE EST CELUI DE LA PASSATION, pas celui du jour où l'on
+                    imprime. Un bilan passé en février et réimprimé en septembre
+                    affichait sept mois de trop — sur un document dont toute la
+                    lecture repose sur des normes par classe d'âge. `lib/age.ts`
+                    existait déjà pour cela et n'était appelé nulle part ici. */}
                 {birth && (
                   <>
-                    , né(e) le {frDate(birth)} ({ageFromBirth(birth)})
+                    , né(e) le {frDate(birth)}
+                    {b.bilan_date && ` (${formatAgeAt(birth, b.bilan_date)} à la passation)`}
                   </>
                 )}
               </p>

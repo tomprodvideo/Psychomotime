@@ -67,9 +67,25 @@ Constat d’origine : le rendu d’aperçu et le PDF ne mentionnaient le statut 
 
 Le terme est imprimé dans l’encadré d’interprétation (`lib/constants.ts:779`), sur un document lu par des familles et transmis à des tiers. Les guillemets et le « dite » atténuent. C’est un usage attesté dans des comptes rendus français, mais c’est un **choix éditorial du produit**, pas une évidence : à confirmer par une psychomotricienne en exercice.
 
-### C-4 — L’âge imprimé est celui du jour de consultation, pas de la passation — **moyen**
+### C-4 — L’âge imprimé est celui du jour de consultation, pas de la passation — **corrigé le 2026-09-12**
 
-`ageFromBirth` utilise `new Date()` (`lib/format.ts:26`) et est appelé sans jamais recevoir `bilan_date`. Un bilan passé en février et réimprimé en septembre affiche un âge faussé de sept mois, sur un document dont toute la lecture repose sur des normes par classe d’âge. Le groupe d’âge M-ABC est par ailleurs choisi à la main sans aucun contrôle de cohérence avec la date de naissance, pourtant disponible dans le même composant.
+**Corrigé.** Les trois écrans qui affichent un âge — l’aperçu remis, l’éditeur
+et le formulaire de création — emploient désormais `formatAgeAt` de
+`lib/age.ts`, qui EXIGE une date de référence. Le document imprimé porte l’âge
+« à la passation », et le dit.
+
+`lib/age.ts` existait déjà, écrit pour ce défaut, et **n’était appelé nulle
+part** : c’est le même motif que `lib/scales.ts`, construit au lot 3 et jamais
+branché sur le document. Le module correct existe ; ce qui manque, c’est le fil.
+`ageFromBirth` est marquée obsolète et n’a plus d’appelant.
+
+**Reste ouvert** : le groupe d’âge M-ABC est toujours choisi à la main, sans
+aucun contrôle de cohérence avec la date de naissance, pourtant disponible dans
+le même composant.
+
+Constat d’origine : `ageFromBirth` lisait `new Date()` et ne recevait jamais
+`bilan_date`. Un bilan passé en février et réimprimé en septembre affichait un
+âge faussé de sept mois.
 
 ### C-5 — Le contenu reformulé devient indiscernable du texte du praticien — **partiellement corrigé le 2026-09-12**
 

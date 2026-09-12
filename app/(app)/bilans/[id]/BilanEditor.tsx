@@ -38,7 +38,8 @@ import {
   nsColor,
   type MabcRow,
 } from "@/lib/constants";
-import { ageFromBirth, frDate } from "@/lib/format";
+import { frDate } from "@/lib/format";
+import { formatAgeAt } from "@/lib/age";
 import ConfirmDeleteButton from "@/components/ConfirmDeleteButton";
 import { saveBilan, deleteBilan } from "../actions";
 import { reformulateText } from "../ai-actions";
@@ -769,7 +770,12 @@ export default function BilanEditor({
             {patientBirthDate && (
               <p className="text-xs text-slate-500 mt-1">
                 Né(e) le {frDate(patientBirthDate)} ·{" "}
-                {ageFromBirth(patientBirthDate)}
+                {/* Âge À LA DATE DU BILAN saisie juste à côté, pas aujourd'hui :
+                    c'est cet âge-là qui décide de la tranche d'un instrument, et
+                    l'écran doit montrer celui sur lequel on travaille. */}
+                {bilanDate
+                  ? `${formatAgeAt(patientBirthDate, bilanDate)} à la date du bilan`
+                  : formatAgeAt(patientBirthDate, new Date())}
               </p>
             )}
           </div>
