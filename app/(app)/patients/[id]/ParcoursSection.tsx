@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus, Route, Target, X } from "lucide-react";
+import { Dialogue } from "@/components/Dialogue";
+import { Plus, Route, Target } from "lucide-react";
 import { frDate } from "@/lib/format";
 import { savePathway } from "../actions";
 import {
@@ -239,27 +240,7 @@ function DialogueParcours({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="titre-parcours-dialogue"
-      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-slate-900/40 p-4 overflow-y-auto"
-    >
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg my-8">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <h2 id="titre-parcours-dialogue" className="font-semibold text-slate-800">
-            {parcours ? "Modifier le parcours" : "Nouveau parcours"}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Fermer"
-            className="text-slate-500 hover:text-slate-600 rounded p-1"
-          >
-            <X className="h-5 w-5" aria-hidden="true" />
-          </button>
-        </div>
-
+    <Dialogue ouvert onFermer={onClose} titre={parcours ? "Modifier le parcours" : "Nouveau parcours"} taille="petite">
         <form onSubmit={soumettre} className="px-6 py-5 space-y-4">
           <input type="hidden" name="patient_id" value={patientId} />
           {parcours && <input type="hidden" name="id" value={parcours.id} />}
@@ -417,8 +398,7 @@ function DialogueParcours({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </Dialogue>
   );
 }
 

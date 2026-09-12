@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus, NotebookPen, ShieldAlert, X } from "lucide-react";
+import { Dialogue } from "@/components/Dialogue";
+import { Plus, NotebookPen, ShieldAlert } from "lucide-react";
 import { frDate } from "@/lib/format";
 import { saveNote } from "../actions";
 import type { CarePathway, PatientNote } from "@/lib/dossier/types";
@@ -137,27 +138,7 @@ function DialogueNote({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="titre-note"
-      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-slate-900/40 p-4 overflow-y-auto"
-    >
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg my-8">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <h2 id="titre-note" className="font-semibold text-slate-800">
-            Nouvelle note
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Fermer"
-            className="text-slate-500 hover:text-slate-600 rounded p-1"
-          >
-            <X className="h-5 w-5" aria-hidden="true" />
-          </button>
-        </div>
-
+    <Dialogue ouvert onFermer={onClose} titre="Nouvelle note" taille="petite">
         <form onSubmit={soumettre} className="px-6 py-5 space-y-4">
           <input type="hidden" name="patient_id" value={patientId} />
 
@@ -274,7 +255,6 @@ function DialogueNote({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </Dialogue>
   );
 }

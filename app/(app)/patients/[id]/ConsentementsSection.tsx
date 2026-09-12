@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { FileCheck, Plus, X } from "lucide-react";
+import { Dialogue } from "@/components/Dialogue";
+import { FileCheck, Plus } from "lucide-react";
 import { frDate } from "@/lib/format";
 import { saveConsent, withdrawConsent } from "../actions";
 import {
@@ -210,27 +211,7 @@ function DialogueConsentement({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="titre-consentement"
-      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-slate-900/40 p-4 overflow-y-auto"
-    >
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg my-8">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <h2 id="titre-consentement" className="font-semibold text-slate-800">
-            Nouvelle autorisation
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Fermer"
-            className="text-slate-500 hover:text-slate-600 rounded p-1"
-          >
-            <X className="h-5 w-5" aria-hidden="true" />
-          </button>
-        </div>
-
+    <Dialogue ouvert onFermer={onClose} titre="Nouvelle autorisation" taille="petite">
         <form onSubmit={soumettre} className="px-6 py-5 space-y-4">
           <input type="hidden" name="patient_id" value={patientId} />
 
@@ -337,7 +318,6 @@ function DialogueConsentement({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </Dialogue>
   );
 }

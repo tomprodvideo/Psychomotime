@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Trash2, X } from "lucide-react";
+import { Dialogue } from "@/components/Dialogue";
+import { Trash2 } from "lucide-react";
 import {
   deleteAppointment,
   saveAppointment,
@@ -91,27 +92,7 @@ export default function AppointmentDialog({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="titre-rdv"
-      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-slate-900/40 p-4 overflow-y-auto"
-    >
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg my-8">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <h2 id="titre-rdv" className="font-semibold text-slate-800">
-            {appointment ? "Modifier le rendez-vous" : "Nouveau rendez-vous"}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Fermer"
-            className="text-slate-500 hover:text-slate-600 rounded p-1"
-          >
-            <X className="h-5 w-5" aria-hidden="true" />
-          </button>
-        </div>
-
+    <Dialogue ouvert onFermer={onClose} titre={appointment ? "Modifier le rendez-vous" : "Nouveau rendez-vous"} taille="petite">
         <form onSubmit={soumettre} className="px-6 py-5 space-y-4">
           {appointment && <input type="hidden" name="id" value={appointment.id} />}
 
@@ -312,7 +293,6 @@ export default function AppointmentDialog({
             </div>
           </div>
         </form>
-      </div>
-    </div>
+      </Dialogue>
   );
 }

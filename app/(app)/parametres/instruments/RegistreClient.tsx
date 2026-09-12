@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, ChevronDown, Plus, Ruler, Trash2, X } from "lucide-react";
+import { Dialogue as DialogueSocle } from "@/components/Dialogue";
+import { Check, ChevronDown, Plus, Ruler, Trash2 } from "lucide-react";
 import { frDate } from "@/lib/format";
 import {
   activateBandSet,
@@ -604,6 +605,18 @@ function SupprimerInstrument({ id, nom }: { id: string; nom: string }) {
  *  Dialogues
  * ========================================================================== */
 
+/**
+ * L'ancienne fenêtre locale de cet écran est remplacée par celle du socle.
+ *
+ * Elle avait la même forme que les six autres du produit — un `div` portant
+ * `aria-modal="true"` sans rien pour le tenir — à ceci près qu'elle servait
+ * DÉJÀ trois fenêtres de cet écran. C'était le bon réflexe, au mauvais
+ * endroit : factoriser dans un fichier plutôt que dans le socle laisse chaque
+ * écran réinventer les mêmes manques.
+ *
+ * Cette enveloppe ne conserve que la signature, pour ne pas toucher aux trois
+ * appelants.
+ */
 function Dialogue({
   titre,
   onClose,
@@ -614,27 +627,9 @@ function Dialogue({
   children: React.ReactNode;
 }) {
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={titre}
-      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-slate-900/40 p-4 overflow-y-auto"
-    >
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg my-8">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <h2 className="font-semibold text-slate-800">{titre}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Fermer"
-            className="text-slate-500 hover:text-slate-600 rounded p-1"
-          >
-            <X className="h-5 w-5" aria-hidden="true" />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
+    <DialogueSocle ouvert onFermer={onClose} titre={titre} taille="petite">
+      {children}
+    </DialogueSocle>
   );
 }
 
