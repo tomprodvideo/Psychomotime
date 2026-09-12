@@ -209,6 +209,35 @@ Aucune erreur console, aucune erreur serveur.
 cabinet indestructible, en refusant le départ du dernier propriétaire même
 lorsque le cabinet lui-même était supprimé. Corrigé par la migration `0008`.
 
+### Dix questions pour une psychomotricienne — attestations
+
+Relevées par la relecture métier du lot des attestations. Aucune n'est tranchée
+par le code, et les défauts en place sont prudents et réversibles.
+
+1. Un entretien parental où l'enfant n'était pas là : l'attestez-vous, et sous
+   quelle formule ? *(défaut actuel : formule non assertive et type précisé)*
+2. Sur une attestation de paiement pour un mineur, qui doit être nommé — le
+   payeur, l'enfant, les deux ? *(défaut actuel : les deux)*
+3. Accepteriez-vous un mode « reçu à N reprises entre le … et le … » sans liste
+   de dates, pour un employeur ou une école ? La liste des dates dessine un
+   rythme de vie — c'est la vraie sur-information, plus que la nature des actes.
+4. Signature imprimée ou manuscrite ? *(défaut actuel : place réservée pour une
+   signature manuscrite ; `signature_storage_path` existe et n'est pas employé)*
+5. Faut-il imprimer « à la demande de … », et tracer qui a demandé — notamment
+   en situation de parents séparés ? *(non implémenté)*
+6. La date de naissance : la retireriez-vous pour un employeur ? *(défaut
+   actuel : toujours imprimée, elle lève une homonymie)*
+7. Une attestation remise à un tiers doit-elle nommer le responsable légal
+   plutôt que le patient mineur ?
+8. Les horaires des séances pour un employeur : utile, ou trop ? *(non figé
+   dans l'instantané ; l'ajouter serait une décision)*
+9. Faut-il un troisième document, « attestation de suivi », pour les dossiers
+   MDPH — ou cela relève-t-il du compte rendu ? *(à ne PAS obtenir en étirant
+   l'attestation de présence : ce serait transformer un document factuel en
+   énoncé sur le soin)*
+10. Une attestation réimprimée doit-elle porter « duplicata » ? *(défaut
+    actuel : réimpression à l'identique)*
+
 ### Deux réglages à faire dans la console Supabase
 
 1. **Protection contre les mots de passe compromis** — désactivée. Elle vérifie
