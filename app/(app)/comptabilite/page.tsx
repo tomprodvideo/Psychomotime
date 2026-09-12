@@ -1,14 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  AlertTriangle,
-  BookOpen,
-  Download,
-  Receipt,
-  ShieldCheck,
-  TrendingDown,
-  Wallet,
-} from "lucide-react";
+import { AlertTriangle, BookOpen, Download, Link2, Receipt, ShieldCheck, TrendingDown, Wallet } from "lucide-react";
 import { formatCents } from "@/lib/money";
 import { frDate } from "@/lib/format";
 import { Card, EmptyState, PageHeader, StatCard } from "@/components/ui";
@@ -98,6 +90,13 @@ export default async function ComptabilitePage({
           >
             <TrendingDown className="h-4 w-4" aria-hidden="true" />
             Charges
+          </Link>
+          <Link
+            href="/comptabilite/transmissions"
+            className="inline-flex items-center gap-1.5 text-slate-600 hover:text-brand-700"
+          >
+            <Link2 className="h-4 w-4" aria-hidden="true" />
+            Documents transmis
           </Link>
           <Link
             href="/comptabilite/catalogue"

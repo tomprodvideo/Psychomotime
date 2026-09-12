@@ -50,6 +50,98 @@ export async function listLiens(
   return { items: (data ?? []) as unknown as LienPartage[], erreur: null };
 }
 
+/** Un lien, accompagné de la pièce vers laquelle il pointe. */
+export interface LienAvecSujet extends LienPartage {
+  sujet: {
+    titre: string;
+    numero: string | null;
+    patient: string | null;
+    href: string;
+  } | null;
+}
+
+/**
+ * Tous les liens du cabinet, avec ce vers quoi ils pointent.
+ *
+ * POURQUOI CET ÉCRAN EXISTE. Un lien ne se consultait que depuis la pièce qu'il
+ * partage. Pour savoir ce qui est ouvert en ce moment, il fallait donc ouvrir
+ * les pièces une à une — c'est-à-dire ne jamais le savoir. Or c'est exactement
+ * la question qu'on se pose le jour où quelque chose ne va pas : qu'est-ce qui
+ * est accessible dehors, et depuis quand.
+ *
+ * DEUX REQUÊTES, PAS UNE PAR LIGNE. Les pièces et les attestations sont
+ * chargées en deux lots, par leurs identifiants. Le contraire — une lecture par
+ * lien — est le défaut que le lot 8 traque ailleurs ; il n'y a pas de raison de
+ * l'introduire ici.
+ */
+export async function listLiensDuCabinet(
+  practice: PracticeContext,
+): Promise<{ items: LienAvecSujet[]; erreur: string | null }> {
+  const { items, erreur } = await listLiens(practice);
+  if (erreur || items.length === 0) return { items: [], erreur };
+
+  const supabase = await createClient();
+  const idsPieces = items
+    .filter((l) => l.subject_type === "billing_document")
+    .map((l) => l.subject_id);
+  const idsAttestations = items
+    .filter((l) => l.subject_type === "attestation")
+    .map((l) => l.subject_id);
+
+  const [pieces, attestations] = await Promise.all([
+    idsPieces.length
+      ? supabase
+          .from("billing_documents")
+          .select("id, kind, number, snapshot")
+          .in("id", idsPieces)
+      : Promise.resolve({ data: [], error: null }),
+    idsAttestations.length
+      ? supabase
+          .from("attestations")
+          .select("id, kind, number, snapshot")
+          .in("id", idsAttestations)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+
+  const TITRES: Record<string, string> = {
+    devis: "Devis",
+    facture: "Facture",
+    facture_de_remplacement: "Facture de remplacement",
+    avoir: "Avoir",
+    presence: "Attestation de présence",
+    paiement: "Attestation de paiement",
+  };
+
+  type Brut = {
+    id: string;
+    kind: string;
+    number: string | null;
+    snapshot: { patient?: { nom?: string | null } | null } | null;
+  };
+  const index = new Map<string, LienAvecSujet["sujet"]>();
+  for (const r of (pieces.data ?? []) as unknown as Brut[]) {
+    index.set(r.id, {
+      titre: TITRES[r.kind] ?? "Document",
+      numero: r.number,
+      patient: r.snapshot?.patient?.nom?.trim() || null,
+      href: `/comptabilite/${r.id}`,
+    });
+  }
+  for (const r of (attestations.data ?? []) as unknown as Brut[]) {
+    index.set(r.id, {
+      titre: TITRES[r.kind] ?? "Attestation",
+      numero: r.number,
+      patient: r.snapshot?.patient?.nom?.trim() || null,
+      href: `/comptabilite/attestations/${r.id}`,
+    });
+  }
+
+  return {
+    items: items.map((l) => ({ ...l, sujet: index.get(l.subject_id) ?? null })),
+    erreur: null,
+  };
+}
+
 /**
  * Le document désigné par un jeton, vu par un destinataire sans compte.
  *
