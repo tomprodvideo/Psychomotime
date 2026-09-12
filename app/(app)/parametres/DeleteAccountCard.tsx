@@ -20,6 +20,7 @@ export default function DeleteAccountCard() {
   const [confirmText, setConfirmText] = useState("");
   const [pending, start] = useTransition();
   const [erreur, setErreur] = useState<string | null>(null);
+  const [motDePasse, setMotDePasse] = useState("");
 
   return (
     <div className="bg-white rounded-xl border border-rose-200 shadow-sm p-5">
@@ -57,22 +58,51 @@ export default function DeleteAccountCard() {
           <p className="text-sm text-slate-700 mb-2">
             Pour confirmer, tapez <strong>SUPPRIMER</strong> ci-dessous :
           </p>
+          <label className="sr-only" htmlFor="confirmation-suppression">
+            Tapez SUPPRIMER pour confirmer
+          </label>
           <input
+            id="confirmation-suppression"
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value)}
             placeholder="SUPPRIMER"
             className="w-full max-w-xs rounded-lg border border-slate-300 py-2 px-3 text-sm outline-none focus:border-rose-400 mb-3"
           />
+
+          {/* Le mot recopié est un garde-fou d'attention, pas une preuve
+              d'identité : une session laissée ouverte suffirait. Le mot de
+              passe est redemandé, comme pour le changer. */}
+          <label
+            htmlFor="mot-de-passe-suppression"
+            className="block text-sm text-slate-700 mb-1"
+          >
+            Puis votre mot de passe :
+          </label>
+          <input
+            id="mot-de-passe-suppression"
+            type="password"
+            autoComplete="current-password"
+            value={motDePasse}
+            onChange={(e) => setMotDePasse(e.target.value)}
+            className="w-full max-w-xs rounded-lg border border-slate-300 py-2 px-3 text-sm outline-none focus:border-rose-400 mb-3"
+          />
           <div className="flex items-center gap-2">
             <button
               type="button"
-              disabled={confirmText.trim() !== "SUPPRIMER" || pending}
+              disabled={
+                confirmText.trim() !== "SUPPRIMER" ||
+                motDePasse === "" ||
+                pending
+              }
               onClick={() => {
                 setErreur(null);
                 start(async () => {
                   // En cas de succès, l'action redirige et ne rend jamais la
                   // main. Ce qui revient ici est donc toujours un échec.
-                  const r = await deleteAccount();
+                  const fd = new FormData();
+                  fd.set("mot_de_passe", motDePasse);
+                  const r = await deleteAccount(fd);
+                  setMotDePasse("");
                   setErreur(r.error);
                 });
               }}
@@ -97,9 +127,6 @@ export default function DeleteAccountCard() {
               className="mt-3 rounded-lg border border-rose-300 bg-white px-3 py-2 text-sm text-rose-800"
             >
               {erreur}
-              <span className="block text-xs text-rose-600 mt-1">
-                Aucune de vos données n&apos;a été supprimée.
-              </span>
             </p>
           )}
         </div>

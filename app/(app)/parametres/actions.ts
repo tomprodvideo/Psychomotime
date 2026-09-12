@@ -160,6 +160,30 @@ export interface SuppressionCompteResultat {
 }
 
 /**
+ * Relève tous les fichiers d'un dossier de stockage, page par page.
+ *
+ * `list` rend au plus `limit` entrées. S'en tenir à un seul appel laisserait
+ * des fichiers derrière — silencieusement, et sans plus rien en base pour les
+ * retrouver une fois le compte supprimé.
+ */
+async function listerTousLesFichiers(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  dossier: string,
+): Promise<string[]> {
+  const chemins: string[] = [];
+  const parPage = 100;
+  for (let page = 0; page < 200; page += 1) {
+    const { data, error } = await supabase.storage
+      .from("documents")
+      .list(dossier, { limit: parPage, offset: page * parPage });
+    if (error || !data) break;
+    chemins.push(...data.map((f) => `${dossier}/${f.name}`));
+    if (data.length < parPage) break;
+  }
+  return chemins;
+}
+
+/**
  * Supprime le compte appelant et ce qui n'appartient qu'à lui.
  *
  * CE QUI N'ALLAIT PAS, ET C'ÉTAIT GRAVE. Cette action supprimait D'ABORD les
@@ -173,27 +197,44 @@ export interface SuppressionCompteResultat {
  * personne était déconnectée en croyant son compte supprimé ; il ne l'était
  * pas, et ses documents, eux, l'étaient.
  *
- * L'ORDRE EST DÉSORMAIS L'INVERSE. On supprime le compte d'abord : c'est
- * l'opération qui peut être refusée. Les fichiers ne partent qu'ensuite, une
- * fois qu'il n'y a plus de retour possible.
+ * TROIS RÈGLES TENUES ICI.
  *
- * Rend une erreur, ou ne rend jamais : en cas de succès, `redirect` interrompt
- * l'exécution.
+ * 1. **Le mot de passe est redemandé.** Une suppression définitive ne doit pas
+ *    pouvoir partir d'une session laissée ouverte, ni d'un code qui s'exécute
+ *    dans la page. La saisie « SUPPRIMER » est un garde-fou d'attention, pas
+ *    une preuve d'identité. Le motif existait déjà pour le changement de mot
+ *    de passe, et son commentaire annonçait celui-ci.
+ * 2. **Le compte d'abord, les fichiers ensuite.** C'est l'appel au compte qui
+ *    peut être refusé ; rien d'irréversible ne doit le précéder.
+ * 3. **Ce qui échoue se dit.** Y compris un reliquat de fichiers : une fois le
+ *    compte parti, plus rien en base ne permet de le retrouver.
  */
-export async function deleteAccount(): Promise<SuppressionCompteResultat> {
+export async function deleteAccount(
+  formData: FormData,
+): Promise<SuppressionCompteResultat> {
+  const session = await requireUser();
+  if (!session.ok) return { ok: false, error: session.error };
+
+  const motDePasse = String(formData.get("mot_de_passe") ?? "");
+  if (!motDePasse) {
+    return {
+      ok: false,
+      error: "Saisissez votre mot de passe pour confirmer la suppression.",
+    };
+  }
+
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return { ok: false, error: "Votre session a expiré. Reconnectez-vous." };
+  const { error: reauth } = await supabase.auth.signInWithPassword({
+    email: session.value.email ?? "",
+    password: motDePasse,
+  });
+  if (reauth) {
+    return { ok: false, error: "Le mot de passe est incorrect. Rien n'a été supprimé." };
   }
 
   // Les fichiers sont RELEVÉS avant, pour pouvoir les retirer ensuite — mais
   // aucun n'est supprimé tant que le compte ne l'est pas.
-  const { data: fichiers } = await supabase.storage
-    .from("documents")
-    .list(user.id, { limit: 1000 });
+  const fichiers = await listerTousLesFichiers(supabase, session.value.id);
 
   const { error } = await supabase.rpc("delete_my_account");
   if (error) {
@@ -207,10 +248,29 @@ export async function deleteAccount(): Promise<SuppressionCompteResultat> {
 
   // Le compte est parti. Les fichiers suivent : la politique du stockage lit
   // le jeton, qui reste valide le temps de cette requête.
-  if (fichiers && fichiers.length > 0) {
-    await supabase.storage
+  if (fichiers.length > 0) {
+    const { data: retires, error: erreurFichiers } = await supabase.storage
       .from("documents")
-      .remove(fichiers.map((f) => `${user.id}/${f.name}`));
+      .remove(fichiers);
+
+    // Un refus côté stockage rend un tableau vide SANS erreur : on compare
+    // donc ce qui a été retiré à ce qui devait l'être.
+    const manquants = fichiers.length - (retires?.length ?? 0);
+    if (erreurFichiers || manquants > 0) {
+      console.error(
+        "[compte] documents non supprimés après effacement du compte :",
+        manquants,
+        erreurFichiers?.message ?? "",
+      );
+      await supabase.auth.signOut();
+      return {
+        ok: false,
+        error:
+          `Votre compte et vos données ont bien été supprimés, mais ${manquants} fichier(s) ` +
+          "n'ont pas pu être retirés du stockage. Signalez-le : ils ne sont plus " +
+          "accessibles depuis l'application, et leur suppression doit être faite à la main.",
+      };
+    }
   }
 
   await supabase.auth.signOut();

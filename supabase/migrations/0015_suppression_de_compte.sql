@@ -43,7 +43,22 @@
 --     [VALIDATION HUMAINE — DPO] La durée de conservation de ce journal reste
 --     à trancher, comme toutes les autres.
 --   · Elle ne supprime aucun fichier du stockage : cela ne se fait pas en SQL.
---     L'appelant s'en charge AVANT, et c'est signalé côté application.
+--     L'appelant s'en charge APRÈS, une fois qu'il n'y a plus de retour
+--     possible, et il compare ce qui a été retiré à ce qui devait l'être.
+--
+--  ── UNE INCOHÉRENCE TRANSITOIRE, CONSIGNÉE ────────────────────────────────
+--
+--  Les tables de la v1 encore en service — `settings`, `invoices`, `bilans`,
+--  `documents`, `expenses` — sont clés sur `user_id` avec cascade. Supprimer
+--  `auth.users` les emporte donc TOUJOURS, y compris quand le cabinet, lui,
+--  survit parce qu'il est partagé. L'écran annonce alors « seule votre
+--  appartenance est retirée », ce qui est vrai du modèle cible et faux de ces
+--  tables-là.
+--
+--  Sans effet aujourd'hui : aucun écran ne permet d'ajouter un membre à un
+--  cabinet, donc le cas ne peut pas se produire. Il devient bloquant le jour
+--  où le partage s'ouvre, et il disparaît quand les tables v1 disparaissent,
+--  au lot des transmissions. [A-59]
 -- ============================================================================
 
 -- ---------------------------------------------------------------------------
@@ -113,6 +128,9 @@ declare
   v_quittes integer := 0;
   v_dossiers integer := 0;
   v_pieces integer := 0;
+  v_d integer;
+  v_p integer;
+  v_lignes integer;
 begin
   if v_user is null then
     raise exception 'Aucune session.' using errcode = 'insufficient_privilege';
@@ -128,8 +146,13 @@ begin
       join public.practices p on p.id = m.practice_id
      where m.user_id = v_user
   loop
+    /* SEULS LES MEMBRES ACTIFS COMPTENT. Une invitation jamais acceptée ou une
+     * appartenance révoquée n'est pas quelqu'un qui travaille dans ce cabinet.
+     * Les compter bloquait l'effacement définitivement — et le message
+     * demandait alors de retirer des membres par un écran qui n'existe pas. */
     if (select count(*) from public.practice_members m2
-         where m2.practice_id = c.practice_id) > 1
+         where m2.practice_id = c.practice_id
+           and m2.status = 'active') > 1
        and (select count(*) from public.practice_members m3
              where m3.practice_id = c.practice_id
                and m3.user_id <> v_user
@@ -145,16 +168,17 @@ begin
   for c in
     select m.practice_id, p.name,
            (select count(*) from public.practice_members m2
-             where m2.practice_id = m.practice_id) as membres
+             where m2.practice_id = m.practice_id
+               and m2.status = 'active') as membres_actifs
       from public.practice_members m
       join public.practices p on p.id = m.practice_id
      where m.user_id = v_user
   loop
-    if c.membres = 1 then
-      -- Le compte est seul : le cabinet n'appartient qu'à lui.
-      select count(*) into v_dossiers from public.patients
+    if c.membres_actifs <= 1 then
+      -- Le compte est le seul à travailler ici : le cabinet n'est qu'à lui.
+      select count(*) into v_d from public.patients
        where practice_id = c.practice_id;
-      select count(*) into v_pieces from public.billing_documents
+      select count(*) into v_p from public.billing_documents
        where practice_id = c.practice_id;
 
       -- La trace est posée AVANT, pour qu'elle survive à la suppression :
@@ -163,19 +187,54 @@ begin
         (practice_id, actor_user_id, action, subject_type, subject_id, metadata)
       values (c.practice_id, v_user, 'practice.delete_with_account',
               'practice', c.practice_id,
-              jsonb_build_object('dossiers', v_dossiers, 'pieces', v_pieces));
+              jsonb_build_object('dossiers', v_d, 'pieces', v_p));
 
       delete from public.practices where id = c.practice_id;
+
+      /* ON VÉRIFIE CE QU'ON VIENT DE FAIRE, et ce n'est pas une précaution
+       * décorative. Toutes les tables sont en `force row level security`, et
+       * `practices` n'a aucune politique DELETE : si le propriétaire de cette
+       * fonction venait à perdre l'attribut qui lui fait contourner la RLS, le
+       * `delete` serait FILTRÉ — zéro ligne, aucune erreur. La fonction
+       * annoncerait une suppression qui n'a pas eu lieu, les fichiers du
+       * stockage seraient détruits, et le cabinet resterait : le défaut
+       * d'origine sous une autre cause.
+       *
+       * C'est la doctrine déjà écrite dans `lib/auth/guard.ts` : zéro ligne
+       * affectée EST un échec. Elle vaut aussi en base. */
+      get diagnostics v_lignes = row_count;
+      if v_lignes = 0 then
+        raise exception
+          'La suppression du cabinet « % » n''a affecté aucune ligne. Rien n''a été supprimé.',
+          c.name using errcode = 'internal_error';
+      end if;
+
       v_supprimes := v_supprimes + 1;
+      -- Les compteurs s'ACCUMULENT : écrasés à chaque tour, ils ne rendaient
+      -- que le dernier cabinet parcouru.
+      v_dossiers := v_dossiers + v_d;
+      v_pieces := v_pieces + v_p;
     else
       -- D'autres praticiens travaillent ici : on ne retire que l'appartenance.
       delete from public.practice_members
        where practice_id = c.practice_id and user_id = v_user;
+      get diagnostics v_lignes = row_count;
+      if v_lignes = 0 then
+        raise exception
+          'Le retrait de votre appartenance au cabinet « % » n''a affecté aucune ligne.',
+          c.name using errcode = 'internal_error';
+      end if;
       v_quittes := v_quittes + 1;
     end if;
   end loop;
 
   delete from auth.users where id = v_user;
+  get diagnostics v_lignes = row_count;
+  if v_lignes = 0 then
+    raise exception
+      'Le compte n''a pas pu être supprimé. Aucune de vos données n''a été supprimée.'
+      using errcode = 'internal_error';
+  end if;
 
   return jsonb_build_object(
     'cabinets_supprimes', v_supprimes,

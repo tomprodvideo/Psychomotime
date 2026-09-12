@@ -158,10 +158,26 @@ select tests.authenticate_as(:beta_proprio::uuid);
 do $$
 declare
   v_cab uuid := 'b1111111-1111-4111-8111-111111111111';
+  v_message text;
 begin
-  perform tests.assert_fails(
-    'select public.delete_my_account()',
-    'Le dernier propriétaire d''un cabinet partagé ne doit pas pouvoir supprimer son compte.');
+  /* `assert_fails` accepte N'IMPORTE QUELLE erreur : le déclencheur du dernier
+   * propriétaire lève de toute façon, et ce scénario passait donc même sans le
+   * premier passage de la fonction. Or c'est précisément ce passage qui produit
+   * le message ACTIONNABLE, et ce message s'affiche tel quel à l'utilisatrice.
+   * On vérifie donc le message, pas seulement l'échec. */
+  begin
+    perform public.delete_my_account();
+    perform tests.assert(false,
+      'Le dernier propriétaire d''un cabinet partagé ne doit pas pouvoir supprimer son compte.');
+  exception
+    when assert_failure then raise;
+    when others then
+      get stacked diagnostics v_message = message_text;
+  end;
+  perform tests.assert(v_message like '%dernier propriétaire%',
+    'Le refus doit venir du contrôle de la fonction, pas du déclencheur : ' || coalesce(v_message, '(aucun)'));
+  perform tests.assert(v_message like '%Transférez la propriété%',
+    'Le refus doit dire quoi faire ensuite.');
 
   -- ET RIEN N'A BOUGÉ. Un refus qui laisserait des dégâts derrière lui serait
   -- pire qu'une suppression : la moitié d'un effacement n'est demandée par
@@ -192,6 +208,140 @@ begin
     'select public.delete_my_account()',
     'Un visiteur anonyme ne doit pas pouvoir appeler la suppression de compte.');
   reset role;
+end
+$$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+--  5. Une panne en cours de route ne laisse pas une suppression à moitié faite
+-- ---------------------------------------------------------------------------
+--  La fonction parcourt les cabinets un par un. Si le deuxième échoue après
+--  que le premier a été détruit, l'appelant se retrouverait avec la moitié de
+--  ses données effacées et son compte toujours là — un état que personne n'a
+--  demandé et dont on ne peut pas revenir.
+--
+--  Une fonction PL/pgSQL s'exécute dans la transaction de son appelant, et
+--  PostgREST en ouvre une par appel : l'exception doit donc tout annuler. Ce
+--  scénario le DÉMONTRE au lieu de s'en remettre au raisonnement.
+begin;
+do $$
+declare
+  v_a bigint; v_c bigint; v_u bigint;
+begin
+  -- Un second cabinet, dont le même compte est aussi le seul membre.
+  insert into public.practices (id, name)
+  values ('c1111111-1111-4111-8111-111111111111', 'Cabinet jetable (fictif)');
+  insert into public.practice_members (practice_id, user_id, role, status)
+  values ('c1111111-1111-4111-8111-111111111111',
+          'a0000000-0000-4000-8000-000000000001', 'owner', 'active');
+end
+$$;
+
+-- Une panne provoquée sur la suppression du SECOND cabinet.
+create or replace function pg_temp.panne_simulee() returns trigger
+language plpgsql as $$
+begin
+  if old.name like 'Cabinet jetable%' then
+    raise exception 'panne simulée en cours de suppression';
+  end if;
+  return old;
+end
+$$;
+create trigger panne_simulee before delete on public.practices
+  for each row execute function pg_temp.panne_simulee();
+
+select tests.authenticate_as('a0000000-0000-4000-8000-000000000001'::uuid);
+do $$
+begin
+  perform tests.assert_fails(
+    'select public.delete_my_account()',
+    'Une panne en cours de suppression doit faire échouer l''ensemble.');
+  reset role;
+
+  -- CE QUI COMPTE : le premier cabinet a-t-il été emporté au passage ?
+  perform tests.assert_rows(
+    'select 1 from public.practices where id = ''a1111111-1111-4111-8111-111111111111''',
+    1, 'Le premier cabinet ne doit PAS avoir été supprimé.');
+  perform tests.assert_rows(
+    'select 1 from public.practices where id = ''c1111111-1111-4111-8111-111111111111''',
+    1, 'Le second cabinet non plus.');
+  perform tests.assert_rows(
+    'select 1 from auth.users where id = ''a0000000-0000-4000-8000-000000000001''',
+    1, 'Et le compte doit être intact : une suppression à moitié faite n''est demandée par personne.');
+end
+$$;
+drop trigger panne_simulee on public.practices;
+rollback;
+
+-- ---------------------------------------------------------------------------
+--  6. Une appartenance révoquée ne bloque pas l'effacement
+-- ---------------------------------------------------------------------------
+--  Le premier jet comptait TOUS les membres. Une invitation jamais acceptée ou
+--  une appartenance révoquée suffisait donc à rendre la suppression impossible
+--  — et le message demandait de retirer ces membres par un écran qui n'existe
+--  pas. Un effacement qu'on ne peut pas obtenir n'est pas un effacement.
+begin;
+do $$
+begin
+  insert into public.practice_members (practice_id, user_id, role, status)
+  values ('a1111111-1111-4111-8111-111111111111',
+          'b0000000-0000-4000-8000-000000000002', 'assistant', 'revoked');
+end
+$$;
+select tests.authenticate_as('a0000000-0000-4000-8000-000000000001'::uuid);
+do $$
+declare
+  v_resultat jsonb;
+begin
+  v_resultat := public.delete_my_account();
+  perform tests.assert_equals((v_resultat ->> 'cabinets_supprimes')::integer, 1,
+    'Un membre révoqué ne doit pas empêcher la suppression du cabinet.');
+  reset role;
+  perform tests.assert_rows(
+    'select 1 from public.practices where id = ''a1111111-1111-4111-8111-111111111111''',
+    0, 'Le cabinet doit bien avoir été supprimé.');
+end
+$$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+--  7. Un compte présent dans plusieurs cabinets : les comptes rendus s'additionnent
+-- ---------------------------------------------------------------------------
+--  Les compteurs étaient écrasés à chaque tour de boucle : le compte rendu ne
+--  portait que le dernier cabinet parcouru. C'est ce compte rendu qui justifie
+--  que la fonction rende autre chose que `void`.
+begin;
+do $$
+begin
+  insert into public.practices (id, name)
+  values ('c1111111-1111-4111-8111-111111111111', 'Second cabinet (fictif)');
+  insert into public.practice_members (practice_id, user_id, role, status)
+  values ('c1111111-1111-4111-8111-111111111111',
+          'a0000000-0000-4000-8000-000000000001', 'owner', 'active');
+end
+$$;
+select tests.authenticate_as('a0000000-0000-4000-8000-000000000001'::uuid);
+do $$
+declare
+  v_attendu bigint;
+  v_resultat jsonb;
+begin
+  select count(*) into v_attendu from public.patients
+   where practice_id = 'a1111111-1111-4111-8111-111111111111';
+
+  v_resultat := public.delete_my_account();
+
+  perform tests.assert_equals((v_resultat ->> 'cabinets_supprimes')::integer, 2,
+    'Les deux cabinets dont le compte est seul membre doivent partir.');
+  perform tests.assert_equals(
+    (v_resultat ->> 'dossiers_supprimes')::bigint, v_attendu,
+    'Le nombre de dossiers doit être la SOMME des cabinets, pas celui du dernier.');
+  reset role;
+  perform tests.assert_rows(
+    'select 1 from public.practices
+      where id in (''a1111111-1111-4111-8111-111111111111'',
+                   ''c1111111-1111-4111-8111-111111111111'')',
+    0, 'Aucun des deux cabinets ne doit subsister.');
 end
 $$;
 rollback;
