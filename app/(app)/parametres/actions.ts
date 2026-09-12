@@ -154,25 +154,65 @@ export async function updateSettings(
 }
 
 /** Suppression définitive de son propre compte et de toutes ses données. */
-export async function deleteAccount() {
+export interface SuppressionCompteResultat {
+  ok: false;
+  error: string;
+}
+
+/**
+ * Supprime le compte appelant et ce qui n'appartient qu'à lui.
+ *
+ * CE QUI N'ALLAIT PAS, ET C'ÉTAIT GRAVE. Cette action supprimait D'ABORD les
+ * fichiers du stockage, appelait ensuite `delete_my_account`, IGNORAIT son
+ * résultat, puis déconnectait et redirigeait quoi qu'il arrive.
+ *
+ * Or depuis que le locataire est le cabinet, cet appel ÉCHOUAIT pour toute
+ * praticienne seule : supprimer la ligne `auth.users` retire son appartenance,
+ * le garde du dernier propriétaire refuse, et l'exception remontait dans le
+ * vide. La partie irréversible — les fichiers — avait déjà été faite. La
+ * personne était déconnectée en croyant son compte supprimé ; il ne l'était
+ * pas, et ses documents, eux, l'étaient.
+ *
+ * L'ORDRE EST DÉSORMAIS L'INVERSE. On supprime le compte d'abord : c'est
+ * l'opération qui peut être refusée. Les fichiers ne partent qu'ensuite, une
+ * fois qu'il n'y a plus de retour possible.
+ *
+ * Rend une erreur, ou ne rend jamais : en cas de succès, `redirect` interrompt
+ * l'exécution.
+ */
+export async function deleteAccount(): Promise<SuppressionCompteResultat> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return;
-
-  // Nettoyage des fichiers stockés (le cascade DB ne couvre pas le storage).
-  const { data: files } = await supabase.storage
-    .from("documents")
-    .list(user.id, { limit: 1000 });
-  if (files && files.length) {
-    await supabase.storage
-      .from("documents")
-      .remove(files.map((f) => `${user.id}/${f.name}`));
+  if (!user) {
+    return { ok: false, error: "Votre session a expiré. Reconnectez-vous." };
   }
 
-  // Supprime le compte (cascade sur toutes les tables liées).
-  await supabase.rpc("delete_my_account");
+  // Les fichiers sont RELEVÉS avant, pour pouvoir les retirer ensuite — mais
+  // aucun n'est supprimé tant que le compte ne l'est pas.
+  const { data: fichiers } = await supabase.storage
+    .from("documents")
+    .list(user.id, { limit: 1000 });
+
+  const { error } = await supabase.rpc("delete_my_account");
+  if (error) {
+    return {
+      ok: false,
+      error:
+        error.message?.trim() ||
+        "La suppression a échoué. Aucune de vos données n'a été supprimée.",
+    };
+  }
+
+  // Le compte est parti. Les fichiers suivent : la politique du stockage lit
+  // le jeton, qui reste valide le temps de cette requête.
+  if (fichiers && fichiers.length > 0) {
+    await supabase.storage
+      .from("documents")
+      .remove(fichiers.map((f) => `${user.id}/${f.name}`));
+  }
+
   await supabase.auth.signOut();
   redirect("/login");
 }

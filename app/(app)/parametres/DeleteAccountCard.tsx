@@ -4,10 +4,22 @@ import { useState, useTransition } from "react";
 import { AlertTriangle } from "lucide-react";
 import { deleteAccount } from "./actions";
 
+/**
+ * Suppression de son propre compte.
+ *
+ * CE QUI EST DIT ICI DOIT ÊTRE CE QUI SE PASSE. La version précédente
+ * promettait que « toutes vos données seront supprimées » alors que l'appel
+ * échouait silencieusement pour toute praticienne seule : elle était
+ * déconnectée en croyant son compte supprimé, et il ne l'était pas.
+ *
+ * Une promesse d'effacement non tenue est pire qu'un effacement impossible :
+ * la personne croit l'avoir obtenu et ne le redemande jamais.
+ */
 export default function DeleteAccountCard() {
   const [open, setOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [pending, start] = useTransition();
+  const [erreur, setErreur] = useState<string | null>(null);
 
   return (
     <div className="bg-white rounded-xl border border-rose-200 shadow-sm p-5">
@@ -16,9 +28,20 @@ export default function DeleteAccountCard() {
         Supprimer mon compte
       </h2>
       <p className="text-sm text-slate-500 mt-1">
-        Cette action est <strong>définitive</strong>. Toutes vos données
-        (patients, bilans, factures, documents…) seront supprimées et ne
-        pourront pas être récupérées.
+        Cette action est <strong>définitive</strong>. Votre cabinet et tout ce
+        qu&apos;il contient seront supprimés : dossiers patients, entourage,
+        rendez-vous, bilans, factures, devis, avoirs, règlements, charges et
+        documents. Rien ne pourra être récupéré.
+      </p>
+      <p className="text-sm text-slate-500 mt-2">
+        Vos pièces comptables partent avec le reste.{" "}
+        <strong>Exportez-les avant si vous en avez besoin</strong> — depuis
+        Comptabilité, bouton « Exporter ».
+      </p>
+      <p className="text-xs text-slate-400 mt-2">
+        Si d&apos;autres praticiens partagent votre cabinet, il n&apos;est pas
+        supprimé : seule votre appartenance est retirée, et leurs données
+        restent les leurs.
       </p>
 
       {!open ? (
@@ -44,7 +67,15 @@ export default function DeleteAccountCard() {
             <button
               type="button"
               disabled={confirmText.trim() !== "SUPPRIMER" || pending}
-              onClick={() => start(() => deleteAccount())}
+              onClick={() => {
+                setErreur(null);
+                start(async () => {
+                  // En cas de succès, l'action redirige et ne rend jamais la
+                  // main. Ce qui revient ici est donc toujours un échec.
+                  const r = await deleteAccount();
+                  setErreur(r.error);
+                });
+              }}
               className="text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 px-4 py-2 rounded-lg disabled:opacity-50"
             >
               {pending ? "Suppression…" : "Confirmer la suppression définitive"}
@@ -60,6 +91,17 @@ export default function DeleteAccountCard() {
               Annuler
             </button>
           </div>
+          {erreur && (
+            <p
+              role="alert"
+              className="mt-3 rounded-lg border border-rose-300 bg-white px-3 py-2 text-sm text-rose-800"
+            >
+              {erreur}
+              <span className="block text-xs text-rose-600 mt-1">
+                Aucune de vos données n&apos;a été supprimée.
+              </span>
+            </p>
+          )}
         </div>
       )}
     </div>
