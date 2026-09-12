@@ -1,13 +1,13 @@
 /**
- * Origine publique du site, pour les liens absolus envoyés par e-mail.
+ * L'ADRESSE PUBLIQUE DU SITE, POUR LES LIENS ENVOYÉS PAR COURRIEL.
  *
- * ── POURQUOI CE FICHIER EST DEVENU MÉFIANT ────────────────────────────────
+ * ── POURQUOI CETTE RÈGLE EST MÉFIANTE ─────────────────────────────────────
  *
- * Il déduisait l'origine de `x-forwarded-host`, sans vérification. C'est un
- * EN-TÊTE DE REQUÊTE : sa valeur est proposée par qui appelle. Les liens
- * construits ici partent dans des e-mails, et l'un d'eux — la mise à
+ * Elle déduisait l'adresse de `x-forwarded-host`, sans vérification. C'est un
+ * EN-TÊTE DE REQUÊTE : sa valeur est proposée par qui appelle. Or les liens
+ * construits ici partent dans des courriels, et l'un d'eux — la mise à
  * disposition d'un document — porte le jeton de consultation EN CLAIR, parce
- * que le destinataire n'a pas de compte et que le lien est la clé.
+ * que le destinataire n'a pas de compte et que le lien EST la clé.
  *
  * Un en-tête accepté sans contrôle suffisait donc, en théorie, à faire
  * fabriquer par le produit lui-même un courriel dont le lien — jeton compris —
@@ -17,18 +17,36 @@
  * L'hébergeur réécrit normalement cet en-tête. « Normalement » n'est pas une
  * garantie qu'on veut voir porter un jeton d'accès à une pièce de santé.
  *
- * ── CE QU'ON FAIT À LA PLACE ──────────────────────────────────────────────
+ * ── LA RÈGLE ──────────────────────────────────────────────────────────────
  *
  *  1. `SITE_ORIGIN`, si elle est posée, fait foi. Une variable d'environnement
- *     n'est pas proposée par l'appelant. Elle n'est PAS préfixée `NEXT_PUBLIC_`
- *     — elle n'a rien à faire dans le navigateur.
- *  2. Sinon, l'hôte de la requête n'est retenu QUE s'il figure dans la liste
- *     des hôtes attendus : ceux que la plateforme déclare elle-même, et le
- *     poste de développement.
- *  3. Sinon, on refuse. Émettre un lien vers un hôte inconnu, c'est le cas
- *     qu'on cherche précisément à empêcher ; échouer bruyamment vaut mieux
- *     qu'envoyer un jeton à une adresse qu'on n'a pas reconnue.
+ *     n'est pas proposée par l'appelant. Elle n'est PAS préfixée
+ *     `NEXT_PUBLIC_` : elle n'a rien à faire dans le navigateur.
+ *  2. Sinon, l'hôte de la requête n'est retenu QUE s'il est attendu.
+ *  3. Sinon, l'adresse canonique du produit — jamais celle de la requête.
  */
+
+/**
+ * Les adresses publiques sur lesquelles ce produit est servi. La première est
+ * l'adresse canonique : c'est elle qu'on emploie quand la requête arrive d'un
+ * hôte qu'on ne reconnaît pas.
+ *
+ * Ce ne sont pas des secrets — ce sont les adresses qu'on lit dans la barre
+ * d'adresse. Les inscrire ici sert à ce qu'un lien reparte sur le domaine que
+ * la personne utilise vraiment, plutôt que de la renvoyer vers une autre
+ * adresse du même site : recevoir un lien vers un domaine inattendu, c'est
+ * exactement ce à quoi ressemble un courriel de contrefaçon, au moment précis
+ * où l'on hésite déjà à cliquer.
+ *
+ * Ajouter un domaine au produit, c'est l'ajouter ici — les prévisualisations,
+ * elles, sont couvertes par les variables de la plateforme. `SITE_ORIGIN`
+ * reste le moyen de trancher sans toucher au code.
+ */
+const HOTES_DU_PRODUIT = [
+  "psychomotime.com",
+  "www.psychomotime.com",
+  "psychomotime.vercel.app",
+] as const;
 
 /** Réduit une valeur d'environnement — avec ou sans protocole — à un hôte. */
 function hoteDe(valeur: string | undefined): string | null {
@@ -65,26 +83,26 @@ export function origineAutorisee(
   }
 
   const propose = (hote ?? "").trim().toLowerCase();
-  const attendus = [
+
+  // 2. L'hôte proposé n'est retenu que s'il est attendu. La comparaison est
+  //    une ÉGALITÉ : un sous-domaine d'un hôte attendu n'est pas cet hôte, et
+  //    un nom qui le contient encore moins.
+  const attendus: string[] = [
+    ...HOTES_DU_PRODUIT,
     hoteDe(env.VERCEL_PROJECT_PRODUCTION_URL),
     hoteDe(env.VERCEL_URL),
   ].filter((h): h is string => h !== null);
 
-  // 2. L'hôte proposé n'est retenu que s'il est attendu.
-  if (propose && (attendus.includes(propose) || estPosteLocal(propose))) {
-    // Le protocole suit l'hôte, il ne se déduit pas d'un en-tête : en clair en
-    // local, chiffré partout ailleurs. Un `http` proposé par la requête ne doit
-    // pas pouvoir dégrader un lien qui porte un jeton.
-    if (estPosteLocal(propose)) {
-      return `${protocole === "https" ? "https" : "http"}://${propose}`;
-    }
-    return `https://${propose}`;
+  if (propose && attendus.includes(propose)) return `https://${propose}`;
+
+  if (propose && estPosteLocal(propose)) {
+    /* Le protocole ne suit l'en-tête QUE sur le poste de développement. Un
+     * `x-forwarded-proto: http` proposé par une requête ne doit pas pouvoir
+     * faire partir en clair un lien qui porte un jeton. */
+    return `${protocole === "https" ? "https" : "http"}://${propose}`;
   }
 
-  // 3. À défaut, l'hôte que la plateforme déclare — jamais celui de la requête.
-  if (attendus.length > 0) return `https://${attendus[0]}`;
-
-  throw new Error(
-    "L'adresse publique du site n'a pas pu être établie. Renseignez la variable d'environnement SITE_ORIGIN (par exemple https://exemple.fr) : sans elle, un lien envoyé par courriel pourrait pointer vers un hôte inattendu.",
-  );
+  // 3. À défaut, l'adresse canonique. Le lien reste valide — tous ces domaines
+  //    servent le même produit — et il ne part jamais vers un hôte proposé.
+  return `https://${HOTES_DU_PRODUIT[0]}`;
 }
