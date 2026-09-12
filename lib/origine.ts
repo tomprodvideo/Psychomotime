@@ -51,12 +51,25 @@ const HOTES_DU_PRODUIT = [
   "psychomotime.vercel.app",
 ] as const;
 
-/** Réduit une valeur d'environnement — avec ou sans protocole — à un hôte. */
+/**
+ * Réduit une valeur d'environnement — avec ou sans protocole — à un hôte.
+ *
+ * LE PROTOCOLE EST VÉRIFIÉ, et pas par excès de zèle : `new URL()` accepte
+ * n'importe quel schéma, si bien que `javascript://cabinet-de-lattaquant.test`
+ * rendait l'hôte `cabinet-de-lattaquant.test` — et cette valeur-là devient
+ * l'adresse d'un lien qui porte un jeton d'accès à une pièce de santé. C'est
+ * l'entrée de plus haut privilège du module : une faute de frappe dans une
+ * variable d'environnement ne doit pas produire un lien vers un hôte tiers.
+ */
 function hoteDe(valeur: string | undefined): string | null {
   const v = (valeur ?? "").trim();
   if (!v) return null;
   try {
-    return new URL(v.includes("://") ? v : `https://${v}`).host.toLowerCase();
+    const u = new URL(v.includes("://") ? v : `https://${v}`);
+    if (u.protocol !== "https:" && u.protocol !== "http:") return null;
+    // Ni identifiants, ni chemin, ni requête : une origine, rien de plus.
+    if (u.username !== "" || u.password !== "") return null;
+    return u.host.toLowerCase();
   } catch {
     return null;
   }

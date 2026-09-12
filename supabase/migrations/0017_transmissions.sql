@@ -96,7 +96,8 @@ create table public.shared_links (
 
   /* LA VALIDITÉ EST BORNÉE EN BASE, PAS SEULEMENT DANS L'APPLICATION.
    *
-   * L'interface propose 7, 30 ou 90 jours. Mais la clé anonyme est publique :
+   * L'interface propose 7, 30, 90 ou 365 jours. Mais la clé anonyme est
+   * publique :
    * qui possède une session peut écrire directement dans l'API et poser
    * l'échéance qu'il veut. Un lien à dix ans, c'est un document de santé
    * accessible sans compte pendant dix ans, à une adresse que personne ne

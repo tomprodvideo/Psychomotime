@@ -70,7 +70,10 @@ export async function contexteEcriture() {
       error: "Votre rôle ne permet pas de modifier les pièces comptables.",
     };
   }
-  return { ok: true as const, practice };
+  /* L'identifiant du compte appelant, pour les écritures qui doivent dire QUI
+   * a agi — une révocation de lien, par exemple. Il vient de la session
+   * vérifiée côté serveur, jamais d'un champ de formulaire. */
+  return { ok: true as const, practice, userId: acces.value.user.id };
 }
 
 /**

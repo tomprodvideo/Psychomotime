@@ -692,3 +692,290 @@ begin
 end
 $$;
 rollback;
+
+-- ---------------------------------------------------------------------------
+--  14. LE BANDEAU D'ANNULATION NE PEUT PLUS MENTIR
+-- ---------------------------------------------------------------------------
+--  `status` est la SEULE entrée du bandeau « Cette facture a été annulée » que
+--  voit le destinataire d'un lien. Il n'était mentionné par aucune des deux
+--  gardes d'immuabilité. Démontré avant correction, session ordinaire :
+--
+--    emis -> annule_par_avoir : ACCEPTÉ, sans qu'aucun avoir existe
+--    annule_par_avoir -> emis : ACCEPTÉ
+--
+--  Une facture valide arrivait chez une mutuelle barrée d'un bandeau
+--  d'annulation, ou une facture annulée arrivait comme si elle valait encore.
+begin;
+select tests.authenticate_as(:alpha::uuid);
+do $$
+declare
+  v_doc uuid;
+  v_jeton text := 'jeton-du-statut-opposable-0123456789ab';
+begin
+  v_doc := pg_temp.facture_partagee('a1111111-1111-4111-8111-111111111111',
+                                    'a6000000-0000-4000-8000-000000000001', v_jeton);
+
+  perform tests.assert_fails(
+    format('update public.billing_documents set status = ''annule_par_avoir''
+             where id = %L', v_doc),
+    'Une pièce ne doit pas pouvoir se déclarer annulée sans qu''un avoir existe.');
+  perform tests.assert_fails(
+    format('update public.billing_documents set status = ''remplace'' where id = %L', v_doc),
+    'Une pièce ne doit pas pouvoir se déclarer remplacée sans pièce de remplacement.');
+  perform tests.assert_fails(
+    format('update public.billing_documents set status = ''brouillon'' where id = %L', v_doc),
+    'Une pièce émise ne redevient pas un brouillon.');
+
+  -- Et ce que le destinataire voit n'a pas bougé.
+  reset role;
+  perform tests.assert_equals(
+    public.shared_document(v_jeton) ->> 'etat', 'emis',
+    'L''état servi reste celui que les faits établissent.');
+end
+$$;
+rollback;
+
+begin;
+select tests.authenticate_as(:alpha::uuid);
+do $$
+declare
+  v_doc uuid;
+  v_avoir uuid;
+  v_jeton text := 'jeton-annulation-veritable-0123456789a';
+begin
+  v_doc := pg_temp.facture_partagee('a1111111-1111-4111-8111-111111111111',
+                                    'a6000000-0000-4000-8000-000000000001', v_jeton);
+
+  /* UN VRAI AVOIR, LUI, FAIT BASCULER LE STATUT. La garde vérifie un fait :
+   * elle ne doit pas empêcher le fait de se produire. */
+  -- Une pièce rectificative désigne sa cible sans équivoque : identifiant,
+  -- numéro ET date. C'est la contrainte du moteur comptable.
+  insert into public.billing_documents
+    (practice_id, kind, patient_id, payer_is_patient,
+     rectifies_id, rectifies_number, rectifies_issued_on, rectification_reason)
+  select 'a1111111-1111-4111-8111-111111111111', 'avoir',
+         'a6000000-0000-4000-8000-000000000001', true,
+         d.id, d.number, d.issued_on, 'Erreur de montant'
+    from public.billing_documents d where d.id = v_doc
+  returning id into v_avoir;
+  insert into public.billing_lines
+    (practice_id, document_id, position, label, unit_price_cents, amount_cents)
+  values ('a1111111-1111-4111-8111-111111111111', v_avoir, 1, 'Annulation', 4500, 4500);
+  perform public.issue_billing_document(v_avoir);
+
+  perform tests.assert_equals(
+    (select status from public.billing_documents where id = v_doc), 'annule_par_avoir',
+    'Un avoir émis annule bien la pièce qu''il rectifie.');
+
+  -- ET L'ANNULATION NE SE DÉFAIT PAS.
+  perform tests.assert_fails(
+    format('update public.billing_documents set status = ''emis'' where id = %L', v_doc),
+    'Une pièce annulée ne redevient pas valide.');
+
+  reset role;
+  perform tests.assert_equals(
+    public.shared_document(v_jeton) ->> 'etat', 'annule_par_avoir',
+    'Le destinataire voit l''annulation, parce qu''elle a réellement eu lieu.');
+end
+$$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+--  15. Une attestation annulée ne redevient pas émise
+-- ---------------------------------------------------------------------------
+begin;
+select tests.authenticate_as(:alpha::uuid);
+do $$
+declare
+  v_att uuid;
+  v_rdv uuid;
+begin
+  insert into public.attestations (practice_id, kind, patient_id)
+  values ('a1111111-1111-4111-8111-111111111111', 'presence',
+          'a6000000-0000-4000-8000-000000000001') returning id into v_att;
+  select appointment_id into v_rdv from public.realised_sessions
+   where patient_id = 'a6000000-0000-4000-8000-000000000001' limit 1;
+  insert into public.attestation_sessions (attestation_id, appointment_id, practice_id)
+  values (v_att, v_rdv, 'a1111111-1111-4111-8111-111111111111');
+  perform public.issue_attestation(v_att);
+
+  -- Une annulation sans motif n'apprend rien à qui a reçu le document.
+  perform tests.assert_fails(
+    format('update public.attestations set status = ''annule'' where id = %L', v_att),
+    'Une annulation d''attestation exige un motif.');
+
+  perform public.cancel_attestation(v_att, 'Erreur de période');
+  perform tests.assert_fails(
+    format('update public.attestations set status = ''emis'' where id = %L', v_att),
+    'Une attestation annulée ne redevient pas émise — elle porterait son motif d''annulation tout en se déclarant valide.');
+end
+$$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+--  16. LE CONTRAT PUBLIC D'UNE FACTURE, jeu de clés exact
+-- ---------------------------------------------------------------------------
+--  La branche attestation était épinglée ainsi ; la branche facture ne l'était
+--  que par des sentinelles de chaîne. Une mutation remplaçant le patient projeté
+--  par l'instantané brut — donc rendant son adresse — survivait à toute la
+--  suite : la fixture n'avait rien planté à cet endroit-là.
+begin;
+select tests.authenticate_as(:alpha::uuid);
+do $$
+declare
+  v_doc uuid;
+  v_jeton text := 'jeton-du-jeu-de-cles-facture-01234567';
+  v_p jsonb;
+begin
+  update public.patients
+     set address_line1 = '4 impasse des Toupies', postal_code = '00000',
+         city = 'Villefictive'
+   where id = 'a6000000-0000-4000-8000-000000000001';
+
+  /* ÉMISSION RÉELLE, pas l'instantané fabriqué par l'auxiliaire de ce fichier.
+   * C'est `issue_billing_document` qui fige l'instantané, et lui seul y met
+   * l'adresse du patient — sans quoi le contre-contrôle plus bas ne prouverait
+   * rien et le jeu de clés porterait sur une forme qui n'existe pas. */
+  insert into public.billing_documents
+    (practice_id, kind, patient_id, payer_is_patient, internal_note)
+  values ('a1111111-1111-4111-8111-111111111111', 'facture',
+          'a6000000-0000-4000-8000-000000000001', true, 'NOTEINTERNE')
+  returning id into v_doc;
+  insert into public.billing_lines
+    (practice_id, document_id, position, label, unit_price_cents, amount_cents)
+  values ('a1111111-1111-4111-8111-111111111111', v_doc, 1, 'Séance', 4500, 4500);
+  perform public.issue_billing_document(v_doc);
+  insert into public.shared_links
+    (practice_id, subject_type, subject_id, token_hash, token_hint, expires_at)
+  values ('a1111111-1111-4111-8111-111111111111', 'billing_document', v_doc,
+          encode(sha256(convert_to(v_jeton, 'UTF8')), 'hex'), 'abcd',
+          now() + interval '30 days');
+
+  reset role;
+  v_p := public.shared_document(v_jeton);
+
+  perform tests.assert_equals(
+    (select string_agg(k, ',' order by k) from jsonb_object_keys(v_p) k),
+    'acquittee_le,destinataire,echeance,emetteur,emise_le,etat,kind,lignes,'
+    || 'mention,nature,numero,patient,periode_debut,periode_fin,'
+    || 'rectification_motif,rectifie_emise_le,rectifie_numero,total_centimes',
+    'Le contrat public d''une facture est un jeu de clés arrêté.');
+
+  perform tests.assert_equals(
+    (select string_agg(k, ',' order by k)
+       from jsonb_object_keys(v_p -> 'emetteur') k),
+    'cabinet,entite,identifiants',
+    'L''émetteur servi est un jeu de clés arrêté.');
+
+  perform tests.assert_equals(
+    (select string_agg(k, ',' order by k) from jsonb_object_keys(v_p -> 'patient') k),
+    'nom',
+    'Sur une facture, le patient n''est qu''un nom — son adresse est dans l''instantané et n''en sort pas.');
+
+  perform tests.assert_equals(
+    (select string_agg(k, ',' order by k)
+       from jsonb_object_keys(v_p -> 'lignes' -> 0) k),
+    'dates,intro,libelle,montant_centimes,note,prix_unitaire_centimes,quantite,'
+    || 'rendu_dates,tarification,tva',
+    'Une ligne servie est un jeu de clés arrêté.');
+
+  -- Le contre-contrôle : sans adresse dans l'instantané, rien n'est prouvé.
+  perform tests.assert(
+    (select d.snapshot -> 'patient' ->> 'adresse' from public.billing_documents d
+      where d.id = v_doc) is not null,
+    'Sans adresse figée dans l''instantané, le contrôle précédent serait vide.');
+end
+$$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+--  17. L'entrée de la seule porte anonyme est bornée des deux côtés
+-- ---------------------------------------------------------------------------
+--  Elle ne l'était que par le bas. Mesuré : un jeton invalide de 43 caractères
+--  coûte 9,6 µs, le même de 8 Mo coûte 23,3 ms. Un facteur 2 400, offert sans
+--  compte, sur la base qui sert les dossiers.
+begin;
+select tests.authenticate_as(:alpha::uuid);
+do $$
+declare
+  v_avant bigint;
+  v_doc uuid;
+  v_long text := repeat('z', 200);
+begin
+  v_doc := pg_temp.facture_partagee('a1111111-1111-4111-8111-111111111111',
+                                    'a6000000-0000-4000-8000-000000000001',
+                                    'jeton-de-reference-borne-0123456789ab');
+  reset role;
+  select count(*) into v_avant from public.shared_link_accesses;
+  perform tests.authenticate_as('a0000000-0000-4000-8000-000000000001'::uuid);
+
+  /* LE CONTRÔLE DOIT DISCRIMINER. Un jeton démesuré et INCONNU rend `null`
+   * dans les deux cas — avec ou sans borne haute — parce qu'aucune empreinte
+   * ne lui correspond. L'affirmer ne prouverait rien : c'est le piège dans
+   * lequel une première version de ce fichier était tombée.
+   *
+   * On fabrique donc un lien dont le jeton est RÉELLEMENT trop long, et dont
+   * l'empreinte est en base. Sans la borne, il serait servi. */
+  insert into public.shared_links
+    (practice_id, subject_type, subject_id, token_hash, token_hint, expires_at)
+  values ('a1111111-1111-4111-8111-111111111111', 'billing_document', v_doc,
+          encode(sha256(convert_to(v_long, 'UTF8')), 'hex'), 'long',
+          now() + interval '30 days');
+
+  reset role;
+  perform tests.assert(public.shared_document(v_long) is null,
+    'Un jeton de 200 caractères n''est pas un jeton : il est écarté avant même qu''on calcule son empreinte.');
+  perform tests.assert(public.shared_document('court') is null,
+    'En deçà de 16 caractères non plus.');
+
+  perform tests.assert_equals(
+    (select count(*) from public.shared_link_accesses), v_avant,
+    'Une entrée écartée ne laisse aucune trace dans le journal.');
+end
+$$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+--  18. Qui a transmis, qui a retiré — et un journal que nul n'écrit à la main
+-- ---------------------------------------------------------------------------
+begin;
+select tests.authenticate_as(:alpha::uuid);
+do $$
+declare
+  v_doc uuid;
+  v_lien uuid;
+begin
+  v_doc := pg_temp.facture_partagee('a1111111-1111-4111-8111-111111111111',
+                                    'a6000000-0000-4000-8000-000000000001',
+                                    'jeton-imputabilite-0123456789abcdefg');
+  select id into v_lien from public.shared_links where subject_id = v_doc;
+
+  perform tests.assert_equals(
+    (select created_by from public.shared_links where id = v_lien),
+    'a0000000-0000-4000-8000-000000000001'::uuid,
+    'La ligne du lien dit qui a transmis le document.');
+
+  /* LA DATE DE CRÉATION NE BOUGE PAS, et c'est elle qui rend le plafond de
+   * validité opposable : la ré-ancrer à `now()` rouvrirait la fenêtre des
+   * 400 jours autant de fois qu'on veut, et un lien deviendrait perpétuel. */
+  /* `now()` ne bouge pas dans une transaction : posée telle quelle, la nouvelle
+   * valeur aurait été IDENTIQUE à l'ancienne, la garde n'aurait rien vu, et le
+   * contrôle aurait constaté un succès sans rien prouver. Une heure d'écart
+   * suffit à rendre la modification réelle, et reste dans les bornes de
+   * validité — c'est donc bien la garde, et elle seule, qui refuse. */
+  perform tests.assert_fails(
+    format('update public.shared_links set created_at = now() + interval ''1 hour''
+             where id = %L', v_lien),
+    'La date de création d''un lien ne se ré-ancre pas : le plafond de validité en dépend.');
+
+  -- LE JOURNAL NE S'ÉCRIT PAS À LA MAIN, pas même par le cabinet.
+  perform tests.assert_fails(
+    format('insert into public.shared_link_accesses (link_id, practice_id)
+            values (%L, %L)', v_lien, 'a1111111-1111-4111-8111-111111111111'),
+    'Le cabinet ne doit pas pouvoir fabriquer une consultation.');
+  perform tests.assert_fails(
+    format('delete from public.shared_link_accesses where link_id = %L', v_lien),
+    'Le cabinet ne doit pas pouvoir effacer une consultation.');
+end
+$$;
+rollback;

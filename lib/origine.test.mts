@@ -65,6 +65,26 @@ test("SITE_ORIGIN l'emporte sur tout ce que propose la requête", () => {
   assert.equal(origineAutorisee(null, null, { SITE_ORIGIN: "  " }), CANONIQUE);
 });
 
+test("une SITE_ORIGIN mal formée est ignorée plutôt que suivie", () => {
+  /* C'est l'entrée de plus haut privilège du module, et `new URL()` accepte
+   * n'importe quel schéma : sans contrôle, `javascript://…` désignait un hôte
+   * tiers, qui serait parti dans un lien portant un jeton. */
+  for (const mauvaise of [
+    "javascript://cabinet-de-lattaquant.test",
+    "data://cabinet-de-lattaquant.test",
+    "file://cabinet-de-lattaquant.test",
+    "https://compte:motdepasse@cabinet-de-lattaquant.test",
+    "pas une url du tout",
+    "   ",
+  ]) {
+    assert.equal(
+      origineAutorisee(null, null, { ...PROD, SITE_ORIGIN: mauvaise }),
+      CANONIQUE,
+      mauvaise,
+    );
+  }
+});
+
 test("le poste de développement reste utilisable", () => {
   assert.equal(origineAutorisee("localhost:3000", "http", {}), "http://localhost:3000");
   assert.equal(origineAutorisee("127.0.0.1:3000", "http", {}), "http://127.0.0.1:3000");

@@ -1,17 +1,18 @@
 ---
 name: tests-vacants-transmissions
-description: Les tests SQL « sentinelle » de ce dépôt ont des angles morts récurrents — fixtures qui ne ressemblent pas à la production, branches non couvertes, contraintes non protégées
+description: Trois modes de défaillance récurrents des tests de ce dépôt — fixtures qui esquivent, gardes contrôlées d'un seul côté, correctifs appliqués à une seule branche
 metadata:
   type: project
 ---
 
-Les tests SQL de ce dépôt ont un mode de défaillance récurrent — l'utilisateur signale que c'est arrivé plusieurs fois : **un test qui a l'air de contrôler une garde ne contrôle que sa propre fixture.**
+Les tests de ce dépôt ont des modes de défaillance récurrents — constatés plusieurs fois, y compris sur des lots déjà relus et corrigés : **un test qui a l'air de contrôler une garde ne contrôle souvent que sa propre mise en scène.**
 
-**Why :** les fixtures `pg_temp.*` construisent les données à la main (elles hachent le jeton elles-mêmes, elles fabriquent un instantané qui n'a pas la forme de ceux que produisent réellement les migrations de reprise). Le chemin d'écriture réel de l'application n'est donc jamais exercé, et la sentinelle observe une forme de donnée qui n'existe pas en production.
+**Why :** les fixtures (`pg_temp.*` en SQL, constantes en tête de fichier `.test.mts`) sont écrites en même temps que le contrôle, par la même personne, avec des valeurs choisies pour que le contrôle passe. Elles finissent par décrire une forme de donnée ou un cas d'usage qui n'existe pas en production.
 
-**How to apply :** en auditant un lot de tests SQL de ce dépôt, vérifier systématiquement trois choses avant de conclure qu'une garde est testée —
-1. la fixture reproduit-elle la forme de donnée réellement produite par le code de production (comparer avec le résultat de `npm run db:cutover`) ;
-2. toutes les **branches** de la fonction auditée sont-elles exercées, pas seulement la première ;
-3. les contraintes `check` et les politiques RLS sont-elles tuées par une mutation, ou seulement contournées par la fixture.
+**Les trois formes à chercher systématiquement :**
 
-La méthode de vérification est dans [[methode-mutation-tests-sql]].
+1. **La fixture esquive.** Une sentinelle interdit une liste de mots dans une sortie, mais le seul fragment variable de cette sortie vient d'une valeur que la fixture a choisie neutre. Rejouer l'assertion avec une valeur réaliste du métier la fait tomber.
+2. **Une seule branche est épinglée.** Quand un correctif ajoute un contrôle « jeu de clés exact » sur une branche d'une fonction, vérifier que l'autre branche l'a reçu aussi. Sinon l'en-tête de la migration affirme une garantie qui ne vaut que d'un côté.
+3. **La colonne déclarée mais jamais écrite.** Une table porte des colonnes d'imputabilité (`created_by`, `revoked_by`…) que ni défaut, ni trigger, ni code applicatif ne renseigne. `grep` sur le nom de colonne dans le code d'écriture le montre en une commande.
+
+**How to apply :** avant de conclure qu'une garde est testée, exiger (a) que la fixture reproduise la forme réellement produite par le code de production, (b) que toutes les branches soient exercées, (c) que la garde meure sous mutation. La méthode est dans [[methode-mutation-tests-sql]].

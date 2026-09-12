@@ -217,11 +217,18 @@ export async function revoquerLien(fd: FormData): Promise<Resultat> {
   const supabase = await createClient();
   const resultat = await supabase
     .from("shared_links")
-    .update({ revoked_at: new Date().toISOString() })
+    /* QUI a retiré ce lien, pas seulement quand. Le modèle admet plusieurs
+     * membres par cabinet : sans cette colonne, rien sur la ligne ne dit qui
+     * a repris un document de santé déjà transmis. `created_by` est, lui,
+     * posé par défaut en base — c'est le seul chemin d'écriture. */
+    .update({
+      revoked_at: new Date().toISOString(),
+      revoked_by: ctx.userId,
+    })
     .eq("id", lienId)
     .eq("practice_id", ctx.practice.practiceId)
     .is("revoked_at", null)
-    .select("id, subject_id, subject_type");
+    .select("id, subject_id, subject_type, token_hint");
 
   const echec = rendreCompte(resultat, "le lien");
   if (echec) return echec;
