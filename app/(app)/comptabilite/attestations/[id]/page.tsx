@@ -55,7 +55,10 @@ export default async function AttestationPage({
      * son rôle. Proposer indistinctement tous les contacts du cabinet rendait
      * possible d'adresser à la famille d'un autre patient un document qui
      * nomme celui-ci, sa date de naissance et ses dates de venue. */
-    modifiable ? listPatientContacts(practice, a.patient_id) : Promise.resolve([]),
+    /* Chargé SANS CONDITION : il alimente le destinataire de l'attestation
+     * ET le panneau de partage, qui ne s'affiche qu'une fois la pièce émise.
+     * Le garder conditionné à `modifiable` vidait la liste du panneau. */
+    listPatientContacts(practice, a.patient_id),
     modifiable ? listContacts(practice) : Promise.resolve([]),
     modifiable && a.kind === "presence"
       ? listSeancesAttestables(practice, a.patient_id, {
@@ -274,7 +277,27 @@ export default async function AttestationPage({
             sujetType="attestation"
             sujetId={a.id}
             liens={liensPartage.items}
-            contacts={contacts.map((c) => ({ id: c.id, nom: contactName(c) }))}
+            contacts={[
+              ...liens.map((l) => ({
+                id: l.contact.id,
+                nom: contactName(l.contact),
+                role: ROLE_LABELS[l.role] ?? l.role,
+                email: l.contact.email,
+                groupe: "dossier" as const,
+              })),
+              /* Le cabinet ENTIER, en second groupe. En production, aucun des
+               * dossiers portant une pièce émise n'a d'entourage saisi : s'en
+               * tenir au dossier laisserait la liste vide et renverrait à la
+               * saisie libre — le défaut qu'on corrige. */
+              ...contacts
+                .filter((c) => !liens.some((l) => l.contact.id === c.id))
+                .map((c) => ({
+                  id: c.id,
+                  nom: contactName(c),
+                  email: c.email,
+                  groupe: "cabinet" as const,
+                })),
+            ]}
             modifiable={practice.canWrite}
           />
         )}

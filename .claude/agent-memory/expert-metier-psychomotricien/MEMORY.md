@@ -11,3 +11,4 @@
 ## Validations de praticiens
 
 - Aucune à ce jour. Points à soumettre : `V-01` à `V-39` dans `docs/refonte/recherche/01-clinique-domaines.md`, et `Q-201` à `Q-208` dans `docs/context/OPEN_QUESTIONS.md`.
+- [Transmissions par lien — points à arbitrer](project_transmissions-validations.md) — `T-01` à `T-08` issus de la relecture du lot 7 : signature d'attestation, neutralité du courriel, durées, destinataires.

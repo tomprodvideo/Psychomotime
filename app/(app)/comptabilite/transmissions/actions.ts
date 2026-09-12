@@ -159,6 +159,7 @@ export async function creerLien(fd: FormData): Promise<LienCree> {
     cabinet: ctx.practice.practiceName,
     lien: `${origine}${chemin}`,
     expireLe,
+    indice: indice(jeton),
   });
 
   const echecEnvoi = await sendMail(config, {

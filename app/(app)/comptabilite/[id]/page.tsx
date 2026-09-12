@@ -10,9 +10,14 @@ import {
   listCatalog,
   listSeancesFacturables,
 } from "@/lib/compta/queries";
-import { listContacts, listPathways, listPatients } from "@/lib/dossier/queries";
+import {
+  listContacts,
+  listPathways,
+  listPatients,
+  listPatientContacts,
+} from "@/lib/dossier/queries";
 import { listLiens } from "@/lib/transmissions/queries";
-import { contactName, patientName } from "@/lib/dossier/types";
+import { contactName, patientName, ROLE_LABELS } from "@/lib/dossier/types";
 import {
   BILLING_FUNDING_LABELS,
   KIND_LABELS,
@@ -49,7 +54,16 @@ export default async function PiecePage({
   const modifiable = estModifiable(d) && practice.canWrite;
   const aujourdhui = new Date().toISOString().slice(0, 10);
 
-  const [catalogue, patients, contacts, parcours, seances, liens] = await Promise.all([
+  const [
+    catalogue,
+    patients,
+    contacts,
+    parcours,
+    seances,
+    liens,
+    entourage,
+    contactsCabinet,
+  ] = await Promise.all([
     modifiable ? listCatalog(practice) : Promise.resolve([]),
     modifiable
       ? listPatients(practice, { pageSize: 100 })
@@ -62,6 +76,25 @@ export default async function PiecePage({
       ? listSeancesFacturables(practice, d.patient_id)
       : Promise.resolve([]),
     listLiens(practice, { type: "billing_document", id }),
+    /* LES CONTACTS DU PANNEAU DE PARTAGE, chargés SANS CONDITION.
+     *
+     * Ils ne l'étaient que si la pièce était `modifiable` — c'est-à-dire en
+     * brouillon. Or le panneau de partage ne s'affiche QUE sur une pièce
+     * émise : les deux conditions étaient mutuellement exclusives, et la
+     * liste « Destinataire » était donc TOUJOURS VIDE en service. La garde
+     * d'appartenance posée en base (`0017`) ne s'exerçait jamais, et six mois
+     * plus tard un lien s'appelait « maman ».
+     *
+     * Ils viennent de L'ENTOURAGE DU DOSSIER, pas du cabinet entier : la
+     * raison déjà écrite pour le destinataire d'une attestation vaut plus
+     * encore pour un lien — adresser à la famille d'un autre patient un
+     * document qui nomme celui-ci.
+     *
+     * Trouvé par la relecture métier du lot 7. */
+    d.patient_id
+      ? listPatientContacts(practice, d.patient_id)
+      : Promise.resolve([]),
+    listContacts(practice),
   ]);
 
   return (
@@ -182,7 +215,27 @@ export default async function PiecePage({
             sujetType="billing_document"
             sujetId={d.id}
             liens={liens.items}
-            contacts={contacts.map((c) => ({ id: c.id, nom: contactName(c) }))}
+            contacts={[
+              ...entourage.map((l) => ({
+                id: l.contact.id,
+                nom: contactName(l.contact),
+                role: ROLE_LABELS[l.role] ?? l.role,
+                email: l.contact.email,
+                groupe: "dossier" as const,
+              })),
+              /* Le cabinet ENTIER, en second groupe. En production, aucun des
+               * dossiers portant une pièce émise n'a d'entourage saisi : s'en
+               * tenir au dossier laisserait la liste vide et renverrait à la
+               * saisie libre — le défaut qu'on corrige. */
+              ...contactsCabinet
+                .filter((c) => !entourage.some((l) => l.contact.id === c.id))
+                .map((c) => ({
+                  id: c.id,
+                  nom: contactName(c),
+                  email: c.email,
+                  groupe: "cabinet" as const,
+                })),
+            ]}
             modifiable={practice.canWrite}
           />
         )}

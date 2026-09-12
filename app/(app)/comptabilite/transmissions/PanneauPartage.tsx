@@ -17,6 +17,19 @@ interface OptionContact {
   id: string;
   nom: string;
   role?: string;
+  /* « dossier » ou « cabinet ». Les deux groupes sont SÉPARÉS À L'ŒIL, et ce
+   * n'est pas décoratif : proposer indistinctement tous les contacts du
+   * cabinet rend possible d'adresser à la famille d'un autre patient un
+   * document qui nomme celui-ci. L'entourage du dossier vient en premier ;
+   * le reste du cabinet existe parce qu'un entourage est souvent vide — et
+   * une liste vide renvoie à la saisie libre, c'est-à-dire à aucune garde. */
+  groupe?: "dossier" | "cabinet";
+  /* L'adresse connue du dossier. Elle sert à PRÉ-REMPLIR le champ d'envoi :
+   * retaper à la main une adresse qu'on possède déjà est le geste qui produit
+   * la faute de frappe — et se relire soi-même est le pire moment pour la
+   * repérer. La confirmation qui suit garde tout son sens : elle nomme alors
+   * le contact ET l'adresse. */
+  email?: string | null;
 }
 
 /**
@@ -242,16 +255,38 @@ export default function PanneauPartage({
                   <select
                     id="recipient_contact_id"
                     value={contact}
-                    onChange={(e) => setContact(e.target.value)}
+                    onChange={(e) => {
+                      setContact(e.target.value);
+                      /* On ne remplace jamais une adresse déjà saisie : elle a
+                       * pu être corrigée à la main, et l'écraser en silence
+                       * renverrait le document à la mauvaise personne. */
+                      const c = contacts.find((x) => x.id === e.target.value);
+                      if (c?.email && adresse.trim() === "") setAdresse(c.email);
+                    }}
                     className={styleChamp}
                   >
                     <option value="">Choisir un contact…</option>
-                    {contacts.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.nom}
-                        {c.role ? ` — ${c.role}` : ""}
-                      </option>
-                    ))}
+                    {(
+                      [
+                        ["dossier", "Entourage du dossier"],
+                        ["cabinet", "Autres contacts du cabinet"],
+                      ] as const
+                    ).map(([g, titre]) => {
+                      const liste = contacts.filter(
+                        (c) => (c.groupe ?? "cabinet") === g,
+                      );
+                      if (liste.length === 0) return null;
+                      return (
+                        <optgroup key={g} label={titre}>
+                          {liste.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.nom}
+                              {c.role ? ` — ${c.role}` : ""}
+                            </option>
+                          ))}
+                        </optgroup>
+                      );
+                    })}
                   </select>
                 </div>
                 <div>
