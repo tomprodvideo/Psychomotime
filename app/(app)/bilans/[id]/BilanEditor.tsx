@@ -42,6 +42,10 @@ import { ageFromBirth, frDate } from "@/lib/format";
 import ConfirmDeleteButton from "@/components/ConfirmDeleteButton";
 import { saveBilan, deleteBilan } from "../actions";
 import { reformulateText } from "../ai-actions";
+import {
+  mentionProvenance,
+  type Provenances,
+} from "@/lib/bilans/provenance";
 import { useDictation } from "./useDictation";
 
 function parseJSON<T>(s: unknown, fallback: T): T {
@@ -113,6 +117,7 @@ export default function BilanEditor({
     delete c.__blocks__;
     delete c.__images__;
     delete c.__flags__;
+    delete c.__ia__;
     return c;
   });
   const [images, setImages] = useState<Record<string, string[]>>(() =>
@@ -123,6 +128,14 @@ export default function BilanEditor({
     raw0.__flags__,
     {},
   );
+  /* LA PROVENANCE DES PARAGRAPHES REFORMULÉS, chargée depuis le bilan.
+   * Elle vit dans le même enregistrement que le texte qu'elle décrit, et rend
+   * l'annulation durable : elle survit au rechargement, là où l'ancienne
+   * mémoire d'annulation était détruite à la première frappe. */
+  const [provenances, setProvenances] = useState<Provenances>(() =>
+    parseJSON<Provenances>(raw0.__ia__, {}),
+  );
+
   const [adaptationsOn, setAdaptationsOn] = useState(!!flags0.adaptations);
   const [preconisationsOn, setPreconisationsOn] = useState(
     !!flags0.preconisations,
@@ -157,7 +170,6 @@ export default function BilanEditor({
 
   const [aiBusy, setAiBusy] = useState<string | null>(null);
   const [aiError, setAiError] = useState<Record<string, string>>({});
-  const [undo, setUndo] = useState<{ id: string; prev: string } | null>(null);
 
   // Modèles réutilisables (gérés dans Paramètres › Bilan), partagés par tous
   // les paragraphes et groupés par dossier dans le menu d'insertion.
@@ -169,7 +181,11 @@ export default function BilanEditor({
   const update = (key: string, value: string) => {
     setContent((c) => ({ ...c, [key]: value }));
     markDirty();
-    if (undo?.id === key) setUndo(null);
+    /* ÉCRIRE DANS LE CHAMP N'EFFACE PLUS L'ANNULATION. C'était le
+     * comportement précédent, et c'était le pire moment pour la retirer :
+     * on corrige deux mots d'un texte reformulé, on s'aperçoit que le sens a
+     * glissé, et le retour au texte d'origine n'existe plus. La provenance
+     * demeure ; la mention dit simplement que le texte a été modifié depuis. */
   };
 
   const insertInto = (key: string, text: string) => {
@@ -270,14 +286,32 @@ export default function BilanEditor({
       setAiError((e) => ({ ...e, [key]: res.error! }));
       return;
     }
-    setUndo({ id: key, prev: current });
+    /* On CONSIGNE, on ne se contente plus de remplacer. Sans cette trace, le
+     * texte sortait ensuite sous la signature de la praticienne sans que rien,
+     * ni en base ni à l'écran, ne dise qu'un modèle l'avait écrit. */
+    setProvenances((p) => ({
+      ...p,
+      [key]: {
+        le: new Date().toISOString(),
+        modele: res.modele ?? "inconnu",
+        avant: current,
+        apres: res.text!,
+      },
+    }));
     setContent((c) => ({ ...c, [key]: res.text! }));
     markDirty();
   }
-  function handleUndo() {
-    if (!undo) return;
-    setContent((c) => ({ ...c, [undo.id]: undo.prev }));
-    setUndo(null);
+
+  /** Revenir au texte d'avant. Possible tant que la provenance est là. */
+  function handleUndo(key: string) {
+    const p = provenances[key];
+    if (!p) return;
+    setContent((c) => ({ ...c, [key]: p.avant }));
+    setProvenances((tout) => {
+      const reste = { ...tout };
+      delete reste[key];
+      return reste;
+    });
     markDirty();
   }
 
@@ -315,6 +349,7 @@ export default function BilanEditor({
             adaptations: adaptationsOn,
             preconisations: preconisationsOn,
           }),
+          __ia__: JSON.stringify(provenances),
         }),
       );
       fd.set(
@@ -487,15 +522,24 @@ export default function BilanEditor({
         {aiError[fieldKey] && (
           <p className="text-xs text-rose-600 mt-1">{aiError[fieldKey]}</p>
         )}
-        {undo?.id === fieldKey && (
-          <button
-            type="button"
-            onClick={handleUndo}
-            className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-brand-700 mt-1"
-          >
-            <Undo2 className="h-3.5 w-3.5" />
-            Annuler la reformulation
-          </button>
+        {provenances[fieldKey] && (
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+            {/* LA MENTION DIT CE QUI S'EST PASSÉ, PAS CE QU'IL FAUT EN PENSER.
+                Elle ne prétend pas que le texte a été relu : le produit sait
+                qu'un modèle l'a écrit, pas qu'il a été jugé juste. */}
+            <span className="inline-flex items-center gap-1 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+              <Sparkles className="h-3 w-3" aria-hidden="true" />
+              {mentionProvenance(provenances[fieldKey], content[fieldKey] ?? "")}
+            </span>
+            <button
+              type="button"
+              onClick={() => handleUndo(fieldKey)}
+              className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-brand-700"
+            >
+              <Undo2 className="h-3.5 w-3.5" aria-hidden="true" />
+              Revenir au texte d&apos;avant
+            </button>
+          </div>
         )}
       </div>
     );

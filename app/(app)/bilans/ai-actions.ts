@@ -10,6 +10,10 @@ const MODEL = "claude-opus-4-8";
 export interface ReformulateResult {
   text?: string;
   error?: string;
+  /** Le modèle qui a réellement produit le texte. La provenance consignée dans
+   *  le bilan vient d'ICI, pas d'une constante recopiée côté client : c'est la
+   *  seule façon qu'elle reste vraie le jour où le modèle change. */
+  modele?: string;
 }
 
 export async function reformulateText(
@@ -79,7 +83,7 @@ export async function reformulateText(
       .trim();
 
     if (!text) return { error: "Réponse vide du modèle. Réessayez." };
-    return { text };
+    return { text, modele: MODEL };
   } catch (e) {
     if (e instanceof Anthropic.AuthenticationError) {
       return { error: "Clé API Anthropic invalide." };
