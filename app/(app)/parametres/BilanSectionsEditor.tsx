@@ -54,8 +54,28 @@ export default function BilanSectionsEditor({
       ),
     );
 
-  const remove = (id: string) =>
+  /* SUPPRIMER UN TITRE NE SUPPRIME PAS CE QUI A ÉTÉ ÉCRIT DESSOUS.
+   *
+   * Le texte reste dans le jsonb de chaque bilan — il n'est pas perdu — mais
+   * plus rien ne l'affiche : ni l'éditeur, ni l'aperçu, ni le document remis.
+   * Il devient invisible sans avoir été effacé, ce qui est la pire des deux
+   * situations : on ne peut ni le lire, ni savoir qu'il existe.
+   *
+   * L'avertissement de bas de page couvrait le renommage et le déplacement,
+   * jamais la suppression — c'est-à-dire le seul geste qui fait disparaître
+   * quelque chose. On le dit ici, au moment du geste, et on demande à
+   * confirmer. Le § C-8 de la sécurité clinique. */
+  const remove = (id: string) => {
+    const titre = sections.find((s) => s.id === id)?.title ?? "cette section";
+    const ok = window.confirm(
+      `Retirer « ${titre} » de la trame ?\n\n` +
+        "Le texte déjà écrit sous ce titre, dans les bilans existants, ne sera " +
+        "pas effacé — mais il cessera d'apparaître, y compris sur les documents " +
+        "remis. Remettre le titre le fera réapparaître.",
+    );
+    if (!ok) return;
     setSections((arr) => arr.filter((s) => s.id !== id));
+  };
 
   const insertBeforeConclusion = (item: BilanSectionConfig) =>
     setSections((arr) => {
@@ -254,6 +274,11 @@ export default function BilanSectionsEditor({
         Pensez à « Enregistrer les paramètres » en bas de page. «
         L&apos;anamnèse », « Résultats chiffrés » et « Conclusion » ne peuvent
         pas être supprimées.
+      </p>
+      <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+        Retirer un titre ne supprime pas le texte déjà écrit dessous dans les
+        bilans existants : il cesse simplement d&apos;apparaître, y compris sur
+        les documents remis. Remettre le titre le fait réapparaître.
       </p>
     </div>
   );

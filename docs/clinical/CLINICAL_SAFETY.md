@@ -143,9 +143,17 @@ ferait changer le document remis sans que personne n’ait cliqué.
 Constat d’origine : aucune sauvegarde automatique, aucun garde-fou à la fermeture
 d’onglet. L’indicateur « Modifications non enregistrées » était purement passif.
 
-### C-8 — Supprimer une section de trame orpheline le texte des bilans existants — **moyen**
+### C-8 — Supprimer une section de trame orpheline le texte des bilans existants — **corrigé le 2026-09-12**
 
-Le contenu reste dans le jsonb mais n’est plus jamais affiché, ni dans l’éditeur ni à l’aperçu. L’avertissement affiché à l’utilisateur ne couvre que le renommage et le déplacement, pas la suppression.
+**Corrigé.** La suppression demande confirmation et dit ce qu’elle fait
+réellement : le texte n’est pas effacé, il cesse d’apparaître — y compris sur
+les documents remis — et remettre le titre le fait réapparaître. La mention
+figure aussi en permanence sous l’éditeur de trame.
+
+Constat d’origine : le contenu restait dans le jsonb sans plus jamais être
+affiché, ni dans l’éditeur ni à l’aperçu — invisible sans avoir été effacé, la
+pire des deux situations. L’avertissement ne couvrait que le renommage et le
+déplacement, jamais le seul geste qui fait disparaître quelque chose.
 
 ## Ce qui est bien tenu, à préserver
 
