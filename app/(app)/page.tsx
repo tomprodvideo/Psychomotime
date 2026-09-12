@@ -8,12 +8,13 @@ import {
   Hourglass,
   Users,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
 import { getSettings } from "@/lib/data";
-import { euro, frDate } from "@/lib/format";
+import { frDate } from "@/lib/format";
+import { formatCents } from "@/lib/money";
 import { Card, StatCard } from "@/components/ui";
 import { getCurrentPractice } from "@/lib/dossier/practice";
 import { getJourneeResume } from "@/lib/dossier/queries";
+import { listDocuments } from "@/lib/compta/queries";
 import {
   APPOINTMENT_KIND_LABELS,
   ATTENDANCE_LABELS,
@@ -54,21 +55,16 @@ export default async function AccueilPage() {
   const maintenant = new Date();
   const resume = await getJourneeResume(practice, maintenant);
 
-  // La comptabilité vit encore sur le modèle v1 : on ne lit que les colonnes
-  // affichées, et surtout pas toutes les factures pour en montrer un total.
-  const supabase = await createClient();
+  // L'activité de l'année, lue sur le modèle cible. Les totaux viennent du même
+  // calcul que l'écran de comptabilité — il n'y a qu'une seule définition de ce
+  // qu'est un « facturé », et elle est écrite une fois, dans `lib/compta`.
   const annee = maintenant.getFullYear();
-  const { data: facturesRaw } = await supabase
-    .from("invoices")
-    .select("revenue_gross, revenue_gross_paid, net_revenue")
-    .eq("billing_year", annee);
-  const factures = (facturesRaw ?? []) as {
-    revenue_gross: number;
-    revenue_gross_paid: number;
-    net_revenue: number;
-  }[];
-  const facture = factures.reduce((s, f) => s + (f.revenue_gross || 0), 0);
-  const encaisse = factures.reduce((s, f) => s + (f.revenue_gross_paid || 0), 0);
+  const { totaux } = await listDocuments(practice, {
+    du: `${annee}-01-01`,
+    au: `${annee}-12-31`,
+  });
+  const facture = totaux.emis_cents;
+  const encaisse = totaux.encaisse_cents;
 
   const prenom = (settings.display_name ?? "").split(" ")[0] || "";
   const dateDuJour = new Intl.DateTimeFormat("fr-FR", {
@@ -286,20 +282,20 @@ export default async function AccueilPage() {
               <div className="flex items-baseline justify-between gap-2">
                 <dt className="text-slate-500">Facturé</dt>
                 <dd className="font-semibold text-slate-800 tabular-nums">
-                  {euro(facture)}
+                  {formatCents(facture)}
                 </dd>
               </div>
               <div className="flex items-baseline justify-between gap-2">
                 <dt className="text-slate-500">Encaissé</dt>
                 <dd className="font-semibold text-brand-700 tabular-nums">
-                  {euro(encaisse)}
+                  {formatCents(encaisse)}
                 </dd>
               </div>
               {facture > encaisse && (
                 <div className="flex items-baseline justify-between gap-2 pt-2 border-t border-slate-100">
                   <dt className="text-slate-500">Reste à encaisser</dt>
                   <dd className="font-medium text-amber-700 tabular-nums">
-                    {euro(facture - encaisse)}
+                    {formatCents(totaux.reste_du_cents)}
                   </dd>
                 </div>
               )}

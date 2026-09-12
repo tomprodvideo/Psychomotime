@@ -2,519 +2,947 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getSettings } from "@/lib/data";
-import { computeInvoice } from "@/lib/calc";
-import { MONTHS } from "@/lib/constants";
-import { emailConfig, sendMail } from "@/lib/email";
-import { newShareToken, shareExpiry } from "@/lib/invoiceShare";
-import { siteOrigin } from "@/lib/siteOrigin";
-import {
-  ecritureReussie,
-  requireActiveAccess,
-  requireUser,
-  type Guarded,
-} from "@/lib/auth/guard";
-import {
-  invoiceLinesTotal,
-  normalizeInvoiceLines,
-  validateInvoiceLines,
-} from "@/lib/invoiceLines";
-import type { Invoice, Patient, Settings } from "@/lib/types";
-import {
-  buildInvoiceNumber,
-  counterScope,
-  DEFAULT_INVOICE_FORMAT,
-  nextSeq,
-  splitFormat,
-} from "@/lib/invoiceNumber";
-
-function num(v: FormDataEntryValue | null): number {
-  if (v == null) return 0;
-  const n = parseFloat(String(v).replace(",", ".").replace(/[^\d.-]/g, ""));
-  return isNaN(n) ? 0 : n;
-}
-
-function str(v: FormDataEntryValue | null): string | null {
-  const s = String(v ?? "").trim();
-  return s === "" ? null : s;
-}
-
-type Numbering = {
-  format: string;
-  scope: string;
-  /** Plus grand rang déjà présent dans les factures (amorçage du compteur). */
-  floor: number;
-  ctx: { year: number; month: number };
-};
-
-/** Rassemble tout ce qu'il faut pour numéroter une facture de cette période. */
-async function numbering(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  year: number,
-  month: number,
-): Promise<Numbering> {
-  const settings = await getSettings();
-  const format =
-    settings.profile?.invoice_number_format?.trim() || DEFAULT_INVOICE_FORMAT;
-  const ctx = { year, month };
-  const { prefix, suffix } = splitFormat(format, ctx);
-
-  const { data } = await supabase.from("invoices").select("invoice_number");
-  const floor =
-    nextSeq(
-      (data ?? []).map((r) => r.invoice_number as string | null),
-      prefix,
-      suffix,
-    ) - 1;
-
-  return { format, scope: counterScope(format, ctx), floor, ctx };
-}
+import { ecritureReussie, requireActiveAccess } from "@/lib/auth/guard";
+import { getCurrentPractice } from "@/lib/dossier/practice";
+import { parseAmountToCents } from "@/lib/money";
+import { getReglagesCompta } from "@/lib/compta/queries";
+import type {
+  BillingFundingScheme,
+  DateRender,
+  DocumentKind,
+  ServicePricing,
+} from "@/lib/compta/types";
 
 /**
- * Prochain numéro disponible pour la période donnée — LECTURE SEULE.
- * Sert à l'aperçu dans le formulaire : ouvrir puis annuler ne consomme aucun
- * numéro, ce qui éviterait des trous dans la série.
- */
-export async function nextInvoiceNumber(
-  year: number,
-  month: number,
-): Promise<string> {
-  const session = await requireUser();
-  if (!session.ok) return "";
-
-  const supabase = await createClient();
-  const n = await numbering(supabase, year, month);
-
-  const { data: counter } = await supabase
-    .from("invoice_counters")
-    .select("last_seq")
-    .eq("scope", n.scope)
-    .maybeSingle();
-
-  const seq = Math.max(counter?.last_seq ?? 0, n.floor) + 1;
-  return buildInvoiceNumber(n.format, n.ctx, seq);
-}
-
-/**
- * Réserve définitivement le numéro suivant. Le compteur est incrémenté côté
- * base de façon atomique : un numéro attribué ne sera jamais réutilisé, même
- * si la facture est supprimée ensuite.
- */
-async function reserveInvoiceNumber(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  year: number,
-  month: number,
-): Promise<string> {
-  const n = await numbering(supabase, year, month);
-
-  const { data: seq, error } = await supabase.rpc("next_invoice_seq", {
-    p_scope: n.scope,
-    p_min: n.floor,
-  });
-
-  // Repli si la migration 010 n'a pas encore été lancée : on retombe sur le
-  // plus grand numéro existant + 1 (sans garantie contre la réutilisation).
-  if (error || typeof seq !== "number") {
-    return buildInvoiceNumber(n.format, n.ctx, n.floor + 1);
-  }
-  return buildInvoiceNumber(n.format, n.ctx, seq);
-}
-
-/**
- * Message unique d'échec d'écriture. Volontairement sans identifiant, sans nom
- * de patient, sans montant et sans détail technique : il est affiché tel quel
- * dans le formulaire.
- */
-const SAVE_FAILED_MESSAGE =
-  "L'enregistrement n'a pas abouti. Votre saisie est toujours à l'écran : réessayez dans un instant.";
-
-/**
- * Message de refus d'une ligne de prestation incohérente.
+ * Écritures comptables.
  *
- * Il nomme le rang de la ligne et la règle enfreinte — de quoi corriger — mais
- * ni montant, ni date, ni identifiant : il est affiché tel quel dans le
- * formulaire, et une facture porte des données de niveau « sensible »
- * (docs/security/DATA_CLASSIFICATION.md).
+ * CE QUI N'EST PAS ICI, ET POURQUOI. Aucune de ces actions n'attribue de numéro,
+ * ne fige d'instantané ni ne vérifie l'immuabilité d'une pièce émise : tout cela
+ * vit dans la base, en déclencheurs et en fonctions. Une Server Action est un
+ * point d'entrée HTTP parmi d'autres ; faire porter à l'interface une garantie
+ * comptable reviendrait à la perdre le jour où un autre appelant écrit dans la
+ * même table. Ce fichier prépare, transmet, et rend compte de ce que la base a
+ * accepté ou refusé.
  */
-function lineProblemMessage(
-  problems: ReturnType<typeof validateInvoiceLines>,
-): string {
-  const first = problems[0];
-  const rang = `La prestation n° ${first.index + 1}`;
 
-  if (first.code === "dates-manquantes") {
-    return `${rang} est facturée à l'unité : indiquez au moins une date de séance avant d'enregistrer.`;
-  }
-  return (
-    `${rang} imprime un montant par date : elle doit compter autant de dates que de séances facturées ` +
-    `(${first.dateCount} date(s) pour ${first.quantity} séance(s)). ` +
-    `Corrigez l'un ou l'autre, ou choisissez l'affichage en liste.`
-  );
+/* ==========================================================================
+ *  Lecture des champs
+ * ========================================================================== */
+
+function str(fd: FormData, k: string): string | null {
+  const v = String(fd.get(k) ?? "").trim();
+  return v === "" ? null : v;
 }
 
-export type SaveInvoiceResult =
-  | { ok: true }
-  | {
-      ok: false;
-      reason: "unauthenticated" | "not-found" | "error";
-      message: string;
+function id(fd: FormData, k: string): string | null {
+  const v = str(fd, k);
+  return v && /^[0-9a-f-]{36}$/i.test(v) ? v : null;
+}
+
+function jourISO(
+  fd: FormData,
+  k: string,
+): { ok: true; value: string | null } | { ok: false; error: string } {
+  const v = str(fd, k);
+  if (v === null) return { ok: true, value: null };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || Number.isNaN(Date.parse(v))) {
+    return { ok: false, error: "La date saisie n'est pas valide." };
+  }
+  return { ok: true, value: v };
+}
+
+/** Montant saisi en euros, rendu en centimes. `null` si la saisie est illisible. */
+function montant(fd: FormData, k: string): number | null {
+  return parseAmountToCents(String(fd.get(k) ?? ""));
+}
+
+export interface Resultat {
+  ok: boolean;
+  error?: string;
+  /** Identifiant de la pièce créée, quand l'action en crée une. */
+  id?: string;
+  message?: string;
+}
+
+async function contexteEcriture() {
+  const acces = await requireActiveAccess();
+  if (!acces.ok) return { ok: false as const, error: acces.error };
+
+  const practice = await getCurrentPractice();
+  if (!practice) {
+    return {
+      ok: false as const,
+      error: "Aucun cabinet n'est rattaché à votre compte.",
     };
+  }
+  if (!practice.canWrite) {
+    return {
+      ok: false as const,
+      error: "Votre rôle ne permet pas de modifier les pièces comptables.",
+    };
+  }
+  return { ok: true as const, practice };
+}
 
-export async function saveInvoice(
-  formData: FormData,
-): Promise<SaveInvoiceResult> {
-  const supabase = await createClient();
+function rafraichir(documentId?: string) {
+  revalidatePath("/comptabilite");
+  if (documentId) revalidatePath(`/comptabilite/${documentId}`);
+}
 
-  // Une Server Action est un endpoint HTTP : la session se vérifie ici. Sans ce
-  // contrôle, getSettings() lève « Non authentifié » plus bas et l'appelante ne
-  // reçoit qu'une exception opaque, sans savoir que sa saisie n'est pas passée.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
+/**
+ * Traduit l'erreur d'une base en phrase utile.
+ *
+ * Les messages des déclencheurs sont déjà écrits pour être lus par une
+ * praticienne : ils expliquent le refus et disent quoi faire. On les transmet
+ * tels quels. Seuls les codes techniques sont reformulés — un « 23505 » n'aide
+ * personne.
+ */
+function messageErreur(erreur: { message?: string; code?: string } | null): string {
+  if (!erreur) return "L'enregistrement a échoué.";
+  if (erreur.code === "23505") {
+    return "Ce numéro est déjà porté par une autre pièce de ce cabinet.";
+  }
+  if (erreur.code === "42501" || erreur.code === "PGRST301") {
+    return "Vous n'avez pas le droit d'effectuer cette opération.";
+  }
+  return erreur.message?.trim() || "L'enregistrement a échoué.";
+}
+
+/* ==========================================================================
+ *  Pièces
+ * ========================================================================== */
+
+const NATURES: DocumentKind[] = [
+  "devis",
+  "facture",
+  "facture_de_remplacement",
+  "avoir",
+];
+
+/** Ouvre un brouillon. Aucun numéro n'est consommé : c'est l'émission qui le fait. */
+export async function creerPiece(fd: FormData): Promise<Resultat> {
+  const ctx = await contexteEcriture();
+  if (!ctx.ok) return { ok: false, error: ctx.error };
+
+  const kindBrut = String(fd.get("kind") ?? "facture");
+  const kind = (NATURES as string[]).includes(kindBrut)
+    ? (kindBrut as DocumentKind)
+    : "facture";
+
+  if (kind === "avoir" || kind === "facture_de_remplacement") {
     return {
       ok: false,
-      reason: "unauthenticated",
-      message:
-        "Votre session a expiré. Reconnectez-vous dans un autre onglet, puis revenez ici et enregistrez : votre saisie reste à l'écran tant que vous ne quittez pas cette page.",
+      error:
+        "Un avoir ou une facture de remplacement se crée depuis la pièce qu'il rectifie.",
     };
   }
 
-  const id = str(formData.get("id"));
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("billing_documents")
+    .insert({
+      practice_id: ctx.practice.practiceId,
+      kind,
+      patient_id: id(fd, "patient_id"),
+      payer_is_patient: true,
+      status: "brouillon",
+    })
+    .select("id")
+    .single();
 
-  const patientId = str(formData.get("patient_id"));
+  if (error || !data) return { ok: false, error: messageErreur(error) };
+  rafraichir();
+  return { ok: true, id: (data as { id: string }).id };
+}
 
-  // Le nom affiché sur la facture suit la fiche patient quand il y en a une ;
-  // sinon on conserve le texte envoyé (anciennes factures non rattachées).
-  let patientName = String(formData.get("patient_name") ?? "").trim();
-  if (patientId) {
-    const { data: p, error: patientError } = await supabase
-      .from("patients")
-      .select("first_name, last_name")
-      .eq("id", patientId)
-      .maybeSingle();
-    // La RLS masque les fiches des autres cabinets : une fiche illisible est
-    // soit supprimée, soit celle d'un autre compte. Dans les deux cas on
-    // refuse d'écrire la référence. Une facture ne doit jamais pointer une
-    // fiche que le compte ne peut pas lire : la fonction de partage public
-    // s'exécute hors RLS et suit ce lien.
-    if (patientError || !p) {
-      return {
-        ok: false,
-        reason: "not-found",
-        message:
-          "Cette fiche patient n'est plus disponible. Rechargez la page, puis sélectionnez à nouveau le patient.",
-      };
-    }
-    patientName = `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim();
+/** Enregistre l'en-tête d'un brouillon. La base refusera toute pièce émise. */
+export async function enregistrerPiece(fd: FormData): Promise<Resultat> {
+  const ctx = await contexteEcriture();
+  if (!ctx.ok) return { ok: false, error: ctx.error };
+
+  const documentId = id(fd, "document_id");
+  if (!documentId) return { ok: false, error: "Pièce introuvable." };
+
+  const echeance = jourISO(fd, "due_on");
+  if (!echeance.ok) return { ok: false, error: echeance.error };
+  const debut = jourISO(fd, "period_start");
+  if (!debut.ok) return { ok: false, error: debut.error };
+  const fin = jourISO(fd, "period_end");
+  if (!fin.ok) return { ok: false, error: fin.error };
+  const validite = jourISO(fd, "valid_until");
+  if (!validite.ok) return { ok: false, error: validite.error };
+
+  if (debut.value && fin.value && fin.value < debut.value) {
+    return {
+      ok: false,
+      error: "La fin de période ne peut pas précéder son début.",
+    };
   }
 
-  const billingYear = formData.get("billing_year")
-    ? parseInt(String(formData.get("billing_year")), 10)
-    : new Date().getFullYear();
-  const monthIndex = MONTHS.indexOf(String(formData.get("billing_month") ?? ""));
+  const payeurContact = id(fd, "payer_contact_id");
+  const financement = str(fd, "funding_scheme");
 
-  // À la création, le numéro est réservé sur le compteur ; en édition on
-  // conserve celui déjà attribué (modifiable à la main si besoin).
-  const invoiceNumber = id
-    ? str(formData.get("invoice_number"))
-    : await reserveInvoiceNumber(
-        supabase,
-        billingYear,
-        monthIndex < 0 ? new Date().getMonth() : monthIndex,
-      );
+  const supabase = await createClient();
+  const resultat = await supabase
+    .from("billing_documents")
+    .update({
+      patient_id: id(fd, "patient_id"),
+      pathway_id: id(fd, "pathway_id"),
+      payer_contact_id: payeurContact,
+      payer_is_patient: payeurContact === null,
+      funding_scheme: financement as BillingFundingScheme | null,
+      due_on: echeance.value,
+      period_start: debut.value,
+      period_end: fin.value,
+      valid_until: validite.value,
+      note: str(fd, "note"),
+      internal_note: str(fd, "internal_note"),
+    })
+    .eq("id", documentId)
+    .eq("practice_id", ctx.practice.practiceId)
+    .select("id");
 
-  // ---- Lignes de prestation (migration 013) ----
-  //
-  // Le champ est ABSENT des formulaires qui ne gèrent pas les lignes : on ne
-  // touche alors pas du tout la colonne, et la facture se comporte exactement
-  // comme avant. Présent — même à « [] » — il fait autorité : c'est le client
-  // qui déclare gérer les lignes, et la colonne est écrite en conséquence.
-  const rawLines = formData.get("lines");
-  const managesLines = rawLines !== null;
+  if (!ecritureReussie(resultat, "la pièce").ok) {
+    return { ok: false, error: messageErreur(resultat.error) };
+  }
+  rafraichir(documentId);
+  return { ok: true, message: "Pièce enregistrée." };
+}
 
-  // Le catalogue n'est PAS relu ici, et ne doit jamais l'être : la ligne porte
-  // déjà ses valeurs, figées au moment où elle a été créée. Une entrée de
-  // catalogue modifiée, désactivée ou supprimée ne change aucune facture émise.
-  const lines = managesLines ? normalizeInvoiceLines(rawLines) : [];
+/** Supprime un brouillon. La base refuse toute pièce émise. */
+export async function supprimerBrouillon(fd: FormData): Promise<Resultat> {
+  const ctx = await contexteEcriture();
+  if (!ctx.ok) return { ok: false, error: ctx.error };
 
-  if (lines.length > 0) {
-    const problems = validateInvoiceLines(lines);
-    if (problems.length > 0) {
-      return {
-        ok: false,
-        reason: "error",
-        message: lineProblemMessage(problems),
-      };
-    }
+  const documentId = id(fd, "document_id");
+  if (!documentId) return { ok: false, error: "Pièce introuvable." };
+
+  const supabase = await createClient();
+  const resultat = await supabase
+    .from("billing_documents")
+    .delete()
+    .eq("id", documentId)
+    .eq("practice_id", ctx.practice.practiceId)
+    .select("id");
+
+  if (!ecritureReussie(resultat, "le brouillon").ok) {
+    return { ok: false, error: messageErreur(resultat.error) };
+  }
+  rafraichir();
+  return { ok: true, message: "Brouillon supprimé." };
+}
+
+/**
+ * Émet une pièce : numéro, date, instantané.
+ *
+ * LE POINT DE NON-RETOUR. Après lui, plus rien ne se modifie — la correction
+ * passe par un avoir ou une facture de remplacement. Le gabarit de numérotation
+ * vient des réglages du cabinet : ne pas le transmettre changerait la forme des
+ * numéros sans que personne ne l'ait demandé.
+ */
+export async function emettrePiece(fd: FormData): Promise<Resultat> {
+  const ctx = await contexteEcriture();
+  if (!ctx.ok) return { ok: false, error: ctx.error };
+
+  const documentId = id(fd, "document_id");
+  if (!documentId) return { ok: false, error: "Pièce introuvable." };
+
+  const emission = jourISO(fd, "issued_on");
+  if (!emission.ok) return { ok: false, error: emission.error };
+
+  const reglages = await getReglagesCompta(ctx.practice);
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.rpc("issue_billing_document", {
+    p_document_id: documentId,
+    p_series: null,
+    p_number_format: reglages.gabarit_numero,
+    p_issued_on: emission.value,
+  });
+
+  if (error) return { ok: false, error: messageErreur(error) };
+  rafraichir(documentId);
+  return {
+    ok: true,
+    message: `Pièce émise sous le numéro ${String(data)}.`,
+  };
+}
+
+/**
+ * Ouvre un avoir ou une facture de remplacement rectifiant une pièce émise.
+ *
+ * La référence à la pièce corrigée — numéro ET date — est recopiée dès la
+ * création, et la base exige qu'elle y soit.
+ * [SOURCE] CGI art. 289, I, 5 : la pièce rectificative doit faire référence à
+ * la facture initiale « de façon spécifique et non équivoque ».
+ */
+export async function creerRectification(fd: FormData): Promise<Resultat> {
+  const ctx = await contexteEcriture();
+  if (!ctx.ok) return { ok: false, error: ctx.error };
+
+  const cibleId = id(fd, "document_id");
+  if (!cibleId) return { ok: false, error: "Pièce introuvable." };
+
+  const kindBrut = String(fd.get("kind") ?? "avoir");
+  const kind: DocumentKind =
+    kindBrut === "facture_de_remplacement" ? "facture_de_remplacement" : "avoir";
+
+  const motif = str(fd, "rectification_reason");
+  if (!motif) {
+    return {
+      ok: false,
+      error:
+        "Indiquez le motif de la rectification : il figurera sur la pièce et explique pourquoi la précédente est corrigée.",
+    };
   }
 
-  // Rétrocession et URSSAF ne sont plus saisies par facture : elles découlent
-  // des réglages (Paramètres › Comptabilité).
-  //
-  // Dès qu'il y a des lignes, le brut est la somme des blocs et le montant posté
-  // par le client est IGNORÉ : il n'est ni lu, ni comparé, ni utilisé en repli.
-  // Sans ligne, le champ du formulaire reste la seule source, comme avant.
-  const gross =
-    lines.length > 0 ? invoiceLinesTotal(lines) : num(formData.get("revenue_gross"));
-  const settings = await getSettings();
-  // Rétrocession et URSSAF restent calculées au niveau FACTURE, sur ce brut :
-  // elles ne se ventilent pas par ligne. Les colonnes générées `after_retro` et
-  // `net_revenue` en découlent donc sans changement.
-  const { retrocession, urssaf } = computeInvoice(gross, settings);
+  const supabase = await createClient();
+  const { data: cible, error: erreurCible } = await supabase
+    .from("billing_documents")
+    .select(
+      "id, kind, status, number, issued_on, patient_id, pathway_id, " +
+        "payer_contact_id, payer_is_patient, funding_scheme, " +
+        "period_start, period_end, total_cents",
+    )
+    .eq("id", cibleId)
+    .eq("practice_id", ctx.practice.practiceId)
+    .maybeSingle();
 
-  const payload = {
-    patient_id: patientId,
-    patient_name: patientName,
-    invoice_number: invoiceNumber,
-    billing_month: str(formData.get("billing_month")),
-    billing_year: formData.get("billing_year") ? billingYear : null,
-    has_pco: formData.get("has_pco") === "on",
-    revenue_gross: gross,
-    revenue_gross_paid: num(formData.get("revenue_gross_paid")),
-    payment_method: str(formData.get("payment_method")),
-    payment_date: str(formData.get("payment_date")),
-    issue_date: str(formData.get("issue_date")),
-    service_label: str(formData.get("service_label")),
-    retrocession_amount: retrocession,
-    urssaf_amount: urssaf,
-    notes: str(formData.get("notes")),
-    // Écrit seulement si le client gère les lignes. Sans cette condition, toute
-    // écriture échouerait sur une base où la migration 013 n'est pas passée.
-    ...(managesLines ? { lines } : {}),
+  if (erreurCible || !cible) {
+    return { ok: false, error: "Pièce introuvable." };
+  }
+  const c = cible as unknown as {
+    kind: DocumentKind;
+    status: string;
+    number: string | null;
+    issued_on: string | null;
+    patient_id: string | null;
+    pathway_id: string | null;
+    payer_contact_id: string | null;
+    payer_is_patient: boolean;
+    funding_scheme: BillingFundingScheme | null;
+    period_start: string | null;
+    period_end: string | null;
+    total_cents: number;
   };
 
-  if (id) {
-    const { data, error } = await supabase
-      .from("invoices")
-      .update(payload)
-      .eq("id", id)
-      .select("id");
-
-    if (error) {
-      return { ok: false, reason: "error", message: SAVE_FAILED_MESSAGE };
-    }
-    // Aucune ligne touchée : la facture a été supprimée, ou elle appartient à
-    // un autre compte et la RLS la rend invisible. Même message dans les deux
-    // cas — rien ne doit laisser deviner qu'un identifiant existe ailleurs.
-    if (!data || data.length === 0) {
-      return {
-        ok: false,
-        reason: "not-found",
-        message:
-          "Cette facture n'est plus disponible. Elle a peut-être été supprimée depuis un autre onglet. Rechargez la page avant de recommencer.",
-      };
-    }
-  } else {
-    const { error } = await supabase.from("invoices").insert(payload);
-    if (error) {
-      return { ok: false, reason: "error", message: SAVE_FAILED_MESSAGE };
-    }
+  if (c.kind === "devis") {
+    return { ok: false, error: "Un devis ne se rectifie pas : il se refuse." };
+  }
+  if (c.status === "brouillon" || !c.number || !c.issued_on) {
+    return {
+      ok: false,
+      error: "Une pièce non émise se modifie directement, sans rectification.",
+    };
   }
 
-  revalidatePath("/comptabilite");
-  revalidatePath("/patients");
-  revalidatePath("/");
+  const { data, error } = await supabase
+    .from("billing_documents")
+    .insert({
+      practice_id: ctx.practice.practiceId,
+      kind,
+      patient_id: c.patient_id,
+      pathway_id: c.pathway_id,
+      payer_contact_id: c.payer_contact_id,
+      payer_is_patient: c.payer_is_patient,
+      funding_scheme: c.funding_scheme,
+      period_start: c.period_start,
+      period_end: c.period_end,
+      status: "brouillon",
+      rectifies_id: cibleId,
+      rectifies_number: c.number,
+      rectifies_issued_on: c.issued_on,
+      rectification_reason: motif,
+    })
+    .select("id")
+    .single();
+
+  if (error || !data) return { ok: false, error: messageErreur(error) };
+
+  const nouveau = (data as { id: string }).id;
+
+  // Les lignes de la pièce corrigée sont recopiées : un avoir total est le cas
+  // courant, et repartir d'une page blanche obligerait à retaper ce que la
+  // pièce initiale dit déjà. Elles restent modifiables tant que le brouillon
+  // n'est pas émis — un avoir partiel se fait en les ajustant.
+  const { data: lignes } = await supabase
+    .from("billing_lines")
+    .select(
+      "position, catalog_item_id, label, nature, pricing, unit_price_cents, " +
+        "quantity, amount_cents, service_dates, date_render, vat_treatment, " +
+        "vat_rate_bp, intro, note",
+    )
+    .eq("document_id", cibleId)
+    .order("position", { ascending: true });
+
+  const aRecopier = (lignes ?? []) as unknown as Record<string, unknown>[];
+  if (aRecopier.length > 0) {
+    await supabase.from("billing_lines").insert(
+      aRecopier.map((l) => ({
+        ...l,
+        practice_id: ctx.practice.practiceId,
+        document_id: nouveau,
+      })),
+    );
+  }
+
+  rafraichir(cibleId);
+  return { ok: true, id: nouveau };
+}
+
+/** Devis accepté, refusé ou expiré. Ces trois états ne touchent pas au numéro. */
+export async function changerEtatDevis(fd: FormData): Promise<Resultat> {
+  const ctx = await contexteEcriture();
+  if (!ctx.ok) return { ok: false, error: ctx.error };
+
+  const documentId = id(fd, "document_id");
+  const etat = String(fd.get("status") ?? "");
+  if (!documentId) return { ok: false, error: "Pièce introuvable." };
+  if (!["accepte", "refuse", "expire", "emis"].includes(etat)) {
+    return { ok: false, error: "État inconnu." };
+  }
+
+  const supabase = await createClient();
+  const resultat = await supabase
+    .from("billing_documents")
+    .update({ status: etat })
+    .eq("id", documentId)
+    .eq("practice_id", ctx.practice.practiceId)
+    .eq("kind", "devis")
+    .select("id");
+
+  if (!ecritureReussie(resultat, "le devis").ok) {
+    return { ok: false, error: messageErreur(resultat.error) };
+  }
+  rafraichir(documentId);
   return { ok: true };
 }
 
-export type SendInvoiceResult =
-  | { ok: true; email: string }
-  | {
-      ok: false;
-      reason: "not-configured" | "no-email" | "not-found" | "error";
-      message: string;
-    };
+/* ==========================================================================
+ *  Lignes
+ * ========================================================================== */
+
+const PRICINGS: ServicePricing[] = ["unitaire", "forfait"];
+const RENDERS: DateRender[] = ["liste", "par_date"];
 
 /**
- * Renvoie le lien de consultation de la facture, en créant le jeton si la
- * facture n'en a pas encore ou si le précédent a expiré.
+ * Ajoute ou modifie une ligne.
+ *
+ * LE MONTANT EST RECALCULÉ ICI, jamais repris du formulaire. Un montant posté
+ * par le navigateur serait un montant que personne n'a vérifié.
  */
-async function shareLink(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  invoice: Invoice,
-): Promise<string | null> {
-  const current = invoice.share_token;
-  const expires = invoice.share_expires_at;
+export async function enregistrerLigne(fd: FormData): Promise<Resultat> {
+  const ctx = await contexteEcriture();
+  if (!ctx.ok) return { ok: false, error: ctx.error };
 
-  const stillValid =
-    !!current && (!expires || new Date(expires).getTime() > Date.now());
+  const documentId = id(fd, "document_id");
+  if (!documentId) return { ok: false, error: "Pièce introuvable." };
 
-  let token = current ?? null;
-  if (!stillValid) {
-    token = newShareToken();
-    const { error } = await supabase
-      .from("invoices")
-      .update({ share_token: token, share_expires_at: shareExpiry() })
-      .eq("id", invoice.id);
-    // Colonnes absentes : migration 011 non lancée.
-    if (error) return null;
+  const ligneId = id(fd, "line_id");
+  const libelle = str(fd, "label");
+  if (!libelle) {
+    return { ok: false, error: "Une ligne doit porter un libellé." };
   }
 
-  return `${await siteOrigin()}/facture/${token}`;
-}
-
-/**
- * Prévient le patient que sa facture est disponible, par un lien vers cette
- * application. Volontairement, ni le PDF ni la nature de l'acte ne sont mis
- * dans le message : aucune donnée de santé ne transite par le prestataire
- * d'e-mail.
- */
-export async function sendInvoiceEmail(id: string): Promise<SendInvoiceResult> {
-  // Cette action émet un jeton d'accès et expédie un message : sans garde, elle
-  // consommait le quota du prestataire et créait des liens publics pour tout
-  // appelant connaissant son identifiant.
-  const acces = await requireActiveAccess();
-  if (!acces.ok) {
-    return { ok: false, reason: "error", message: acces.error };
-  }
-
-  const config = emailConfig();
-  if (!config) {
+  const prixBrut = montant(fd, "unit_price");
+  if (prixBrut === null) {
     return {
       ok: false,
-      reason: "not-configured",
-      message:
-        "Envoi d'e-mails non configuré : renseignez RESEND_API_KEY et INVOICE_FROM_EMAIL.",
+      error: "Le montant saisi n'est pas lisible. Exemple attendu : 45,00",
     };
   }
 
+  const pricingBrut = String(fd.get("pricing") ?? "unitaire");
+  const pricing: ServicePricing = (PRICINGS as string[]).includes(pricingBrut)
+    ? (pricingBrut as ServicePricing)
+    : "unitaire";
+
+  const renderBrut = String(fd.get("date_render") ?? "liste");
+  const dateRender: DateRender = (RENDERS as string[]).includes(renderBrut)
+    ? (renderBrut as DateRender)
+    : "liste";
+
+  // Au forfait la quantité vaut toujours 1 : le prix ne se multiplie pas.
+  const quantiteBrute = Number(fd.get("quantity") ?? 1);
+  const quantite =
+    pricing === "forfait"
+      ? 1
+      : Math.max(1, Math.floor(Number.isFinite(quantiteBrute) ? quantiteBrute : 1));
+
+  const dates = String(fd.get("service_dates") ?? "")
+    .split(/[,\s]+/)
+    .map((d) => d.trim())
+    .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
+    .sort();
+
+  // Une ligne au prix unitaire affichée « par date » doit avoir autant de dates
+  // que de séances facturées : imprimer trois séances sous une seule date
+  // produirait un document faux sans que personne ne le voie.
+  if (dateRender === "par_date" && pricing === "unitaire" && dates.length > 0 && dates.length !== quantite) {
+    return {
+      ok: false,
+      error: `Vous facturez ${quantite} séance(s) mais avez indiqué ${dates.length} date(s). Corrigez l'un ou l'autre.`,
+    };
+  }
+
+  const champs = {
+    practice_id: ctx.practice.practiceId,
+    document_id: documentId,
+    catalog_item_id: id(fd, "catalog_item_id"),
+    label: libelle,
+    nature: str(fd, "nature") ?? "seance",
+    pricing,
+    unit_price_cents: prixBrut,
+    quantity: quantite,
+    amount_cents: pricing === "forfait" ? prixBrut : prixBrut * quantite,
+    service_dates: dates,
+    date_render: dateRender,
+    intro: str(fd, "intro"),
+    note: str(fd, "note_ligne"),
+  };
+
   const supabase = await createClient();
-  const { data: invoiceRaw } = await supabase
-    .from("invoices")
-    .select("*")
-    .eq("id", id)
+
+  if (ligneId) {
+    const resultat = await supabase
+      .from("billing_lines")
+      .update(champs)
+      .eq("id", ligneId)
+      .eq("practice_id", ctx.practice.practiceId)
+      .select("id");
+    if (!ecritureReussie(resultat, "la ligne").ok) {
+      return { ok: false, error: messageErreur(resultat.error) };
+    }
+    rafraichir(documentId);
+    return { ok: true, id: ligneId };
+  }
+
+  const { data: derniere } = await supabase
+    .from("billing_lines")
+    .select("position")
+    .eq("document_id", documentId)
+    .order("position", { ascending: false })
+    .limit(1)
     .maybeSingle();
 
-  if (!invoiceRaw) {
-    return { ok: false, reason: "not-found", message: "Facture introuvable." };
-  }
-  const invoice = invoiceRaw as Invoice;
+  const position = ((derniere as { position: number } | null)?.position ?? 0) + 1;
 
-  let patient: Patient | null = null;
-  if (invoice.patient_id) {
-    const { data } = await supabase
-      .from("patients")
-      .select("*")
-      .eq("id", invoice.patient_id)
-      .maybeSingle();
-    patient = (data as Patient) ?? null;
+  const { data, error } = await supabase
+    .from("billing_lines")
+    .insert({ ...champs, position })
+    .select("id")
+    .single();
+
+  if (error || !data) return { ok: false, error: messageErreur(error) };
+
+  // Rattachement aux séances, si l'écran en a proposé.
+  const seances = fd
+    .getAll("appointment_id")
+    .map((v) => String(v))
+    .filter((v) => /^[0-9a-f-]{36}$/i.test(v));
+
+  if (seances.length > 0) {
+    const ligne = (data as { id: string }).id;
+    const { error: erreurLien } = await supabase
+      .from("billing_line_appointments")
+      .insert(
+        seances.map((appointment_id) => ({
+          line_id: ligne,
+          appointment_id,
+          practice_id: ctx.practice.practiceId,
+        })),
+      );
+    if (erreurLien) {
+      // La ligne existe, le rattachement non. On le dit plutôt que de laisser
+      // croire que les séances sont désormais marquées comme facturées.
+      return {
+        ok: true,
+        id: ligne,
+        message:
+          "Ligne ajoutée, mais le rattachement aux séances a échoué : " +
+          messageErreur(erreurLien),
+      };
+    }
   }
 
-  const to = patient?.email?.trim();
-  if (!to) {
+  rafraichir(documentId);
+  return { ok: true, id: (data as { id: string }).id };
+}
+
+export async function supprimerLigne(fd: FormData): Promise<Resultat> {
+  const ctx = await contexteEcriture();
+  if (!ctx.ok) return { ok: false, error: ctx.error };
+
+  const ligneId = id(fd, "line_id");
+  const documentId = id(fd, "document_id");
+  if (!ligneId) return { ok: false, error: "Ligne introuvable." };
+
+  const supabase = await createClient();
+  const resultat = await supabase
+    .from("billing_lines")
+    .delete()
+    .eq("id", ligneId)
+    .eq("practice_id", ctx.practice.practiceId)
+    .select("id");
+
+  if (!ecritureReussie(resultat, "la ligne").ok) {
+    return { ok: false, error: messageErreur(resultat.error) };
+  }
+  rafraichir(documentId ?? undefined);
+  return { ok: true };
+}
+
+/* ==========================================================================
+ *  Règlements
+ * ========================================================================== */
+
+/**
+ * Enregistre un règlement et l'impute sur une pièce.
+ *
+ * Le règlement existe par lui-même, puis s'affecte. C'est ce qui permet un
+ * paiement groupé, un règlement partiel, et de voir un trop-perçu pour ce
+ * qu'il est : une part non affectée, et non un solde négatif inexpliqué.
+ */
+export async function enregistrerReglement(fd: FormData): Promise<Resultat> {
+  const ctx = await contexteEcriture();
+  if (!ctx.ok) return { ok: false, error: ctx.error };
+
+  const documentId = id(fd, "document_id");
+  const recu = jourISO(fd, "received_on");
+  if (!recu.ok) return { ok: false, error: recu.error };
+
+  const centimes = montant(fd, "amount");
+  if (centimes === null || centimes === 0) {
     return {
       ok: false,
-      reason: "no-email",
-      message: `${invoice.patient_name || "Ce patient"} n'a pas d'adresse e-mail.`,
+      error: "Le montant du règlement n'est pas lisible. Exemple attendu : 45,00",
+    };
+  }
+  if (centimes < 0) {
+    return {
+      ok: false,
+      error: "Un remboursement s'enregistre depuis la pièce concernée, pas ici.",
     };
   }
 
-  const link = await shareLink(supabase, invoice);
-  if (!link) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("payments")
+    .insert({
+      practice_id: ctx.practice.practiceId,
+      received_on: recu.value ?? new Date().toISOString().slice(0, 10),
+      amount_cents: centimes,
+      method: str(fd, "method") ?? "autre",
+      reference: str(fd, "reference"),
+      note: str(fd, "note"),
+    })
+    .select("id")
+    .single();
+
+  if (error || !data) return { ok: false, error: messageErreur(error) };
+  const paiement = (data as { id: string }).id;
+
+  if (!documentId) {
+    rafraichir();
+    return { ok: true, message: "Règlement enregistré, non affecté." };
+  }
+
+  const aAffecter = montant(fd, "allocated") ?? centimes;
+  const { error: erreurAffectation } = await supabase
+    .from("payment_allocations")
+    .insert({
+      practice_id: ctx.practice.practiceId,
+      payment_id: paiement,
+      document_id: documentId,
+      amount_cents: aAffecter,
+    });
+
+  if (erreurAffectation) {
+    // Le règlement est enregistré : le passer sous silence le rendrait
+    // invisible alors que l'argent, lui, a bien été reçu.
     return {
-      ok: false,
-      reason: "error",
+      ok: true,
       message:
-        "Lien de consultation impossible à créer : la migration 011 n'a pas été lancée.",
+        "Règlement enregistré, mais non imputé sur la pièce : " +
+        messageErreur(erreurAffectation),
     };
   }
 
-  const settings = (await getSettings()) as Settings;
-  const num = invoice.invoice_number ? ` n° ${invoice.invoice_number}` : "";
+  rafraichir(documentId);
+  return { ok: true, message: "Règlement enregistré." };
+}
 
-  const error = await sendMail(config, {
-    to,
-    subject: `Votre facture${num}`,
-    text:
-      `Bonjour,\n\nVotre facture${num} est disponible à cette adresse :\n${link}\n\n` +
-      `Ce lien vous est personnel, il expire dans 90 jours.\n\n` +
-      `Bien cordialement,\n${settings.display_name ?? ""}`,
-    replyTo: settings.profile?.business_email,
-  });
+/** Défait une imputation. Le règlement, lui, reste : l'argent a été reçu. */
+export async function retirerAffectation(fd: FormData): Promise<Resultat> {
+  const ctx = await contexteEcriture();
+  if (!ctx.ok) return { ok: false, error: ctx.error };
 
-  if (error) return { ok: false, reason: "error", message: error };
-  revalidatePath("/comptabilite");
-  return { ok: true, email: to };
+  const allocationId = id(fd, "allocation_id");
+  const documentId = id(fd, "document_id");
+  if (!allocationId) return { ok: false, error: "Imputation introuvable." };
+
+  const supabase = await createClient();
+  const resultat = await supabase
+    .from("payment_allocations")
+    .delete()
+    .eq("id", allocationId)
+    .eq("practice_id", ctx.practice.practiceId)
+    .select("id");
+
+  if (!ecritureReussie(resultat, "l'imputation").ok) {
+    return { ok: false, error: messageErreur(resultat.error) };
+  }
+  rafraichir(documentId ?? undefined);
+  return {
+    ok: true,
+    message: "Imputation retirée. Le règlement reste enregistré, non affecté.",
+  };
+}
+
+/* ==========================================================================
+ *  Catalogue
+ * ========================================================================== */
+
+export async function enregistrerPrestation(fd: FormData): Promise<Resultat> {
+  const ctx = await contexteEcriture();
+  if (!ctx.ok) return { ok: false, error: ctx.error };
+
+  const libelle = str(fd, "label");
+  if (!libelle) return { ok: false, error: "Une prestation doit porter un nom." };
+
+  const prix = montant(fd, "unit_price");
+  if (prix === null || prix < 0) {
+    return { ok: false, error: "Le tarif n'est pas lisible. Exemple : 45,00" };
+  }
+
+  const pricingBrut = String(fd.get("pricing") ?? "unitaire");
+  const renderBrut = String(fd.get("default_date_render") ?? "liste");
+
+  const champs = {
+    practice_id: ctx.practice.practiceId,
+    label: libelle,
+    unit_price_cents: prix,
+    pricing: (PRICINGS as string[]).includes(pricingBrut) ? pricingBrut : "unitaire",
+    nature: str(fd, "nature") ?? "seance",
+    default_intro: str(fd, "default_intro"),
+    default_date_render: (RENDERS as string[]).includes(renderBrut)
+      ? renderBrut
+      : "liste",
+    active: fd.get("active") !== "false",
+  };
+
+  const supabase = await createClient();
+  const prestationId = id(fd, "item_id");
+
+  const resultat = prestationId
+    ? await supabase
+        .from("service_catalog_items")
+        .update(champs)
+        .eq("id", prestationId)
+        .eq("practice_id", ctx.practice.practiceId)
+        .select("id")
+    : await supabase.from("service_catalog_items").insert(champs).select("id");
+
+  if (!ecritureReussie(resultat, "la prestation").ok) {
+    return { ok: false, error: messageErreur(resultat.error) };
+  }
+  revalidatePath("/comptabilite/catalogue");
+  return { ok: true, message: "Prestation enregistrée." };
 }
 
 /**
- * Supprime une facture.
+ * Retire une prestation du catalogue.
  *
- * [VALIDATION HUMAINE — expert-comptable] Supprimer physiquement une facture
- * ÉMISE creuse un trou définitif et inexpliqué dans la série, puisque le
- * compteur, lui, ne recule pas. La voie régulière est l'avoir ou la facture
- * rectificative. Ce comportement est conservé tel quel pour ne pas retirer une
- * fonction en service, et il est traité au lot 5 (voir `docs/refonte/02-LOTS.md`).
- * Ce qui change ici : l'échec ne peut plus passer pour un succès.
+ * La désactivation est proposée d'abord, et c'est volontaire : les factures
+ * déjà établies ne changent pas — leurs lignes ont recopié le tarif — mais
+ * supprimer l'entrée fait perdre la PROVENANCE des lignes qui en venaient.
  */
-export async function deleteInvoice(formData: FormData): Promise<Guarded<true>> {
-  const session = await requireUser();
-  if (!session.ok) return session;
+export async function supprimerPrestation(fd: FormData): Promise<Resultat> {
+  const ctx = await contexteEcriture();
+  if (!ctx.ok) return { ok: false, error: ctx.error };
 
-  const id = str(formData.get("id"));
-  if (!id) return { ok: false, error: "Facture introuvable." };
+  const prestationId = id(fd, "item_id");
+  if (!prestationId) return { ok: false, error: "Prestation introuvable." };
 
   const supabase = await createClient();
-  const result = await supabase
-    .from("invoices")
+  const resultat = await supabase
+    .from("service_catalog_items")
     .delete()
-    .eq("id", id)
+    .eq("id", prestationId)
+    .eq("practice_id", ctx.practice.practiceId)
     .select("id");
 
-  const verdict = ecritureReussie(result, "La facture");
-  if (!verdict.ok) return verdict;
-
-  revalidatePath("/comptabilite");
-  revalidatePath("/");
-  return { ok: true, value: true };
+  if (!ecritureReussie(resultat, "la prestation").ok) {
+    return { ok: false, error: messageErreur(resultat.error) };
+  }
+  revalidatePath("/comptabilite/catalogue");
+  return { ok: true, message: "Prestation supprimée du catalogue." };
 }
 
-export async function saveExpense(formData: FormData): Promise<Guarded<true>> {
-  const acces = await requireActiveAccess();
-  if (!acces.ok) return acces;
+/* ==========================================================================
+ *  Charges
+ * ========================================================================== */
 
-  const supabase = await createClient();
-  const id = str(formData.get("id"));
-  const payload = {
-    type: str(formData.get("type")) ?? "loyer",
-    label: str(formData.get("label")),
-    amount: num(formData.get("amount")),
-    expense_date: str(formData.get("expense_date")),
-    period_month: str(formData.get("period_month")),
-    period_year: formData.get("period_year")
-      ? parseInt(String(formData.get("period_year")), 10)
-      : null,
-    notes: str(formData.get("notes")),
+const CATEGORIES = [
+  "loyer", "retrocession", "cotisations", "assurance", "materiel",
+  "formation", "deplacement", "logiciel", "honoraires", "autre",
+];
+
+export async function enregistrerCharge(fd: FormData): Promise<Resultat> {
+  const ctx = await contexteEcriture();
+  if (!ctx.ok) return { ok: false, error: ctx.error };
+
+  const centimes = montant(fd, "amount");
+  if (centimes === null || centimes < 0) {
+    return { ok: false, error: "Le montant n'est pas lisible. Exemple : 383,33" };
+  }
+
+  const paye = jourISO(fd, "spent_on");
+  if (!paye.ok) return { ok: false, error: paye.error };
+  if (!paye.value) {
+    // Une charge sans date n'entre dans aucune période, donc dans aucun total.
+    return { ok: false, error: "Indiquez la date du décaissement." };
+  }
+
+  const categorieBrute = String(fd.get("category") ?? "autre");
+  const champs = {
+    practice_id: ctx.practice.practiceId,
+    category: CATEGORIES.includes(categorieBrute) ? categorieBrute : "autre",
+    label: str(fd, "label"),
+    amount_cents: centimes,
+    spent_on: paye.value,
+    note: str(fd, "note"),
   };
-  const result = id
-    ? await supabase.from("expenses").update(payload).eq("id", id).select("id")
-    : await supabase.from("expenses").insert(payload).select("id");
-
-  const verdict = ecritureReussie(result, "La dépense");
-  if (!verdict.ok) return verdict;
-
-  revalidatePath("/comptabilite");
-  return { ok: true, value: true };
-}
-
-export async function deleteExpense(formData: FormData): Promise<Guarded<true>> {
-  const session = await requireUser();
-  if (!session.ok) return session;
-
-  const id = str(formData.get("id"));
-  if (!id) return { ok: false, error: "Dépense introuvable." };
 
   const supabase = await createClient();
-  const result = await supabase
-    .from("expenses")
+  const chargeId = id(fd, "charge_id");
+  const resultat = chargeId
+    ? await supabase
+        .from("practice_expenses")
+        .update(champs)
+        .eq("id", chargeId)
+        .eq("practice_id", ctx.practice.practiceId)
+        .select("id")
+    : await supabase.from("practice_expenses").insert(champs).select("id");
+
+  if (!ecritureReussie(resultat, "la charge").ok) {
+    return { ok: false, error: messageErreur(resultat.error) };
+  }
+  revalidatePath("/comptabilite/charges");
+  revalidatePath("/comptabilite");
+  return { ok: true, message: "Charge enregistrée." };
+}
+
+export async function supprimerCharge(fd: FormData): Promise<Resultat> {
+  const ctx = await contexteEcriture();
+  if (!ctx.ok) return { ok: false, error: ctx.error };
+
+  const chargeId = id(fd, "charge_id");
+  if (!chargeId) return { ok: false, error: "Charge introuvable." };
+
+  const supabase = await createClient();
+  const resultat = await supabase
+    .from("practice_expenses")
     .delete()
-    .eq("id", id)
+    .eq("id", chargeId)
+    .eq("practice_id", ctx.practice.practiceId)
     .select("id");
 
-  const verdict = ecritureReussie(result, "La dépense");
-  if (!verdict.ok) return verdict;
-
+  if (!ecritureReussie(resultat, "la charge").ok) {
+    return { ok: false, error: messageErreur(resultat.error) };
+  }
+  revalidatePath("/comptabilite/charges");
   revalidatePath("/comptabilite");
-  return { ok: true, value: true };
+  return { ok: true, message: "Charge supprimée." };
+}
+
+/**
+ * Enregistre une charge récurrente.
+ *
+ * Une récurrence est un MODÈLE daté, pas un montant. Sa date de début est
+ * obligatoire : sans elle, modifier un loyer réécrirait rétroactivement toutes
+ * les années passées — le défaut exact de la version précédente, où les
+ * récurrences vivaient dans un JSON sans période d'application.
+ */
+export async function enregistrerRecurrence(fd: FormData): Promise<Resultat> {
+  const ctx = await contexteEcriture();
+  if (!ctx.ok) return { ok: false, error: ctx.error };
+
+  const libelle = str(fd, "label");
+  if (!libelle) return { ok: false, error: "Une charge récurrente doit porter un nom." };
+
+  const centimes = montant(fd, "amount");
+  if (centimes === null || centimes < 0) {
+    return { ok: false, error: "Le montant n'est pas lisible. Exemple : 21,50" };
+  }
+
+  const debut = jourISO(fd, "starts_on");
+  if (!debut.ok) return { ok: false, error: debut.error };
+  if (!debut.value) {
+    return {
+      ok: false,
+      error:
+        "Indiquez à partir de quand cette charge s'applique : sans date de début, elle vaudrait aussi pour les années déjà closes.",
+    };
+  }
+  const fin = jourISO(fd, "ends_on");
+  if (!fin.ok) return { ok: false, error: fin.error };
+  if (fin.value && fin.value < debut.value) {
+    return { ok: false, error: "La fin ne peut pas précéder le début." };
+  }
+
+  const categorieBrute = String(fd.get("category") ?? "autre");
+  const champs = {
+    practice_id: ctx.practice.practiceId,
+    category: CATEGORIES.includes(categorieBrute) ? categorieBrute : "autre",
+    label: libelle,
+    amount_cents: centimes,
+    period: fd.get("period") === "annuel" ? "annuel" : "mensuel",
+    starts_on: debut.value,
+    ends_on: fin.value,
+    active: fd.get("active") !== "false",
+  };
+
+  const supabase = await createClient();
+  const recurrenceId = id(fd, "recurrence_id");
+  const resultat = recurrenceId
+    ? await supabase
+        .from("expense_recurrences")
+        .update(champs)
+        .eq("id", recurrenceId)
+        .eq("practice_id", ctx.practice.practiceId)
+        .select("id")
+    : await supabase.from("expense_recurrences").insert(champs).select("id");
+
+  if (!ecritureReussie(resultat, "la charge récurrente").ok) {
+    return { ok: false, error: messageErreur(resultat.error) };
+  }
+  revalidatePath("/comptabilite/charges");
+  return { ok: true, message: "Charge récurrente enregistrée." };
+}
+
+export async function supprimerRecurrence(fd: FormData): Promise<Resultat> {
+  const ctx = await contexteEcriture();
+  if (!ctx.ok) return { ok: false, error: ctx.error };
+
+  const recurrenceId = id(fd, "recurrence_id");
+  if (!recurrenceId) return { ok: false, error: "Charge récurrente introuvable." };
+
+  const supabase = await createClient();
+  const resultat = await supabase
+    .from("expense_recurrences")
+    .delete()
+    .eq("id", recurrenceId)
+    .eq("practice_id", ctx.practice.practiceId)
+    .select("id");
+
+  if (!ecritureReussie(resultat, "la charge récurrente").ok) {
+    return { ok: false, error: messageErreur(resultat.error) };
+  }
+  revalidatePath("/comptabilite/charges");
+  return {
+    ok: true,
+    message:
+      "Charge récurrente supprimée. Les décaissements déjà saisis sont conservés.",
+  };
 }

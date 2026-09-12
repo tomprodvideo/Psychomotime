@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { FileText, Receipt } from "lucide-react";
-import { euro, frDate } from "@/lib/format";
+import { frDate } from "@/lib/format";
+import { formatCents } from "@/lib/money";
 import type { PieceBilan, PieceFacture } from "@/lib/dossier/queries";
 
 /**
  * Bilans et pièces comptables rattachés au dossier.
  *
- * Ces deux listes viennent des tables de la v1, encore en service. Le lien
- * tient parce que la bascule a conservé les identifiants des patients : c'est
- * ce que la migration de reprise garantit, et ce qu'un test vérifie.
+ * Les pièces viennent du modèle cible ; les bilans, eux, sont encore ceux de la
+ * v1 et seront repris à leur lot. Le lien tient dans les deux cas parce que la
+ * bascule a conservé les identifiants des patients — c'est ce que les
+ * migrations de reprise garantissent, et ce que les tests vérifient.
  */
 export default function PiecesSection({
   bilans,
@@ -68,33 +70,31 @@ export default function PiecesSection({
         <div>
           <h3 className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-400 mb-2">
             <Receipt className="h-3.5 w-3.5" aria-hidden="true" />
-            Factures
+            Pièces comptables
           </h3>
           {factures.length === 0 ? (
-            <p className="text-sm text-slate-500">Aucune facture.</p>
+            <p className="text-sm text-slate-500">Aucune pièce.</p>
           ) : (
             <ul className="space-y-1.5 list-none p-0 m-0">
               {factures.map((f) => {
-                const solde = (f.revenue_gross || 0) - (f.revenue_gross_paid || 0);
+                const solde = f.total_cents - f.encaisse_cents;
+                const brouillon = f.status === "brouillon";
                 return (
                   <li key={f.id} className="text-sm">
                     <Link
-                      href={`/comptabilite/${f.id}/facture`}
+                      href={`/comptabilite/${f.id}`}
                       className="text-slate-700 hover:text-brand-700 hover:underline"
                     >
-                      {f.invoice_number ?? "Sans numéro"}
+                      {f.number ?? "Brouillon"}
                     </Link>
                     <span className="block text-xs text-slate-500">
-                      {f.issue_date
-                        ? frDate(f.issue_date)
-                        : [f.billing_month, f.billing_year].filter(Boolean).join(" ") ||
-                          "Sans date"}
+                      {f.issued_on ? frDate(f.issued_on) : "Non émise"}
                       {" · "}
-                      {euro(f.revenue_gross)}
-                      {solde > 0.005 && (
+                      {formatCents(f.total_cents)}
+                      {!brouillon && f.kind !== "devis" && solde > 0 && (
                         <span className="text-amber-700">
                           {" · "}
-                          {euro(solde)} à encaisser
+                          {formatCents(solde)} à encaisser
                         </span>
                       )}
                     </span>

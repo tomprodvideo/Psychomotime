@@ -686,12 +686,13 @@ export interface PieceBilan {
 
 export interface PieceFacture {
   id: string;
-  invoice_number: string | null;
-  issue_date: string | null;
-  billing_month: string | null;
-  billing_year: number | null;
-  revenue_gross: number;
-  revenue_gross_paid: number;
+  kind: string;
+  status: string;
+  number: string | null;
+  issued_on: string | null;
+  total_cents: number;
+  /** Somme imputée sur la pièce, en centimes. */
+  encaisse_cents: number;
 }
 
 /**
@@ -719,13 +720,13 @@ export async function listPatientPieces(
       .order("bilan_date", { ascending: false, nullsFirst: false })
       .limit(30),
     supabase
-      .from("invoices")
+      .from("billing_documents")
       .select(
-        "id, invoice_number, issue_date, billing_month, billing_year, " +
-          "revenue_gross, revenue_gross_paid",
+        "id, kind, status, number, issued_on, total_cents, " +
+          "payment_allocations(amount_cents)",
       )
       .eq("patient_id", patientId)
-      .order("issue_date", { ascending: false, nullsFirst: false })
+      .order("issued_on", { ascending: false, nullsFirst: true })
       .limit(30),
   ]);
 
@@ -733,7 +734,7 @@ export async function listPatientPieces(
     console.error("[dossier] lecture des bilans refusée :", bilansRes.error);
   }
   if (facturesRes.error) {
-    console.error("[dossier] lecture des factures refusée :", facturesRes.error);
+    console.error("[dossier] lecture des pièces refusée :", facturesRes.error);
   }
 
   const bilans = ((bilansRes.data ?? []) as {
@@ -755,8 +756,23 @@ export async function listPatientPieces(
         : ("psychomoteur" as const),
   }));
 
-  return {
-    bilans,
-    factures: (facturesRes.data ?? []) as unknown as PieceFacture[],
-  };
+  const factures = ((facturesRes.data ?? []) as unknown as {
+    id: string;
+    kind: string;
+    status: string;
+    number: string | null;
+    issued_on: string | null;
+    total_cents: number;
+    payment_allocations: { amount_cents: number }[];
+  }[]).map((f) => ({
+    id: f.id,
+    kind: f.kind,
+    status: f.status,
+    number: f.number,
+    issued_on: f.issued_on,
+    total_cents: f.total_cents,
+    encaisse_cents: f.payment_allocations.reduce((s, a) => s + a.amount_cents, 0),
+  }));
+
+  return { bilans, factures };
 }

@@ -352,6 +352,50 @@ end
 $$;
 
 -- ============================================================================
+--  CHARGES DU CABINET
+-- ============================================================================
+do $$
+declare
+  v_n bigint;
+  v_texte text;
+  v_montant bigint;
+begin
+  perform tests.assert_rows('select 1 from public.practice_expenses', 3,
+    'Les trois charges v1 doivent être reprises.');
+
+  select amount_cents into v_montant from public.practice_expenses
+   where category = 'loyer';
+  perform tests.assert_equals(v_montant, 38333::bigint,
+    'Un montant de charge doit passer en centimes entiers.');
+
+  -- Les trois types de la v1 se répartissent sans inventer de qualification.
+  perform tests.assert_rows(
+    'select 1 from public.practice_expenses where category = ''cotisations''', 1,
+    'Une charge « urssaf » de la v1 devient une cotisation.');
+
+  -- Une charge sans date de décaissement est datée ET l'anomalie est écrite.
+  select note into v_texte from public.practice_expenses
+   where label like '%passation%';
+  perform tests.assert(v_texte like '%Date de décaissement absente%',
+    'Une date manquante doit être signalée, pas comblée en silence.');
+  perform tests.assert_rows(
+    'select 1 from public.practice_expenses where spent_on is null', 0,
+    'Une charge sans date n''entrerait dans aucun total.');
+
+  -- La récurrence devient un modèle DATÉ : sans date de début, changer un
+  -- montant récrirait rétroactivement toutes les années passées.
+  perform tests.assert_rows('select 1 from public.expense_recurrences', 1,
+    'La dépense récurrente du JSON doit devenir un modèle de plein droit.');
+  perform tests.assert_rows(
+    'select 1 from public.expense_recurrences where starts_on is null', 0,
+    'Une récurrence sans date de début serait sans période d''application.');
+  select amount_cents into v_montant from public.expense_recurrences;
+  perform tests.assert_equals(v_montant, 2150::bigint,
+    'Le montant de la récurrence doit passer en centimes.');
+end
+$$;
+
+-- ============================================================================
 --  COUVERTURE RLS APRÈS BASCULE
 -- ============================================================================
 --  Les objets du modèle v1 encore en place appellent `auth.uid()` directement

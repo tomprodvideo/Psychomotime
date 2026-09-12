@@ -242,3 +242,23 @@ update public.invoices
          jsonb_set(lines, '{0,catalog_id}', '"cccccccc-0000-4000-8000-000000000001"'),
          '{1,catalog_id}', '"cccccccc-0000-4000-8000-000000000002"')
  where id = '44444444-4444-4444-8444-000000000006';
+
+-- Charges du cabinet : une ponctuelle datée, une sans date, une d'un autre type.
+insert into public.expenses (user_id, type, label, amount, expense_date, notes)
+values ('11111111-1111-4111-8111-000000000001', 'loyer',
+        'Loyer du cabinet — mars', 383.33, date '2026-03-05', 'Virement mensuel.'),
+       ('11111111-1111-4111-8111-000000000001', 'urssaf',
+        'Acompte URSSAF', 420, date '2026-04-15', null),
+       ('11111111-1111-4111-8111-000000000001', 'autre',
+        'Matériel de passation', 89.90, null, 'Facture égarée.');
+
+-- Une dépense récurrente, rangée par la v1 dans le JSON des réglages, donc
+-- hors de toute période : la reprise doit lui donner une date de début.
+update public.settings
+   set profile = profile || jsonb_build_object(
+         'recurring_expenses', jsonb_build_array(
+           jsonb_build_object(
+             'id', 'dddddddd-0000-4000-8000-000000000001',
+             'label', 'Assurance responsabilité civile',
+             'amount', 21.5, 'period', 'mensuel', 'active', true)))
+ where user_id = '11111111-1111-4111-8111-000000000001';
