@@ -303,6 +303,38 @@ bilan**. Celui-ci lit toujours les seuils codés en dur de `lib/constants.ts`.
 Le lot 3 a déplacé la décision hors du code ; le document, lui, n'a pas suivi.
 C'est le préalable technique au point précédent.
 
+### Six décisions ouvertes sur la fonction IA
+
+Issues de la relecture IA clinique du 2026-09-12, après correction des sept
+points techniques. Aucune n'est tranchable par le produit.
+
+| # | Question | Qui décide |
+|---|---|---|
+| IA-1 | La mention « reformulé par l'assistant » apparaît-elle sur le document imprimé ? Jamais / sur le brouillon seul / toujours ? *(Le brouillon seul est le défaut recommandé : il sert la relecture, qui est le moment utile, sans rien affirmer au destinataire.)* | Psychomotricienne — `Q-301` |
+| IA-2 | La **conclusion** reste-t-elle reformulable ? C'est la section où le raisonnement est le plus serré, la moins paraphrasable sans perte, et celle que les tiers lisent en premier. *(Non traité : le bouton y est toujours. Une exclusion par identifiant ne couvrirait de toute façon pas une section « Synthèse » créée à la main.)* | Psychomotricienne — `Q-303` |
+| IA-3 | Les notes d'origine conservées sous `__ia__` doivent-elles l'être durablement, et combien de temps ? | Psychomotricienne + DPO |
+| IA-4 | Information des personnes sur le recours à un modèle tiers, et possibilité de refus | DPO — `Q-407` |
+| IA-5 | Rétention, région de traitement, entraînement éventuel, sous-traitance chez le fournisseur — **à vérifier à la source primaire pour le compte réellement employé**. Le dossier de recherche porte une estimation, pas un fait. | DPO / juriste |
+| IA-6 | Qualification du rôle RGPD pour cette fonction | Juriste |
+
+**Ce que le dépôt démontre, et qui cadre ces questions.** L'appel n'envoie que
+deux valeurs : le titre de section et le texte du champ. Ni identifiant de
+patient, ni de bilan, ni de session, ni de compte — alors que le composant les a
+tous sous la main. **C'est une abstention délibérée, et elle doit le rester.**
+
+Mais des identifiants indirects partent, et il faut le dire sans détour : le
+champ est de la rédaction clinique libre, où prénom, âge, école, fratrie et nom
+du prescripteur figurent couramment — et la consigne ordonne de CONSERVER les
+données factuelles. Le contenu envoyé est donc une donnée de santé se rapportant
+à une personne identifiable : ni anonyme, ni pseudonymisée de façon contrôlée.
+
+**Reste technique, non fait, et non bloquant pour une praticienne unique :**
+aucune limitation de débit ni borne de taille sur l'action IA — bloquant avant
+toute ouverture à des comptes tiers ; et la provenance reste un état d'interface
+persisté, pas un journal — la cible est un événement `bilan.ia_reformulation`
+dans `audit_events` au lot 6, impossible aujourd'hui puisque le moteur de bilans
+est encore clé sur `user_id`.
+
 ### Deux réglages à faire dans la console Supabase
 
 1. **Protection contre les mots de passe compromis** — désactivée. Elle vérifie
