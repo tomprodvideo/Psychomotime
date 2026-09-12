@@ -542,9 +542,10 @@ begin
     raise exception 'Attestation introuvable.' using errcode = 'no_data_found';
   end if;
 
-  /* ATTESTER EST UN ACTE PROFESSIONNEL. Un assistant administratif peut
-   * préparer le brouillon ; seul un praticien le signe. C'est son nom et son
-   * numéro qui figureront sur le document. */
+  /* ATTESTER EST UN ACTE PROFESSIONNEL : c'est le nom et le numéro du praticien
+   * qui figureront sur le document. Voir l'en-tête du fichier — aujourd'hui ce
+   * contrôle ne retire de droit à personne, `can_write` excluant déjà les
+   * assistants ; il existe pour que les deux questions puissent diverger. */
   if not app.can_attest(a.practice_id) then
     raise exception
       'Seul un praticien du cabinet peut signer une attestation.'
