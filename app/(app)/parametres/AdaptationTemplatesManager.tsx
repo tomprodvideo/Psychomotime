@@ -138,7 +138,7 @@ export default function AdaptationTemplatesManager({
               <button
                 type="button"
                 onClick={() => toggle(g.id)}
-                className="shrink-0 text-slate-400 hover:text-slate-700"
+                className="shrink-0 text-slate-500 hover:text-slate-700"
                 title={isOpen ? "Replier" : "Déplier"}
               >
                 <ChevronDown
@@ -159,14 +159,14 @@ export default function AdaptationTemplatesManager({
                   {g.name}
                 </span>
               )}
-              <span className="text-xs text-slate-400 shrink-0">
+              <span className="text-xs text-slate-500 shrink-0">
                 {items.length}
               </span>
               {isFolder && (
                 <button
                   type="button"
                   onClick={() => deleteFolder(g.folderId!)}
-                  className="shrink-0 p-1 text-slate-400 hover:text-rose-600"
+                  className="shrink-0 p-1 text-slate-500 hover:text-rose-600"
                   title="Supprimer le dossier (les modèles repassent en Général)"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -177,7 +177,7 @@ export default function AdaptationTemplatesManager({
             {isOpen && (
               <div className="p-3 space-y-3">
                 {items.length === 0 && (
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-500">
                     Aucun modèle dans ce dossier.
                   </p>
                 )}
@@ -193,12 +193,12 @@ export default function AdaptationTemplatesManager({
                           updateTemplate(t.id, "title", e.target.value)
                         }
                         placeholder="Titre du modèle"
-                        className="flex-1 rounded-lg border border-slate-200 py-1.5 px-2 text-sm font-medium outline-none focus:border-brand-400"
+                        className="flex-1 rounded-lg border border-slate-500 py-1.5 px-2 text-sm font-medium outline-none focus:border-brand-400"
                       />
                       <button
                         type="button"
                         onClick={() => deleteTemplate(t.id)}
-                        className="p-1 text-slate-400 hover:text-rose-600"
+                        className="p-1 text-slate-500 hover:text-rose-600"
                         title="Supprimer ce modèle"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -211,7 +211,7 @@ export default function AdaptationTemplatesManager({
                       }
                       rows={3}
                       placeholder="Texte du modèle…"
-                      className="w-full rounded-lg border border-slate-200 py-2 px-2 text-sm outline-none focus:border-brand-400 resize-y"
+                      className="w-full rounded-lg border border-slate-500 py-2 px-2 text-sm outline-none focus:border-brand-400 resize-y"
                     />
                   </div>
                 ))}

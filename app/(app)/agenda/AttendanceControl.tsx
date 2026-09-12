@@ -119,7 +119,7 @@ export default function AttendanceControl({
           type="button"
           onClick={() => setOuvert(false)}
           aria-label="Fermer"
-          className="text-slate-400 hover:text-slate-600 rounded p-0.5"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-200"
         >
           <X className="h-4 w-4" aria-hidden="true" />
         </button>
@@ -132,7 +132,7 @@ export default function AttendanceControl({
         id={`issue-${appointment.id}`}
         value={issue}
         onChange={(e) => choisirIssue(e.target.value as Attendance)}
-        className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+        className="w-full rounded-lg border border-slate-500 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
       >
         {ISSUES.map((a) => (
           <option key={a} value={a}>
@@ -157,7 +157,7 @@ export default function AttendanceControl({
               ? "Sans nouvelle, relancée par téléphone…"
               : "Prévenue la veille…"
           }
-          className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+          className="w-full rounded-lg border border-slate-500 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
         />
       </div>
 
@@ -172,7 +172,7 @@ export default function AttendanceControl({
         />
         Facturable
         {!forcerFacturable && (
-          <span className="text-xs text-slate-400">(défaut pour cette issue)</span>
+          <span className="text-xs text-slate-500">(défaut pour cette issue)</span>
         )}
       </label>
 

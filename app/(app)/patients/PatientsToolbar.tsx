@@ -73,7 +73,7 @@ export default function PatientsToolbar({
         </label>
         <span
           aria-hidden="true"
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
         >
           <Search className="h-4 w-4" />
         </span>
@@ -83,7 +83,7 @@ export default function PatientsToolbar({
           value={terme}
           onChange={(e) => setTerme(e.target.value)}
           placeholder="Rechercher un nom ou un prénom"
-          className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-10 pr-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100 transition"
+          className="w-full rounded-lg border border-slate-500 bg-white py-2 pl-10 pr-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100 transition"
         />
       </div>
 

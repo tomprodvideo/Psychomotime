@@ -46,7 +46,7 @@ export function StatCard({
       <p className={`text-xl font-semibold mt-1 ${accents[accent ?? "slate"]}`}>
         {value}
       </p>
-      {hint && <p className="text-xs text-slate-400 mt-0.5">{hint}</p>}
+      {hint && <p className="text-xs text-slate-500 mt-0.5">{hint}</p>}
     </div>
   );
 }

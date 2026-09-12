@@ -40,7 +40,7 @@ export default function RecurringExpensesEditor({
       />
 
       {items.length === 0 ? (
-        <p className="text-sm text-slate-400 py-4 text-center border border-dashed border-slate-200 rounded-xl">
+        <p className="text-sm text-slate-500 py-4 text-center border border-dashed border-slate-200 rounded-xl">
           Aucune dépense récurrente. Ajoutez-en une pour qu&apos;elle soit
           déduite de votre résultat.
         </p>
@@ -100,7 +100,7 @@ export default function RecurringExpensesEditor({
                 <option value="annuel">par an</option>
               </select>
 
-              <span className="col-span-1 text-xs text-slate-400 text-right tabular-nums">
+              <span className="col-span-1 text-xs text-slate-500 text-right tabular-nums">
                 {e.active && e.period === "annuel"
                   ? `${euro(monthlyEquivalent(e))}/m`
                   : ""}
@@ -110,7 +110,7 @@ export default function RecurringExpensesEditor({
                 type="button"
                 onClick={() => setItems((l) => l.filter((x) => x.id !== e.id))}
                 aria-label={`Supprimer ${e.label || "cette dépense"}`}
-                className="col-span-1 justify-self-end p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded"
+                className="col-span-1 justify-self-end p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -154,7 +154,7 @@ export default function RecurringExpensesEditor({
         <p className="text-sm text-slate-500">
           Total mensuel :{" "}
           <strong className="text-slate-800">{euro(total)}</strong>
-          <span className="text-slate-400"> · {euro(total * 12)} par an</span>
+          <span className="text-slate-500"> · {euro(total * 12)} par an</span>
         </p>
       </div>
     </div>
@@ -162,4 +162,4 @@ export default function RecurringExpensesEditor({
 }
 
 const inputCls =
-  "w-full rounded-lg border border-slate-200 bg-white py-2 px-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100 transition";
+  "w-full rounded-lg border border-slate-500 bg-white py-2 px-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100 transition";

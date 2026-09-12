@@ -24,6 +24,15 @@ import { ageFromBirth, frDate } from "@/lib/format";
 import GaussianCurve from "@/components/GaussianCurve";
 import ApercuActions from "./ApercuActions";
 
+import type { Metadata } from "next";
+/* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
+   patient le ferait entrer dans l'historique du navigateur, parfois synchronisé
+   entre appareils, parfois affiché devant quelqu'un d'autre. C'est le même
+   raisonnement que celui de la page de consultation publique, et il vaut
+   autant ici. Distinguer les pages entre elles suffit. */
+export const metadata: Metadata = { title: "Aperçu d'un bilan · Psychomotime" };
+
+
 // Couleurs des puces : Moyenne (vert) / Fragilité (orange) / Pathologique (rouge)
 const ZONE_TEXT = ["#4e7d2f", "#d99b2b", "#c0504d"];
 
@@ -506,7 +515,7 @@ export default async function BilanApercuPage({
                     {s.title}
                   </SectionTitle>
                   {sel.length > 0 && (
-                    <p className="text-[11px] italic text-slate-400 mb-1">
+                    <p className="text-[11px] italic text-slate-500 mb-1">
                       Test(s) : {sel.map((t) => testLabel(t)).join(" · ")}
                     </p>
                   )}

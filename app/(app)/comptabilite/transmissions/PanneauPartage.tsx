@@ -73,6 +73,45 @@ export default function PanneauPartage({
   const [adresse, setAdresse] = useState("");
   const [aConfirmer, setAConfirmer] = useState(false);
 
+  /**
+   * Repartir d'un lien existant.
+   *
+   * POURQUOI CE GESTE EXISTE. Le jeton n'est affiché qu'une fois — la base n'en
+   * garde que l'empreinte, et c'est ce qui rend une fuite de la base sans
+   * conséquence. Mais quand une famille dit « je n'ai rien reçu », il faut donc
+   * refaire un lien : choisir le destinataire, écrire le libellé, reprendre la
+   * durée, retaper l'adresse, et penser à retirer l'ancien. À ce prix-là, joindre
+   * le document à un courriel ordinaire prend quinze secondes — et c'est le pire
+   * canal : ni révocation, ni trace, ni expiration.
+   *
+   * Ce bouton ne crée rien et ne révoque rien : il REMPLIT le formulaire avec ce
+   * que portait l'ancien lien. La praticienne relit, complète l'adresse, et
+   * confirme. Le nouveau lien porte un jeton neuf ; l'ancien se révoque d'un
+   * geste, à côté. Deux décisions, deux clics, aucune surprise.
+   */
+  function reprendre(l: LienPartage) {
+    setContact(l.recipient_contact_id ?? "");
+    setLibelle(l.recipient_label ?? "");
+    const jours = Math.max(
+      1,
+      Math.round(
+        (new Date(l.expires_at).getTime() - new Date(l.created_at).getTime()) /
+          86_400_000,
+      ),
+    );
+    // On ne propose que des durées de la liste : une durée exotique reprise
+    // d'un ancien lien réapparaîtrait sans que personne ne l'ait choisie.
+    setJours(
+      EXPIRATIONS_PROPOSEES.reduce((meilleur, j) =>
+        Math.abs(j - jours) < Math.abs(meilleur - jours) ? j : meilleur,
+      ),
+    );
+    const c = contacts.find((x) => x.id === l.recipient_contact_id);
+    setAdresse(c?.email ?? "");
+    setAConfirmer(false);
+    setOuvert(true);
+  }
+
   const maintenant = new Date();
 
   const nomDuContact = contacts.find((c) => c.id === contact)?.nom ?? null;
@@ -194,11 +233,11 @@ export default function PanneauPartage({
                 <div className="min-w-0 text-sm">
                   <p className="text-slate-700">
                     <Link2
-                      className="inline h-3.5 w-3.5 text-slate-400 mr-1.5"
+                      className="inline h-3.5 w-3.5 text-slate-500 mr-1.5"
                       aria-hidden="true"
                     />
                     {l.recipient_label ?? "Destinataire non nommé"}
-                    <span className="text-slate-400">
+                    <span className="text-slate-500">
                       {" "}
                       · lien …{l.token_hint}
                     </span>
@@ -224,6 +263,16 @@ export default function PanneauPartage({
                       `, la dernière le ${frDate(l.last_accessed_at.slice(0, 10))}`}
                   </p>
                 </div>
+                {modifiable && (
+                  <button
+                    type="button"
+                    onClick={() => reprendre(l)}
+                    disabled={enCours}
+                    className="shrink-0 text-xs text-slate-600 hover:text-brand-800 border border-slate-200 px-2.5 py-1.5 rounded-lg disabled:opacity-50"
+                  >
+                    Renvoyer
+                  </button>
+                )}
                 {modifiable && etat === "actif" && (
                   <button
                     type="button"
@@ -326,7 +375,7 @@ export default function PanneauPartage({
                       </option>
                     ))}
                   </select>
-                  <p className="text-xs text-slate-400 mt-1">
+                  <p className="text-xs text-slate-500 mt-1">
                     Passé ce délai, le lien cesse de fonctionner de lui-même.
                   </p>
                 </div>
@@ -345,7 +394,7 @@ export default function PanneauPartage({
                     className={styleChamp}
                     placeholder="adresse@exemple.fr"
                   />
-                  <p className="text-xs text-slate-400 mt-1">
+                  <p className="text-xs text-slate-500 mt-1">
                     Le message ne portera ni pièce jointe, ni montant, ni nom :
                     seulement le lien.
                   </p>
@@ -450,4 +499,4 @@ export default function PanneauPartage({
 }
 
 const styleChamp =
-  "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-200";
+  "w-full rounded-lg border border-slate-500 px-3 py-2 text-sm bg-white focus:border-brand-400 focus:ring-2 focus:ring-brand-100";

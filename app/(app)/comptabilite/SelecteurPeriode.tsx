@@ -67,7 +67,7 @@ export default function SelecteurPeriode({
           aria-label="Mois"
           value={mois}
           onChange={(e) => aller({ mois: e.target.value })}
-          className="rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white"
+          className="rounded-lg border border-slate-500 px-3 py-2 text-sm bg-white"
         >
           {MOIS.map((m, i) => (
             <option key={m} value={i + 1}>
@@ -82,7 +82,7 @@ export default function SelecteurPeriode({
           aria-label="Année"
           value={annee}
           onChange={(e) => aller({ annee: e.target.value })}
-          className="rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white"
+          className="rounded-lg border border-slate-500 px-3 py-2 text-sm bg-white"
         >
           {anneesDisponibles.map((a) => (
             <option key={a} value={a}>
@@ -102,9 +102,9 @@ export default function SelecteurPeriode({
             type="date"
             value={du ?? ""}
             onChange={(e) => aller({ du: e.target.value })}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white"
+            className="rounded-lg border border-slate-500 px-3 py-2 text-sm bg-white"
           />
-          <span className="text-slate-400 text-sm">au</span>
+          <span className="text-slate-500 text-sm">au</span>
           <label className="sr-only" htmlFor="periode-au">
             Date de fin
           </label>
@@ -113,7 +113,7 @@ export default function SelecteurPeriode({
             type="date"
             value={au ?? ""}
             onChange={(e) => aller({ au: e.target.value })}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white"
+            className="rounded-lg border border-slate-500 px-3 py-2 text-sm bg-white"
           />
         </div>
       )}

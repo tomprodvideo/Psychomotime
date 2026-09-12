@@ -33,6 +33,44 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* ---------------------------------------------------------------------------
+   OÙ SUIS-JE QUAND JE NAVIGUE AU CLAVIER
+
+   Tailwind ne supprime PAS l'anneau de focus du navigateur : ce qui manquait
+   n'était donc pas un indicateur, mais un indicateur là où le code remplaçait
+   celui du navigateur. Cinq constantes de champ posaient `outline-none` puis un
+   anneau `brand-200`, mesuré à 1,58:1 sur fond blanc — sur les écrans les plus
+   lourds du produit, dont le partage d'un document de santé.
+
+   Cette règle est posée HORS de toute couche en cascade, ce qui la fait primer
+   sur les utilitaires de Tailwind : même un `outline-none` oublié quelque part
+   ne peut plus effacer le focus.
+
+   `brand-600` sur fond clair et le blanc sur fond sombre dépassent tous deux
+   3:1, le seuil de 2.4.13 — qui est de niveau AAA, mais ne rien viser sous
+   prétexte que AA n'exige qu'un indicateur « visible » serait de mauvaise foi.
+   --------------------------------------------------------------------------- */
+:focus-visible {
+  outline: 2px solid var(--color-brand-600);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+/* Sur les fonds sombres — la barre latérale — le contour repasse en blanc. */
+.bg-brand-900 :focus-visible,
+.bg-brand-800 :focus-visible,
+.bg-brand-700 :focus-visible {
+  outline-color: #ffffff;
+}
+
+/* Une barre d'actions fixe couvre le bas de l'écran pendant la saisie d'un
+   bilan. En tabulant, le navigateur amène le champ au bord du viewport —
+   c'est-à-dire exactement sous cette barre. Cette marge de défilement l'en
+   éloigne. */
+html {
+  scroll-padding-bottom: 7rem;
+  scroll-padding-top: 5rem;
+}
+
 /* ---- Impression (export PDF des bilans via Imprimer) ---- */
 @media print {
   .no-print {

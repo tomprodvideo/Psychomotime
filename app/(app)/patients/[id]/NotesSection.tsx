@@ -107,7 +107,7 @@ export default function NotesSection({
 }
 
 const CHAMP =
-  "w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100 transition";
+  "w-full rounded-lg border border-slate-500 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100 transition";
 
 function DialogueNote({
   patientId,
@@ -152,7 +152,7 @@ function DialogueNote({
             type="button"
             onClick={onClose}
             aria-label="Fermer"
-            className="text-slate-400 hover:text-slate-600 rounded p-1"
+            className="text-slate-500 hover:text-slate-600 rounded p-1"
           >
             <X className="h-5 w-5" aria-hidden="true" />
           </button>

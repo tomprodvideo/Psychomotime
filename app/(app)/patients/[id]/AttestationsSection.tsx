@@ -63,12 +63,12 @@ export default function AttestationsSection({
                 href={`/comptabilite/attestations/${a.id}`}
                 className={`hover:text-brand-700 hover:underline ${
                   a.status === "annule"
-                    ? "text-slate-400 line-through"
+                    ? "text-slate-500 line-through"
                     : "text-slate-700"
                 }`}
               >
                 <ShieldCheck
-                  className="inline h-3.5 w-3.5 text-slate-400 mr-1.5"
+                  className="inline h-3.5 w-3.5 text-slate-500 mr-1.5"
                   aria-hidden="true"
                 />
                 {a.number ?? "Brouillon"}

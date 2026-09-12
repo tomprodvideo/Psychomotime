@@ -7,6 +7,15 @@ import { PageHeader, StatCard } from "@/components/ui";
 import { frDate } from "@/lib/format";
 import { setSubscription } from "./actions";
 
+import type { Metadata } from "next";
+/* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
+   patient le ferait entrer dans l'historique du navigateur, parfois synchronisé
+   entre appareils, parfois affiché devant quelqu'un d'autre. C'est le même
+   raisonnement que celui de la page de consultation publique, et il vaut
+   autant ici. Distinguer les pages entre elles suffit. */
+export const metadata: Metadata = { title: "Administration · Psychomotime" };
+
+
 const STATUS_STYLES: Record<string, string> = {
   active: "bg-emerald-100 text-emerald-700",
   trialing: "bg-amber-100 text-amber-700",
@@ -75,7 +84,7 @@ export default async function AdminPage() {
           <tbody>
             {clients.length === 0 && (
               <tr>
-                <td colSpan={4} className="text-center text-slate-400 py-10">
+                <td colSpan={4} className="text-center text-slate-500 py-10">
                   Aucun compte client pour le moment.
                 </td>
               </tr>
@@ -101,7 +110,7 @@ export default async function AdminPage() {
                       {STATUS_LABEL[s.status] ?? s.status}
                     </span>
                     {trialInfo(s) && (
-                      <span className="text-xs text-slate-400 ml-2">
+                      <span className="text-xs text-slate-500 ml-2">
                         {trialInfo(s)}
                       </span>
                     )}
@@ -145,7 +154,7 @@ export default async function AdminPage() {
         </table>
       </div>
 
-      <p className="text-xs text-slate-400 mt-4">
+      <p className="text-xs text-slate-500 mt-4">
         Le paiement automatique (Stripe, 29 €/mois) sera ajouté ensuite. En
         attendant, vous activez/désactivez les comptes manuellement ici.
       </p>

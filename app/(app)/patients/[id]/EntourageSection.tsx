@@ -80,7 +80,7 @@ export default function EntourageSection({
         <div className="space-y-4 mt-3">
           {groupes.map((g) => (
             <div key={g.role}>
-              <h3 className="text-xs font-medium uppercase tracking-wide text-slate-400 mb-1.5">
+              <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500 mb-1.5">
                 {ROLE_LABELS[g.role]}
               </h3>
               <ul className="space-y-2 list-none p-0 m-0">
@@ -186,7 +186,7 @@ function LigneLien({
             .join(" · ")}
         </p>
         {coordonnees && <p className="text-xs text-slate-500">{coordonnees}</p>}
-        {adresse && <p className="text-xs text-slate-400">{adresse}</p>}
+        {adresse && <p className="text-xs text-slate-500">{adresse}</p>}
         {lien.note && (
           <p className="text-xs text-slate-500 italic mt-1">{lien.note}</p>
         )}
@@ -214,7 +214,7 @@ function LigneLien({
 /* --------------------------------------------------------------- dialogue */
 
 const CHAMP =
-  "w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100 transition";
+  "w-full rounded-lg border border-slate-500 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100 transition";
 
 function DialogueRattachement({
   patientId,
@@ -261,7 +261,7 @@ function DialogueRattachement({
             type="button"
             onClick={onClose}
             aria-label="Fermer"
-            className="text-slate-400 hover:text-slate-600 rounded p-1"
+            className="text-slate-500 hover:text-slate-600 rounded p-1"
           >
             <X className="h-5 w-5" aria-hidden="true" />
           </button>
@@ -458,7 +458,7 @@ function PetitChamp({
         name={name}
         type={type}
         placeholder={placeholder}
-        className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100 transition"
+        className="w-full rounded-lg border border-slate-500 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100 transition"
       />
     </div>
   );

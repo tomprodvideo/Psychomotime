@@ -15,6 +15,15 @@ import {
 } from "@/lib/attestations/types";
 import NouvelleAttestation from "./NouvelleAttestation";
 
+import type { Metadata } from "next";
+/* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
+   patient le ferait entrer dans l'historique du navigateur, parfois synchronisé
+   entre appareils, parfois affiché devant quelqu'un d'autre. C'est le même
+   raisonnement que celui de la page de consultation publique, et il vaut
+   autant ici. Distinguer les pages entre elles suffit. */
+export const metadata: Metadata = { title: "Attestations · Psychomotime" };
+
+
 /**
  * Les attestations établies.
  *
@@ -82,7 +91,7 @@ export default async function AttestationsPage() {
             <table className="w-full text-sm">
               <caption className="sr-only">Attestations établies</caption>
               <thead>
-                <tr className="text-left text-xs uppercase tracking-wide text-slate-400 border-b border-slate-100">
+                <tr className="text-left text-xs uppercase tracking-wide text-slate-500 border-b border-slate-100">
                   <th scope="col" className="px-4 py-2.5 font-medium">Attestation</th>
                   <th scope="col" className="px-4 py-2.5 font-medium">Date</th>
                   <th scope="col" className="px-4 py-2.5 font-medium">Dossier</th>
@@ -101,13 +110,13 @@ export default async function AttestationsPage() {
                         href={`/comptabilite/attestations/${a.id}`}
                         className={`font-medium hover:text-brand-700 ${
                           a.status === "annule"
-                            ? "text-slate-400 line-through"
+                            ? "text-slate-500 line-through"
                             : "text-slate-700"
                         }`}
                       >
                         {a.number ?? attestationTitre(a)}
                       </Link>
-                      <span className="block text-xs text-slate-400">
+                      <span className="block text-xs text-slate-500">
                         {ATTESTATION_KIND_SHORT[a.kind]}
                       </span>
                     </td>
@@ -127,7 +136,7 @@ export default async function AttestationsPage() {
                         ? `${a.sessions_count} séance${a.sessions_count > 1 ? "s" : ""}`
                         : formatCents(a.total_cents)}
                       {(a.period_start || a.period_end) && (
-                        <span className="block text-xs text-slate-400">
+                        <span className="block text-xs text-slate-500">
                           {a.period_start && `du ${frDate(a.period_start)}`}
                           {a.period_end && ` au ${frDate(a.period_end)}`}
                         </span>

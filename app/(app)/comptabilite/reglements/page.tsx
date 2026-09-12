@@ -9,6 +9,15 @@ import { listPayments } from "@/lib/compta/queries";
 import { METHOD_LABELS } from "@/lib/compta/types";
 import { resoudrePeriode } from "../periode";
 
+import type { Metadata } from "next";
+/* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
+   patient le ferait entrer dans l'historique du navigateur, parfois synchronisé
+   entre appareils, parfois affiché devant quelqu'un d'autre. C'est le même
+   raisonnement que celui de la page de consultation publique, et il vaut
+   autant ici. Distinguer les pages entre elles suffit. */
+export const metadata: Metadata = { title: "Règlements · Psychomotime" };
+
+
 /**
  * Les règlements reçus.
  *
@@ -74,7 +83,7 @@ export default async function ReglementsPage({
                   <div className="min-w-0">
                     <p className="text-sm text-slate-800">
                       {formatCents(r.amount_cents)}
-                      <span className="text-slate-400">
+                      <span className="text-slate-500">
                         {" "}
                         · {METHOD_LABELS[r.method]} · {frDate(r.received_on)}
                         {r.reference && ` · ${r.reference}`}
@@ -102,7 +111,7 @@ export default async function ReglementsPage({
                       </p>
                     )}
                     {r.note && (
-                      <p className="text-xs text-slate-400 mt-0.5">{r.note}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{r.note}</p>
                     )}
                   </div>
                   {r.libre_cents > 0 && r.pieces.length > 0 && (

@@ -9,6 +9,15 @@ import { formulePresence, libelleActe } from "@/lib/attestations/types";
 import type { AttestationSnapshot } from "@/lib/attestations/types";
 import BoutonImprimer from "../../../[id]/document/BoutonImprimer";
 
+import type { Metadata } from "next";
+/* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
+   patient le ferait entrer dans l'historique du navigateur, parfois synchronisé
+   entre appareils, parfois affiché devant quelqu'un d'autre. C'est le même
+   raisonnement que celui de la page de consultation publique, et il vaut
+   autant ici. Distinguer les pages entre elles suffit. */
+export const metadata: Metadata = { title: "Attestation à imprimer · Psychomotime" };
+
+
 /**
  * L'attestation telle qu'elle est remise.
  *
@@ -135,7 +144,7 @@ export default async function DocumentAttestationPage({
 
         {destinataire && (
           <section className="mb-8 text-sm">
-            <p className="text-xs uppercase tracking-wide text-slate-400 mb-1">
+            <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">
               Remise à
             </p>
             <p className="text-slate-800 font-medium">{destinataire.nom}</p>
@@ -266,7 +275,7 @@ export default async function DocumentAttestationPage({
               Fait à {emetteur?.ville?.trim() || "…"}, le {frDate(a.issued_on)}
             </p>
           )}
-          <p className="text-xs uppercase tracking-wide text-slate-400 mt-8">
+          <p className="text-xs uppercase tracking-wide text-slate-500 mt-8">
             Signature et cachet
           </p>
           <div className="h-24 border-b border-slate-200 mt-1" aria-hidden="true" />
@@ -281,12 +290,12 @@ export default async function DocumentAttestationPage({
         {/* Une attestation déborde souvent sur une seconde page — une année
             scolaire fait une trentaine de dates. Sans ce rappel, la page 2
             n'identifie ni le document ni la personne. */}
-        <p className="hidden print:block text-xs text-slate-400 mt-6">
+        <p className="hidden print:block text-xs text-slate-500 mt-6">
           {a.number} — {patient?.nom?.trim()}
         </p>
       </article>
 
-      <p className="text-xs text-slate-400 mt-4 no-print">
+      <p className="text-xs text-slate-500 mt-4 no-print">
         Ce document est rendu à partir de l&apos;instantané figé à la signature :
         il ne changera plus, quelles que soient les modifications apportées
         ensuite au dossier ou à l&apos;agenda.

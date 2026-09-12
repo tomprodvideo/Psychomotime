@@ -138,7 +138,7 @@ export default function Sidebar({
 
         <div className="p-3 md:p-4 border-t border-slate-200 md:border-white/10">
           <div className="px-3 py-2 mb-1">
-            <p className="text-xs text-slate-400 md:text-white/40">Connectée</p>
+            <p className="text-xs text-slate-500 md:text-white/40">Connectée</p>
             <p className="text-sm font-medium text-slate-700 md:text-white truncate">
               {displayName}
             </p>

@@ -32,7 +32,7 @@ export default function PiecesSection({
 
       <div className="grid sm:grid-cols-2 gap-5">
         <div>
-          <h3 className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-400 mb-2">
+          <h3 className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-500 mb-2">
             <FileText className="h-3.5 w-3.5" aria-hidden="true" />
             Bilans
           </h3>
@@ -68,7 +68,7 @@ export default function PiecesSection({
         </div>
 
         <div>
-          <h3 className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-400 mb-2">
+          <h3 className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-500 mb-2">
             <Receipt className="h-3.5 w-3.5" aria-hidden="true" />
             Pièces comptables
           </h3>
@@ -97,7 +97,7 @@ export default function PiecesSection({
                       {" · "}
                       {formatCents(f.total_cents)}
                       {caduque && (
-                        <span className="text-slate-400">
+                        <span className="text-slate-500">
                           {" · "}
                           {f.status === "remplace" ? "remplacée" : "annulée par avoir"}
                         </span>

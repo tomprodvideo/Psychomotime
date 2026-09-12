@@ -7,6 +7,15 @@ import { frDate } from "@/lib/format";
 import { BILAN_TYPE_ORDER, BILAN_TYPE_UI, bilanTypeOf } from "@/lib/constants";
 import DeleteBilanButton from "./DeleteBilanButton";
 
+import type { Metadata } from "next";
+/* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
+   patient le ferait entrer dans l'historique du navigateur, parfois synchronisé
+   entre appareils, parfois affiché devant quelqu'un d'autre. C'est le même
+   raisonnement que celui de la page de consultation publique, et il vaut
+   autant ici. Distinguer les pages entre elles suffit. */
+export const metadata: Metadata = { title: "Bilans · Psychomotime" };
+
+
 export default async function BilansPage() {
   const supabase = await createClient();
   const { data } = await supabase
@@ -68,7 +77,7 @@ export default async function BilansPage() {
                 >
                   {ui.plural}
                 </h2>
-                <span className="text-xs text-slate-400">{list.length}</span>
+                <span className="text-xs text-slate-500">{list.length}</span>
                 <div className="h-px flex-1 bg-slate-100" />
               </div>
 
@@ -117,7 +126,7 @@ export default async function BilansPage() {
                           {b.title}
                         </p>
                       </div>
-                      <p className="text-xs text-slate-400 mt-auto pt-2">
+                      <p className="text-xs text-slate-500 mt-auto pt-2">
                         {b.bilan_date ? frDate(b.bilan_date) : "Date non définie"}
                       </p>
                     </Link>

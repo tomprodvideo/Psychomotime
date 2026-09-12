@@ -85,11 +85,11 @@ export default function FaitsAttestes({
                     />
                     <span>
                       <CalendarCheck
-                        className="inline h-3.5 w-3.5 text-slate-400 mr-1.5"
+                        className="inline h-3.5 w-3.5 text-slate-500 mr-1.5"
                         aria-hidden="true"
                       />
                       {frDate(s.starts_at.slice(0, 10))}
-                      <span className="text-slate-400">
+                      <span className="text-slate-500">
                         {" · "}
                         {NATURE_ACTE_LABELS[s.kind] ?? s.kind}
                       </span>
@@ -97,7 +97,7 @@ export default function FaitsAttestes({
                   </label>
                   {s.deja_attestee && (
                     <span
-                      className="text-xs text-slate-400"
+                      className="text-xs text-slate-500"
                       title="Cette séance figure déjà sur une autre attestation. Attester deux fois une présence réelle ne crée aucun faux — contrairement à une facture."
                     >
                       déjà attestée ailleurs
@@ -120,7 +120,7 @@ export default function FaitsAttestes({
   return (
     <div>
       <p className="px-5 pt-4 text-xs text-slate-500 flex items-start gap-2">
-        <Info className="h-4 w-4 shrink-0 text-slate-400 mt-0.5" aria-hidden="true" />
+        <Info className="h-4 w-4 shrink-0 text-slate-500 mt-0.5" aria-hidden="true" />
         Seule la part de chaque règlement imputée sur les factures de ce dossier
         est proposée. Un virement couvrant deux familles ne s&apos;atteste pas en
         entier à l&apos;une d&apos;elles.
@@ -156,18 +156,18 @@ export default function FaitsAttestes({
                   />
                   <span>
                     <Wallet
-                      className="inline h-3.5 w-3.5 text-slate-400 mr-1.5"
+                      className="inline h-3.5 w-3.5 text-slate-500 mr-1.5"
                       aria-hidden="true"
                     />
                     {formatCents(r.impute_cents)}
-                    <span className="text-slate-400">
+                    <span className="text-slate-500">
                       {" · "}
                       {METHOD_LABELS[r.method as PaymentMethod] ?? r.method}
                       {" · "}
                       {frDate(r.received_on)}
                     </span>
                     {r.factures.length > 0 && (
-                      <span className="block text-xs text-slate-400">
+                      <span className="block text-xs text-slate-500">
                         Facture{r.factures.length > 1 ? "s" : ""}{" "}
                         {r.factures.join(", ")}
                       </span>

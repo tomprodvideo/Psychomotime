@@ -104,7 +104,7 @@ export default function ReglementsSection({
             >
               <span className="text-slate-700">
                 {formatCents(r.amount_cents)}
-                <span className="text-slate-400">
+                <span className="text-slate-500">
                   {" "}
                   · {METHOD_LABELS[r.method]} · {frDate(r.received_on)}
                   {r.reference && ` · ${r.reference}`}
@@ -115,7 +115,7 @@ export default function ReglementsSection({
                   type="button"
                   onClick={() => retirer(r.allocation_id)}
                   disabled={enCours}
-                  className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-rose-600 disabled:opacity-40"
+                  className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-rose-600 disabled:opacity-40"
                 >
                   <Unlink className="h-3.5 w-3.5" aria-hidden="true" />
                   Retirer l&apos;imputation
@@ -229,4 +229,4 @@ export default function ReglementsSection({
 }
 
 const styleChamp =
-  "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-200";
+  "w-full rounded-lg border border-slate-500 px-3 py-2 text-sm bg-white focus:border-brand-400 focus:ring-2 focus:ring-brand-100";

@@ -6,6 +6,15 @@ import { getCurrentPractice } from "@/lib/dossier/practice";
 import { listCatalog } from "@/lib/compta/queries";
 import CatalogueClient from "./CatalogueClient";
 
+import type { Metadata } from "next";
+/* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
+   patient le ferait entrer dans l'historique du navigateur, parfois synchronisé
+   entre appareils, parfois affiché devant quelqu'un d'autre. C'est le même
+   raisonnement que celui de la page de consultation publique, et il vaut
+   autant ici. Distinguer les pages entre elles suffit. */
+export const metadata: Metadata = { title: "Catalogue des prestations · Psychomotime" };
+
+
 export default async function CataloguePage() {
   const practice = await getCurrentPractice();
   if (!practice) notFound();

@@ -23,6 +23,15 @@ import {
 import AttendanceControl from "./agenda/AttendanceControl";
 import CreatePracticeCard from "./patients/CreatePracticeCard";
 
+import type { Metadata } from "next";
+/* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
+   patient le ferait entrer dans l'historique du navigateur, parfois synchronisé
+   entre appareils, parfois affiché devant quelqu'un d'autre. C'est le même
+   raisonnement que celui de la page de consultation publique, et il vaut
+   autant ici. Distinguer les pages entre elles suffit. */
+export const metadata: Metadata = { title: "Accueil · Psychomotime" };
+
+
 /**
  * Accueil — orienté AUJOURD'HUI.
  *
@@ -154,7 +163,7 @@ export default async function AccueilPage() {
           </div>
 
           {resume.aujourdhui.length === 0 ? (
-            <p className="text-sm text-slate-400 py-6 text-center">
+            <p className="text-sm text-slate-500 py-6 text-center">
               Rien de prévu aujourd&apos;hui.
             </p>
           ) : (
@@ -243,7 +252,7 @@ export default async function AccueilPage() {
               Liste d&apos;attente
             </h2>
             {resume.attente.length === 0 ? (
-              <p className="text-sm text-slate-400">Personne n&apos;attend.</p>
+              <p className="text-sm text-slate-500">Personne n&apos;attend.</p>
             ) : (
               <ul className="space-y-2 list-none p-0 m-0">
                 {resume.attente.map((p) => {
@@ -300,7 +309,7 @@ export default async function AccueilPage() {
                 </div>
               )}
             </dl>
-            <p className="text-xs text-slate-400 mt-3">
+            <p className="text-xs text-slate-500 mt-3">
               Facturé et encaissé sont deux choses différentes. Les estimations
               de charges se lisent dans la comptabilité, et ne remplacent ni
               votre comptabilité légale, ni votre expert-comptable.

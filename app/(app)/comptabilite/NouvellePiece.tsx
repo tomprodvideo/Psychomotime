@@ -35,7 +35,7 @@ export default function NouvellePiece() {
           type="button"
           onClick={() => creer("devis")}
           disabled={enCours}
-          className="inline-flex items-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium px-3 py-2 rounded-lg transition disabled:opacity-50"
+          className="inline-flex items-center gap-2 border border-slate-500 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium px-3 py-2 rounded-lg transition disabled:opacity-50"
         >
           <FileText className="h-4 w-4" aria-hidden="true" />
           Devis

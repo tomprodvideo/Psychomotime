@@ -29,6 +29,15 @@ import SeancesSection from "./SeancesSection";
 import PiecesSection from "./PiecesSection";
 import AttestationsSection from "./AttestationsSection";
 
+import type { Metadata } from "next";
+/* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
+   patient le ferait entrer dans l'historique du navigateur, parfois synchronisé
+   entre appareils, parfois affiché devant quelqu'un d'autre. C'est le même
+   raisonnement que celui de la page de consultation publique, et il vaut
+   autant ici. Distinguer les pages entre elles suffit. */
+export const metadata: Metadata = { title: "Dossier · Psychomotime" };
+
+
 export default async function FichePatientPage({
   params,
 }: {
@@ -103,7 +112,7 @@ export default async function FichePatientPage({
             )}
           </p>
           {patient.birth_name && (
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               Nom de naissance : {patient.birth_name}
             </p>
           )}
@@ -123,7 +132,7 @@ export default async function FichePatientPage({
       {archive && (
         <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 mb-6">
           <Archive
-            className="h-5 w-5 shrink-0 text-slate-400 mt-0.5"
+            className="h-5 w-5 shrink-0 text-slate-500 mt-0.5"
             aria-hidden="true"
           />
           <div className="text-sm text-slate-600">
@@ -270,7 +279,7 @@ export default async function FichePatientPage({
 function Ligne({ terme, valeur }: { terme: string; valeur: string }) {
   return (
     <div>
-      <dt className="text-xs text-slate-400">{terme}</dt>
+      <dt className="text-xs text-slate-500">{terme}</dt>
       <dd className="text-slate-700">{valeur}</dd>
     </div>
   );

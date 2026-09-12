@@ -5,6 +5,15 @@ import { resolveBilanSections } from "@/lib/constants";
 import type { Bilan } from "@/lib/types";
 import BilanEditor from "./BilanEditor";
 
+import type { Metadata } from "next";
+/* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
+   patient le ferait entrer dans l'historique du navigateur, parfois synchronisé
+   entre appareils, parfois affiché devant quelqu'un d'autre. C'est le même
+   raisonnement que celui de la page de consultation publique, et il vaut
+   autant ici. Distinguer les pages entre elles suffit. */
+export const metadata: Metadata = { title: "Rédaction d'un bilan · Psychomotime" };
+
+
 export default async function BilanEditPage({
   params,
 }: {

@@ -27,6 +27,15 @@ import {
 } from "@/lib/dossier/types";
 import PrintButton from "./PrintButton";
 
+import type { Metadata } from "next";
+/* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
+   patient le ferait entrer dans l'historique du navigateur, parfois synchronisé
+   entre appareils, parfois affiché devant quelqu'un d'autre. C'est le même
+   raisonnement que celui de la page de consultation publique, et il vaut
+   autant ici. Distinguer les pages entre elles suffit. */
+export const metadata: Metadata = { title: "Fiche du dossier · Psychomotime" };
+
+
 /**
  * Fiche patient imprimable.
  *
@@ -299,7 +308,7 @@ export default async function FichePatientImprimable({
             </>
           )}
 
-          <footer className="mt-8 pt-4 border-t border-slate-100 text-[11px] text-slate-400 text-center">
+          <footer className="mt-8 pt-4 border-t border-slate-100 text-[11px] text-slate-500 text-center">
             Document confidentiel · {patientName(patient)}
           </footer>
         </article>

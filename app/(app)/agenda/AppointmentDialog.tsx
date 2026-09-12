@@ -16,7 +16,7 @@ import {
 import type { PatientListItem } from "@/lib/dossier/queries";
 
 const CHAMP =
-  "w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100 transition";
+  "w-full rounded-lg border border-slate-500 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100 transition";
 
 /** Types de rendez-vous qui ne concernent personne en particulier. */
 const SANS_PATIENT: AppointmentKind[] = ["reunion", "administratif", "autre"];
@@ -106,7 +106,7 @@ export default function AppointmentDialog({
             type="button"
             onClick={onClose}
             aria-label="Fermer"
-            className="text-slate-400 hover:text-slate-600 rounded p-1"
+            className="text-slate-500 hover:text-slate-600 rounded p-1"
           >
             <X className="h-5 w-5" aria-hidden="true" />
           </button>
@@ -241,7 +241,7 @@ export default function AppointmentDialog({
                     min={2}
                     max={30}
                     defaultValue={10}
-                    className="w-28 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+                    className="w-28 rounded-lg border border-slate-500 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
                   />
                   <p className="text-xs text-slate-500 mt-1.5">
                     Chaque séance est créée séparément : vous pourrez en déplacer

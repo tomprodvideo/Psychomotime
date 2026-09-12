@@ -5,6 +5,15 @@ import { getCurrentPractice } from "@/lib/dossier/practice";
 import { listAppointments, listAppointmentsToQualify, listPatients } from "@/lib/dossier/queries";
 import AgendaVue from "./AgendaVue";
 
+import type { Metadata } from "next";
+/* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
+   patient le ferait entrer dans l'historique du navigateur, parfois synchronisé
+   entre appareils, parfois affiché devant quelqu'un d'autre. C'est le même
+   raisonnement que celui de la page de consultation publique, et il vaut
+   autant ici. Distinguer les pages entre elles suffit. */
+export const metadata: Metadata = { title: "Agenda · Psychomotime" };
+
+
 /**
  * Agenda du cabinet.
  *
@@ -95,7 +104,7 @@ export default async function AgendaPage({
       />
 
       {rendezVous.length === 0 && aQualifier.length === 0 && (
-        <p className="flex items-center gap-2 justify-center text-sm text-slate-400 mt-8">
+        <p className="flex items-center gap-2 justify-center text-sm text-slate-500 mt-8">
           <CalendarDays className="h-4 w-4" aria-hidden="true" />
           Rien de prévu sur cette période.
         </p>

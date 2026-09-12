@@ -8,6 +8,15 @@ import SubscriptionCard from "./SubscriptionCard";
 import DeleteAccountCard from "./DeleteAccountCard";
 import CompteSecuriteCard from "./CompteSecuriteCard";
 
+import type { Metadata } from "next";
+/* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
+   patient le ferait entrer dans l'historique du navigateur, parfois synchronisé
+   entre appareils, parfois affiché devant quelqu'un d'autre. C'est le même
+   raisonnement que celui de la page de consultation publique, et il vaut
+   autant ici. Distinguer les pages entre elles suffit. */
+export const metadata: Metadata = { title: "Paramètres · Psychomotime" };
+
+
 export default async function ParametresPage() {
   const settings = await getSettings();
   const access = await getAccess();

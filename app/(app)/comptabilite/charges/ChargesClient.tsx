@@ -70,7 +70,7 @@ export default function ChargesClient({
                     {CATEGORIE_LABELS[c.category]} · {frDate(c.spent_on)}
                   </p>
                   {c.note && (
-                    <p className="text-xs text-slate-400 mt-0.5">{c.note}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{c.note}</p>
                   )}
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
@@ -123,7 +123,7 @@ export default function ChargesClient({
                   <p className="text-sm text-slate-800 truncate">
                     {r.label}
                     {!r.active && (
-                      <span className="ml-2 text-xs text-slate-400">
+                      <span className="ml-2 text-xs text-slate-500">
                         suspendue
                       </span>
                     )}
@@ -196,7 +196,7 @@ function Supprimer({
         type="button"
         onClick={() => setConfirme(true)}
         aria-label={`Supprimer ${libelle}`}
-        className="text-slate-400 hover:text-rose-600"
+        className="text-slate-500 hover:text-rose-600"
       >
         <Trash2 className="h-4 w-4" aria-hidden="true" />
       </button>
@@ -275,7 +275,7 @@ function FormulaireCharge({ aujourdhui }: { aujourdhui: string }) {
           type="button"
           onClick={() => setOuvert(false)}
           aria-label="Fermer"
-          className="text-slate-400 hover:text-slate-600"
+          className="text-slate-500 hover:text-slate-600"
         >
           <X className="h-4 w-4" aria-hidden="true" />
         </button>
@@ -376,7 +376,7 @@ function FormulaireRecurrence({
           type="button"
           onClick={onFerme}
           aria-label="Fermer"
-          className="text-slate-400 hover:text-slate-600"
+          className="text-slate-500 hover:text-slate-600"
         >
           <X className="h-4 w-4" aria-hidden="true" />
         </button>
@@ -435,7 +435,7 @@ function FormulaireRecurrence({
           />
         </div>
       </div>
-      <p className="text-xs text-slate-400">
+      <p className="text-xs text-slate-500">
         La date de début est obligatoire : sans elle, modifier ce montant
         changerait rétroactivement les années déjà closes.
       </p>
@@ -456,4 +456,4 @@ function FormulaireRecurrence({
 }
 
 const styleChamp =
-  "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-200";
+  "w-full rounded-lg border border-slate-500 px-3 py-2 text-sm bg-white focus:border-brand-400 focus:ring-2 focus:ring-brand-100";

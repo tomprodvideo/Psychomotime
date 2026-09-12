@@ -54,7 +54,7 @@ export default function LignesEditeur({
           <table className="w-full text-sm">
             <caption className="sr-only">Lignes de la pièce</caption>
             <thead>
-              <tr className="text-left text-xs uppercase tracking-wide text-slate-400 border-b border-slate-100">
+              <tr className="text-left text-xs uppercase tracking-wide text-slate-500 border-b border-slate-100">
                 <th scope="col" className="px-5 py-2 font-medium">Prestation</th>
                 <th scope="col" className="px-3 py-2 font-medium text-right">P.U.</th>
                 <th scope="col" className="px-3 py-2 font-medium text-right">Qté</th>
@@ -140,7 +140,7 @@ function Ligne({
       <td className="px-5 py-3">
         <span className="text-slate-700">{ligne.label}</span>
         {ligne.intro && (
-          <span className="block text-xs text-slate-400 mt-0.5">{ligne.intro}</span>
+          <span className="block text-xs text-slate-500 mt-0.5">{ligne.intro}</span>
         )}
         {ligne.service_dates.length > 0 && (
           <span className="block text-xs text-slate-500 mt-0.5">
@@ -169,7 +169,10 @@ function Ligne({
             onClick={supprimer}
             disabled={enCours}
             aria-label={`Supprimer la ligne ${ligne.label}`}
-            className="text-slate-400 hover:text-rose-600 disabled:opacity-40"
+            /* 16 × 16 px sans rembourrage : la cible était à la limite de ce
+               qu'un trackpad atteint, pour une action destructive. Le
+               rembourrage la porte à 32 px sans changer la mise en page. */
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:text-rose-700 hover:bg-rose-50 disabled:opacity-40"
           >
             <Trash2 className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -259,7 +262,7 @@ function FormulaireLigne({
           type="button"
           onClick={onFerme}
           aria-label="Fermer"
-          className="text-slate-400 hover:text-slate-600"
+          className="text-slate-500 hover:text-slate-600"
         >
           <X className="h-4 w-4" aria-hidden="true" />
         </button>
@@ -283,7 +286,7 @@ function FormulaireLigne({
               </option>
             ))}
           </select>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             Le tarif est recopié maintenant. Le modifier plus tard dans le
             catalogue ne changera aucune pièce déjà établie.
           </p>
@@ -352,7 +355,7 @@ function FormulaireLigne({
               value={pricing === "forfait" ? 1 : quantite}
               disabled={pricing === "forfait"}
               onChange={(e) => setQuantite(Math.max(1, Number(e.target.value)))}
-              className={`${styleChamp} disabled:bg-slate-50 disabled:text-slate-400`}
+              className={`${styleChamp} disabled:bg-slate-50 disabled:text-slate-500`}
             />
           </div>
         </div>
@@ -363,7 +366,7 @@ function FormulaireLigne({
           <legend className="text-xs font-medium text-slate-600 px-1">
             Séances à facturer
           </legend>
-          <p className="text-xs text-slate-400 mb-2">
+          <p className="text-xs text-slate-500 mb-2">
             Seules apparaissent les séances honorées, marquées facturables, et
             pas encore portées sur une facture en vigueur.{" "}
             <strong className="font-medium text-slate-500">
@@ -414,7 +417,7 @@ function FormulaireLigne({
         {apercu !== null && (
           <span className="text-sm text-slate-500">
             Montant de la ligne : <strong>{formatCents(apercu)}</strong>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-slate-500">
               {" "}
               — recalculé à l&apos;enregistrement
             </span>
@@ -431,4 +434,4 @@ function FormulaireLigne({
 }
 
 const styleChamp =
-  "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-200";
+  "w-full rounded-lg border border-slate-500 px-3 py-2 text-sm bg-white focus:border-brand-400 focus:ring-2 focus:ring-brand-100";

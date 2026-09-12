@@ -127,7 +127,7 @@ export default function BilanSectionsEditor({
                   type="button"
                   onClick={() => move(i, -1)}
                   disabled={i === 0}
-                  className="text-slate-400 hover:text-brand-600 disabled:opacity-30"
+                  className="text-slate-500 hover:text-brand-600 disabled:opacity-30"
                   title="Monter"
                 >
                   <ArrowUp className="h-4 w-4" />
@@ -136,7 +136,7 @@ export default function BilanSectionsEditor({
                   type="button"
                   onClick={() => move(i, 1)}
                   disabled={i === sections.length - 1}
-                  className="text-slate-400 hover:text-brand-600 disabled:opacity-30"
+                  className="text-slate-500 hover:text-brand-600 disabled:opacity-30"
                   title="Descendre"
                 >
                   <ArrowDown className="h-4 w-4" />
@@ -153,7 +153,7 @@ export default function BilanSectionsEditor({
               />
 
               {isSub && (
-                <span className="text-[10px] uppercase tracking-wide text-slate-400 shrink-0">
+                <span className="text-[10px] uppercase tracking-wide text-slate-500 shrink-0">
                   sous-titre
                 </span>
               )}
@@ -174,7 +174,7 @@ export default function BilanSectionsEditor({
               )}
 
               {isScores ? (
-                <span className="text-[11px] text-slate-400 shrink-0 px-1">
+                <span className="text-[11px] text-slate-500 shrink-0 px-1">
                   auto
                 </span>
               ) : isSub ? null : (
@@ -210,7 +210,7 @@ export default function BilanSectionsEditor({
                 <button
                   type="button"
                   onClick={() => remove(s.id)}
-                  className="p-1 text-slate-400 hover:text-rose-600 shrink-0"
+                  className="p-1 text-slate-500 hover:text-rose-600 shrink-0"
                   title="Supprimer cette section"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -247,7 +247,7 @@ export default function BilanSectionsEditor({
           Réinitialiser
         </button>
       </div>
-      <p className="text-xs text-slate-400">
+      <p className="text-xs text-slate-500">
         Cochez « Encadré » pour afficher un titre dans un cadre. Les
         <span className="italic"> sous-titres</span> s&apos;affichent en plus
         petit, en italique coloré, et se trient/positionnent comme les titres.

@@ -6,6 +6,7 @@ import { signIn, signUp, type AuthState } from "./actions";
 import { MIN_PASSWORD_LENGTH } from "@/lib/auth/password";
 import { Activity, Lock, Mail, User } from "lucide-react";
 
+
 const initial: AuthState = {};
 
 export default function LoginPage() {
@@ -58,6 +59,8 @@ export default function LoginPage() {
             {mode === "signup" && (
               <Field
                 icon={<User className="h-4 w-4" />}
+                id="champ-nom"
+                label="Votre nom"
                 name="display_name"
                 type="text"
                 placeholder="Votre nom (ex. Manon D.)"
@@ -66,6 +69,8 @@ export default function LoginPage() {
             )}
             <Field
               icon={<Mail className="h-4 w-4" />}
+              id="champ-email"
+              label="Adresse électronique"
               name="email"
               type="email"
               placeholder="Adresse email"
@@ -74,6 +79,9 @@ export default function LoginPage() {
             />
             <Field
               icon={<Lock className="h-4 w-4" />}
+              id="champ-mot-de-passe"
+              label="Mot de passe"
+              aria-describedby={mode === "signup" ? "aide-mot-de-passe" : undefined}
               name="password"
               type="password"
               placeholder="Mot de passe"
@@ -84,19 +92,25 @@ export default function LoginPage() {
             />
 
             {mode === "signup" && (
-              <p className="text-xs text-slate-500">
+              <p id="aide-mot-de-passe" className="text-xs text-slate-500">
                 Mot de passe : au moins {MIN_PASSWORD_LENGTH} caractères. Une
                 phrase dont vous vous souvenez fait un très bon mot de passe.
               </p>
             )}
 
             {state.error && (
-              <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+              <p
+                role="alert"
+                className="text-sm text-red-700 bg-red-50 rounded-lg px-3 py-2"
+              >
                 {state.error}
               </p>
             )}
             {state.message && (
-              <p className="text-sm text-brand-700 bg-brand-50 rounded-lg px-3 py-2">
+              <p
+                role="status"
+                className="text-sm text-brand-700 bg-brand-50 rounded-lg px-3 py-2"
+              >
                 {state.message}
               </p>
             )}
@@ -130,18 +144,44 @@ export default function LoginPage() {
   );
 }
 
+/**
+ * Un champ de la page de connexion.
+ *
+ * IL N'AVAIT PAS D'ÉTIQUETTE. Rien qu'un texte d'invite, qui n'en est pas une :
+ * il disparaît à la première frappe, et aucune technologie d'assistance ne le
+ * rattache au champ. C'était le cas des trois champs de la porte d'entrée du
+ * produit — celui qui ne voit pas l'écran ne savait pas ce qu'on lui demandait.
+ *
+ * L'étiquette est visuellement masquée, pas absente : la mise en page tient à
+ * un texte d'invite et à une icône, et la changer était une autre décision que
+ * celle-ci. `aria-describedby` relie en outre l'aide au champ qu'elle décrit,
+ * plutôt que de la laisser flotter à côté.
+ */
 function Field({
   icon,
+  label,
+  id,
   ...props
-}: { icon: React.ReactNode } & React.InputHTMLAttributes<HTMLInputElement>) {
+}: {
+  icon: React.ReactNode;
+  label: string;
+  id: string;
+} & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <div className="relative">
-      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+      <label htmlFor={id} className="sr-only">
+        {label}
+      </label>
+      <span
+        aria-hidden="true"
+        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+      >
         {icon}
       </span>
       <input
         {...props}
-        className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100 transition"
+        id={id}
+        className="w-full rounded-lg border border-slate-500 bg-slate-50 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100 transition"
       />
     </div>
   );

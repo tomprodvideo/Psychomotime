@@ -413,7 +413,7 @@ export default function BilanEditor({
                 type="button"
                 onClick={onRemove}
                 title="Supprimer ce bloc"
-                className="p-1 text-slate-400 hover:text-rose-600"
+                className="p-1 text-slate-500 hover:text-rose-600"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -426,7 +426,7 @@ export default function BilanEditor({
           placeholder={hint}
           rows={rows}
           disabled={busy}
-          className="w-full rounded-lg border border-slate-200 bg-slate-50/50 py-2 px-3 text-sm outline-none focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100 transition resize-y leading-relaxed disabled:opacity-60"
+          className="w-full rounded-lg border border-slate-500 bg-slate-50/50 py-2 px-3 text-sm outline-none focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100 transition resize-y leading-relaxed disabled:opacity-60"
         />
         {aiError[fieldKey] && (
           <p className="text-xs text-rose-600 mt-1">{aiError[fieldKey]}</p>
@@ -517,7 +517,7 @@ export default function BilanEditor({
                 />
               ))
             ) : (
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-slate-500">
                 Choisissez un groupe d&apos;âge pour afficher les épreuves.
               </p>
             )}
@@ -586,13 +586,13 @@ export default function BilanEditor({
                 value={bl.title}
                 onChange={(e) => renameBlock(sectionId, bl.id, e.target.value)}
                 placeholder="Titre du bloc (sous-titre)"
-                className="flex-1 rounded-md border border-slate-200 py-1 px-2 text-sm font-medium italic text-slate-700 outline-none focus:border-brand-400"
+                className="flex-1 rounded-md border border-slate-500 py-1 px-2 text-sm font-medium italic text-slate-700 outline-none focus:border-brand-400"
               />
               <button
                 type="button"
                 onClick={() => removeBlock(sectionId, bl.id)}
                 title="Supprimer ce bloc"
-                className="p-1 text-slate-400 hover:text-rose-600"
+                className="p-1 text-slate-500 hover:text-rose-600"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -667,7 +667,7 @@ export default function BilanEditor({
               className={inputCls}
             />
             {patientBirthDate && (
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-slate-500 mt-1">
                 Né(e) le {frDate(patientBirthDate)} ·{" "}
                 {ageFromBirth(patientBirthDate)}
               </p>
@@ -782,7 +782,7 @@ export default function BilanEditor({
                                       {r.label}
                                     </span>
                                     {r.desc && (
-                                      <span className="block text-slate-400 text-[10px] leading-tight">
+                                      <span className="block text-slate-500 text-[10px] leading-tight">
                                         {r.desc}
                                       </span>
                                     )}
@@ -809,7 +809,7 @@ export default function BilanEditor({
                       </div>
                     ))
                   ) : (
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-slate-500">
                       Section générée automatiquement (interprétation des scores +
                       courbe de Gauss). Elle apparaît dès qu&apos;un test est
                       renseigné — rien à saisir ici.
@@ -903,9 +903,15 @@ export default function BilanEditor({
             >
               {status === "finalisé" ? "● Finalisé" : "○ Brouillon"}
             </button>
+            {/* « Ma note est-elle sauvée ? » est la question la plus
+                importante de cet écran, et elle n'était annoncée à aucun
+                lecteur d'écran : un `span` nu, qui plus est effacé au bout de
+                deux secondes et demie. `role="status"` la rend audible sans
+                interrompre la frappe. */}
             <span
+              role="status"
               className={`text-xs ${
-                saveError ? "text-red-600 font-medium" : "text-slate-400"
+                saveError ? "text-red-600 font-medium" : "text-slate-500"
               }`}
             >
               {saveError
@@ -1009,7 +1015,7 @@ function TemplatesMenu({
                 <button
                   type="button"
                   onClick={() => setFolderId(null)}
-                  className="p-1 -ml-1 text-slate-400 hover:text-brand-600"
+                  className="p-1 -ml-1 text-slate-500 hover:text-brand-600"
                   title="Retour aux dossiers"
                 >
                   <ArrowLeft className="h-5 w-5" />
@@ -1019,14 +1025,14 @@ function TemplatesMenu({
                 {current ? current.name : "Modèles"}
               </h2>
               <button type="button" onClick={() => setOpen(false)}>
-                <X className="h-5 w-5 text-slate-400" />
+                <X className="h-5 w-5 text-slate-500" />
               </button>
             </div>
 
             <div className="max-h-[60vh] overflow-y-auto divide-y divide-slate-100">
               {current ? (
                 current.items.length === 0 ? (
-                  <p className="text-sm text-slate-400 px-5 py-4">
+                  <p className="text-sm text-slate-500 px-5 py-4">
                     Aucun modèle dans ce dossier.
                   </p>
                 ) : (
@@ -1050,7 +1056,7 @@ function TemplatesMenu({
                   ))
                 )
               ) : groups.length === 0 ? (
-                <p className="text-sm text-slate-400 px-5 py-4">
+                <p className="text-sm text-slate-500 px-5 py-4">
                   Aucun modèle. Créez des dossiers et des modèles dans
                   Paramètres › Bilan › Modèles.
                 </p>
@@ -1066,7 +1072,7 @@ function TemplatesMenu({
                     <span className="flex-1 text-sm font-medium text-slate-700 truncate">
                       {g.name}
                     </span>
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-slate-500">
                       {g.items.length}
                     </span>
                     <ChevronRight className="h-4 w-4 text-slate-300" />
@@ -1116,7 +1122,7 @@ function MabcTable({
                     onChange={(e) => onChange(r.key, "p", e.target.value)}
                     placeholder={r.perfHint}
                     rows={2}
-                    className="w-full rounded border border-slate-200 py-1 px-2 text-sm outline-none focus:border-brand-400 resize-y leading-snug"
+                    className="w-full rounded border border-slate-500 py-1 px-2 text-sm outline-none focus:border-brand-400 resize-y leading-snug"
                   />
                 </td>
                 <td className="px-2 py-1.5 align-top">
@@ -1127,7 +1133,7 @@ function MabcTable({
                       color: nsColor(scores[r.key]?.ns),
                       fontWeight: scores[r.key]?.ns ? 600 : undefined,
                     }}
-                    className="w-full rounded border border-slate-200 py-1 px-2 text-sm text-center outline-none focus:border-brand-400"
+                    className="w-full rounded border border-slate-500 py-1 px-2 text-sm text-center outline-none focus:border-brand-400"
                   />
                 </td>
               </tr>
@@ -1140,7 +1146,7 @@ function MabcTable({
 }
 
 const inputCls =
-  "w-full rounded-lg border border-slate-200 bg-white py-2 px-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100 transition";
+  "w-full rounded-lg border border-slate-500 bg-white py-2 px-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100 transition";
 
 function Label({ children }: { children: React.ReactNode }) {
   return (

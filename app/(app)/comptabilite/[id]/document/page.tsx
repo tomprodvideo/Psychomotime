@@ -9,6 +9,15 @@ import { KIND_LABELS } from "@/lib/compta/types";
 import type { DocumentSnapshot } from "@/lib/compta/types";
 import BoutonImprimer from "./BoutonImprimer";
 
+import type { Metadata } from "next";
+/* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
+   patient le ferait entrer dans l'historique du navigateur, parfois synchronisé
+   entre appareils, parfois affiché devant quelqu'un d'autre. C'est le même
+   raisonnement que celui de la page de consultation publique, et il vaut
+   autant ici. Distinguer les pages entre elles suffit. */
+export const metadata: Metadata = { title: "Document à imprimer · Psychomotime" };
+
+
 /**
  * Le document tel qu'il est remis.
  *
@@ -144,7 +153,7 @@ export default async function DocumentPage({
 
         {destinataire?.nom && (
           <section className="mb-8 text-sm">
-            <p className="text-xs uppercase tracking-wide text-slate-400 mb-1">
+            <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">
               Destinataire
             </p>
             <p className="text-slate-800 font-medium">{destinataire.nom}</p>
@@ -185,7 +194,7 @@ export default async function DocumentPage({
         <table className="w-full text-sm mb-8">
           <caption className="sr-only">Détail des prestations</caption>
           <thead>
-            <tr className="text-left text-xs uppercase tracking-wide text-slate-400 border-b border-slate-200">
+            <tr className="text-left text-xs uppercase tracking-wide text-slate-500 border-b border-slate-200">
               <th scope="col" className="py-2 font-medium">Prestation</th>
               <th scope="col" className="py-2 font-medium text-right w-24">P.U.</th>
               <th scope="col" className="py-2 font-medium text-right w-16">Qté</th>
@@ -262,7 +271,7 @@ export default async function DocumentPage({
         )}
       </article>
 
-      <p className="text-xs text-slate-400 mt-4 no-print">
+      <p className="text-xs text-slate-500 mt-4 no-print">
         Ce document est rendu à partir de l&apos;instantané figé à
         l&apos;émission : il ne changera plus, quelles que soient les
         modifications apportées ensuite au cabinet ou au dossier.

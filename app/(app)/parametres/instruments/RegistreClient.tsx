@@ -21,7 +21,7 @@ import {
 } from "@/lib/dossier/types";
 
 const CHAMP =
-  "w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100 transition";
+  "w-full rounded-lg border border-slate-500 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100 transition";
 
 const STATUTS: LicenceStatus[] = [
   "reference_seule",
@@ -208,7 +208,7 @@ export default function RegistreClient({
                     <div>
                       <div className="flex items-center justify-between gap-2 mb-2">
                         <h3 className="flex items-center gap-1.5 text-sm font-medium text-slate-700">
-                          <Ruler className="h-4 w-4 text-slate-400" aria-hidden="true" />
+                          <Ruler className="h-4 w-4 text-slate-500" aria-hidden="true" />
                           Échelles
                         </h3>
                         {canWrite && (
@@ -374,7 +374,7 @@ function Ligne({ terme, valeur }: { terme: string; valeur: string | null }) {
   if (!valeur) return null;
   return (
     <div>
-      <dt className="text-xs text-slate-400">{terme}</dt>
+      <dt className="text-xs text-slate-500">{terme}</dt>
       <dd className="text-slate-700">{valeur}</dd>
     </div>
   );
@@ -540,7 +540,7 @@ function DecoupageLigne({
               />
             )}
             <span className="text-slate-700">{mot(b.label_key)}</span>
-            <span className="text-slate-400">
+            <span className="text-slate-500">
               {b.lower_bound ?? "−∞"} {b.lower_inclusive ? "≤" : "<"} v{" "}
               {b.upper_inclusive ? "≤" : "<"} {b.upper_bound ?? "+∞"}
             </span>
@@ -627,7 +627,7 @@ function Dialogue({
             type="button"
             onClick={onClose}
             aria-label="Fermer"
-            className="text-slate-400 hover:text-slate-600 rounded p-1"
+            className="text-slate-500 hover:text-slate-600 rounded p-1"
           >
             <X className="h-5 w-5" aria-hidden="true" />
           </button>

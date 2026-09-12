@@ -246,7 +246,7 @@ export default function EnteteForm({
 }
 
 const styleChamp =
-  "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-200";
+  "w-full rounded-lg border border-slate-500 px-3 py-2 text-sm bg-white focus:border-brand-400 focus:ring-2 focus:ring-brand-100";
 
 function Champ({
   label,
@@ -268,7 +268,7 @@ function Champ({
         {label}
       </label>
       {children}
-      {aide && <p className="text-xs text-slate-400 mt-1">{aide}</p>}
+      {aide && <p className="text-xs text-slate-500 mt-1">{aide}</p>}
     </div>
   );
 }

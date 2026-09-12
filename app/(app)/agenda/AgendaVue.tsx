@@ -211,7 +211,7 @@ export default function AgendaVue({
           {[...parJour.entries()].map(([cle, liste]) => (
             <section key={cle} aria-label={jourLong.format(new Date(`${cle}T12:00:00`))}>
               {vue === "semaine" && (
-                <h3 className="text-xs font-medium uppercase tracking-wide text-slate-400 mb-2 first-letter:uppercase">
+                <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500 mb-2 first-letter:uppercase">
                   {jourLong.format(new Date(`${cle}T12:00:00`))}
                 </h3>
               )}
@@ -269,7 +269,7 @@ function LigneRendezVous({
         <div className="flex items-start gap-3 min-w-0">
           <div className="text-sm font-medium text-slate-700 tabular-nums shrink-0 pt-0.5">
             {heure.format(debut)}
-            <span className="block text-xs font-normal text-slate-400">
+            <span className="block text-xs font-normal text-slate-500">
               {heure.format(fin)}
             </span>
           </div>
@@ -303,7 +303,7 @@ function LigneRendezVous({
             {ATTENDANCE_LABELS[rdv.attendance]}
           </span>
           {rdv.attendance !== "a_venir" && !rdv.billable && (
-            <span className="text-xs text-slate-400">non facturable</span>
+            <span className="text-xs text-slate-500">non facturable</span>
           )}
           {canWrite && (
             <>

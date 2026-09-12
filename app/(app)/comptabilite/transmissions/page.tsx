@@ -7,6 +7,15 @@ import { getCurrentPractice } from "@/lib/dossier/practice";
 import { listLiensDuCabinet } from "@/lib/transmissions/queries";
 import { ETAT_LIEN_LABELS, etatLien } from "@/lib/transmissions/types";
 
+import type { Metadata } from "next";
+/* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
+   patient le ferait entrer dans l'historique du navigateur, parfois synchronisé
+   entre appareils, parfois affiché devant quelqu'un d'autre. C'est le même
+   raisonnement que celui de la page de consultation publique, et il vaut
+   autant ici. Distinguer les pages entre elles suffit. */
+export const metadata: Metadata = { title: "Documents transmis · Psychomotime" };
+
+
 /**
  * Ce qui est accessible dehors, en ce moment.
  *
@@ -110,7 +119,7 @@ export default async function TransmissionsPage() {
                       : "destinataire non noté"}
                   </span>
 
-                  <span className="text-xs text-slate-400 font-mono">…{l.token_hint}</span>
+                  <span className="text-xs text-slate-500 font-mono">…{l.token_hint}</span>
 
                   {/* L'état ne se lit pas à la couleur seule : il est écrit. */}
                   <span
@@ -138,7 +147,7 @@ export default async function TransmissionsPage() {
         </Card>
       )}
 
-      <p className="text-xs text-slate-400 mt-4">
+      <p className="text-xs text-slate-500 mt-4">
         Un lien se révoque depuis la pièce qu&apos;il partage. La révocation
         empêche de rouvrir le document ; elle n&apos;efface pas ce qui a déjà
         été lu.

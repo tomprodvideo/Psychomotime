@@ -31,7 +31,7 @@ export default async function AppLayout({
 {`NEXT_PUBLIC_SUPABASE_URL=…
 NEXT_PUBLIC_SUPABASE_ANON_KEY=…`}
           </pre>
-          <p className="text-xs text-slate-400 mt-4">
+          <p className="text-xs text-slate-500 mt-4">
             Clé disponible dans : Supabase → Project Settings → API Keys → clé{" "}
             <strong>anon / publishable</strong>. Puis redémarrez le serveur.
           </p>
@@ -82,7 +82,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=…`}
               </button>
             </form>
           </div>
-          <p className="text-xs text-slate-400 mt-4">{user.email}</p>
+          <p className="text-xs text-slate-500 mt-4">{user.email}</p>
         </div>
       </div>
     );

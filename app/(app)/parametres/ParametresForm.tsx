@@ -303,7 +303,7 @@ export default function ParametresForm({
                 className="max-h-full max-w-full object-contain"
               />
             ) : (
-              <span className="text-xs text-slate-400 text-center px-1">
+              <span className="text-xs text-slate-500 text-center px-1">
                 Aucun logo
               </span>
             )}
@@ -330,7 +330,7 @@ export default function ParametresForm({
             {logoError && (
               <p className="text-xs text-rose-600 mt-1">{logoError}</p>
             )}
-            <p className="text-xs text-slate-400 mt-1">PNG, JPG ou SVG · max 1 Mo.</p>
+            <p className="text-xs text-slate-500 mt-1">PNG, JPG ou SVG · max 1 Mo.</p>
           </div>
         </div>
 
@@ -504,7 +504,7 @@ export default function ParametresForm({
               style={{ backgroundColor: c.value }}
             />
           ))}
-          <label className="inline-flex items-center gap-1.5 text-xs text-slate-600 border border-slate-200 rounded-lg px-2 py-1.5 cursor-pointer">
+          <label className="inline-flex items-center gap-1.5 text-xs text-slate-600 border border-slate-500 rounded-lg px-2 py-1.5 cursor-pointer">
             Personnalisée
             <input
               type="color"
@@ -584,7 +584,7 @@ export default function ParametresForm({
           className="border border-slate-200 rounded-lg p-4 bg-slate-50"
           style={{ fontFamily: bilanFontCss(cfg.bilan_font) }}
         >
-          <p className="text-xs text-slate-400 mb-2">Aperçu</p>
+          <p className="text-xs text-slate-500 mb-2">Aperçu</p>
           <TitlePreview variant={cfg.bilan_title_style} color={cfg.theme_color}>
             La motricité globale
           </TitlePreview>
@@ -633,7 +633,7 @@ export default function ParametresForm({
             encadré légèrement grisé au-dessus de l&apos;anamnèse.
           </span>
         </label>
-        <p className="text-xs text-slate-400 mt-2 mb-4">
+        <p className="text-xs text-slate-500 mt-2 mb-4">
           Décoché, la conclusion reste à sa place habituelle, en bas du bilan.
         </p>
 
@@ -644,7 +644,7 @@ export default function ParametresForm({
           onChange={(e) => setCfg({ closing_note: e.target.value })}
           className={`${inputCls} resize-y`}
         />
-        <p className="text-xs text-slate-400 mt-1 mb-4">
+        <p className="text-xs text-slate-500 mt-1 mb-4">
           Votre nom vient de l&apos;onglet Général. Il s&apos;affiche sous cette
           formule, suivi de votre signature.
         </p>
@@ -660,7 +660,7 @@ export default function ParametresForm({
                 className="max-h-full max-w-full object-contain"
               />
             ) : (
-              <span className="text-xs text-slate-400 text-center px-2">
+              <span className="text-xs text-slate-500 text-center px-2">
                 Aucune signature
               </span>
             )}
@@ -689,7 +689,7 @@ export default function ParametresForm({
             {signatureError && (
               <p className="text-xs text-rose-600 mt-1">{signatureError}</p>
             )}
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               PNG (fond transparent conseillé), JPG ou SVG · max 2 Mo.
             </p>
           </div>
@@ -716,7 +716,7 @@ export default function ParametresForm({
                   className="max-h-full max-w-full object-contain"
                 />
               ) : (
-                <span className="text-xs text-slate-400 text-center px-2">
+                <span className="text-xs text-slate-500 text-center px-2">
                   Courbe automatique
                 </span>
               )}
@@ -745,7 +745,7 @@ export default function ParametresForm({
               {curveError && (
                 <p className="text-xs text-rose-600 mt-1">{curveError}</p>
               )}
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-slate-500 mt-1">
                 PNG, JPG ou SVG. L&apos;image est automatiquement optimisée.
               </p>
             </div>
@@ -810,7 +810,7 @@ export default function ParametresForm({
               step="0.1"
               defaultValue={(settings.retrocession_rate * 100).toString()}
               disabled={mode === "loyer"}
-              className={`${inputCls} disabled:bg-slate-100 disabled:text-slate-400`}
+              className={`${inputCls} disabled:bg-slate-100 disabled:text-slate-500`}
             />
           </div>
           <div>
@@ -821,7 +821,7 @@ export default function ParametresForm({
               step="0.01"
               defaultValue={settings.monthly_rent.toString()}
               disabled={mode === "retrocession"}
-              className={`${inputCls} disabled:bg-slate-100 disabled:text-slate-400`}
+              className={`${inputCls} disabled:bg-slate-100 disabled:text-slate-500`}
             />
           </div>
         </div>
@@ -864,7 +864,7 @@ export default function ParametresForm({
             </button>
           ))}
         </div>
-        <p className="text-xs text-slate-400 mt-3">
+        <p className="text-xs text-slate-500 mt-3">
           Le compteur repart à 1 dès que la partie fixe change : un modèle qui
           contient {"{AAAA}"} se réinitialise chaque année, un modèle qui
           contient {"{MM}"} chaque mois. Le nombre de N fixe le nombre de
@@ -882,7 +882,7 @@ export default function ParametresForm({
             defaultValue={(settings.urssaf_rate * 100).toString()}
             className={inputCls}
           />
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             Appliqué sur le revenu après rétrocession. Valeur usuelle : 23,2 %.
           </p>
         </div>
@@ -938,7 +938,7 @@ export default function ParametresForm({
 
 function CategoryHeader({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 px-1 pt-3 first:pt-0">
+    <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 px-1 pt-3 first:pt-0">
       {children}
     </h3>
   );
@@ -989,7 +989,7 @@ function Section({
 }
 
 const inputCls =
-  "w-full rounded-lg border border-slate-200 bg-white py-2 px-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100 transition";
+  "w-full rounded-lg border border-slate-500 bg-white py-2 px-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100 transition";
 
 function Label({ children }: { children: React.ReactNode }) {
   return (

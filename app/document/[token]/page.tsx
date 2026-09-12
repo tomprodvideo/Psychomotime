@@ -92,7 +92,7 @@ export default async function DocumentPublicPage({
           )}
         </article>
 
-        <p className="no-print max-w-3xl mx-auto text-xs text-slate-400 mt-4">
+        <p className="no-print max-w-3xl mx-auto text-xs text-slate-500 mt-4">
           Ce lien est personnel. Il cesse de fonctionner à son expiration, ou
           dès que le cabinet le retire.
         </p>
@@ -167,7 +167,7 @@ function Destinataire({
   if (!personne?.nom) return null;
   return (
     <section className="mb-8 text-sm">
-      <p className="text-xs uppercase tracking-wide text-slate-400 mb-1">
+      <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">
         Destinataire
       </p>
       <p className="text-slate-800 font-medium">{personne.nom}</p>
@@ -225,7 +225,7 @@ function Piece({ d }: { d: Extract<DocumentPublic, { nature: "billing_document" 
       <table className="w-full text-sm mb-8">
         <caption className="sr-only">Détail des prestations</caption>
         <thead>
-          <tr className="text-left text-xs uppercase tracking-wide text-slate-400 border-b border-slate-200">
+          <tr className="text-left text-xs uppercase tracking-wide text-slate-500 border-b border-slate-200">
             <th scope="col" className="py-2 font-medium">Prestation</th>
             <th scope="col" className="py-2 font-medium text-right w-24">P.U.</th>
             <th scope="col" className="py-2 font-medium text-right w-16">Qté</th>

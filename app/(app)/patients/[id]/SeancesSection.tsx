@@ -84,7 +84,7 @@ export default function SeancesSection({
             <Compteur
               label="À renseigner"
               valeur={counts.aQualifier}
-              accent={counts.aQualifier > 0 ? "text-rose-700" : "text-slate-400"}
+              accent={counts.aQualifier > 0 ? "text-rose-700" : "text-slate-500"}
               aide={
                 counts.aQualifier > 0
                   ? "Ces créneaux ne comptent nulle part tant qu'ils ne sont pas renseignés."
@@ -95,7 +95,7 @@ export default function SeancesSection({
 
           {aVenir.length > 0 && (
             <>
-              <h3 className="text-xs font-medium uppercase tracking-wide text-slate-400 mb-1.5">
+              <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500 mb-1.5">
                 À venir
               </h3>
               <ul className="space-y-1.5 list-none p-0 m-0 mb-4">
@@ -108,7 +108,7 @@ export default function SeancesSection({
 
           {passes.length > 0 && (
             <>
-              <h3 className="text-xs font-medium uppercase tracking-wide text-slate-400 mb-1.5">
+              <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500 mb-1.5">
                 Historique
               </h3>
               <ul className="space-y-1.5 list-none p-0 m-0">
@@ -117,7 +117,7 @@ export default function SeancesSection({
                 ))}
               </ul>
               {passes.length > 10 && (
-                <p className="text-xs text-slate-400 mt-2">
+                <p className="text-xs text-slate-500 mt-2">
                   {passes.length - 10} rendez-vous plus anciens, visibles dans
                   l&apos;agenda.
                 </p>
@@ -145,7 +145,7 @@ function Compteur({
     <div className="rounded-lg bg-slate-50 px-3 py-2">
       <dt className="text-xs text-slate-500">{label}</dt>
       <dd className={`text-lg font-semibold ${accent}`}>{valeur}</dd>
-      {aide && <p className="text-[11px] text-slate-400 leading-snug mt-0.5">{aide}</p>}
+      {aide && <p className="text-[11px] text-slate-500 leading-snug mt-0.5">{aide}</p>}
     </div>
   );
 }
@@ -156,7 +156,7 @@ function Ligne({ rdv }: { rdv: Appointment }) {
     <li className="flex flex-wrap items-center justify-between gap-2 text-sm">
       <span className={`text-slate-700 ${annule ? "line-through opacity-70" : ""}`}>
         {dateHeure.format(new Date(rdv.starts_at))}
-        <span className="text-slate-400"> · {APPOINTMENT_KIND_LABELS[rdv.kind]}</span>
+        <span className="text-slate-500"> · {APPOINTMENT_KIND_LABELS[rdv.kind]}</span>
       </span>
       <span className="flex items-center gap-2">
         {rdv.attendance_note && (

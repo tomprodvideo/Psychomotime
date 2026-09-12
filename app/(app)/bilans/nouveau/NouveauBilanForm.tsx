@@ -154,7 +154,7 @@ export default function NouveauBilanForm({
 }
 
 const inputCls =
-  "w-full rounded-lg border border-slate-200 bg-white py-2 px-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100 transition";
+  "w-full rounded-lg border border-slate-500 bg-white py-2 px-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100 transition";
 
 function Label({ children }: { children: React.ReactNode }) {
   return (

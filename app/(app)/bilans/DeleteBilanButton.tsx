@@ -46,7 +46,7 @@ export default function DeleteBilanButton({
           if (!res.ok) setErreur(res.error);
         });
       }}
-      className="relative z-10 h-7 w-7 shrink-0 inline-flex items-center justify-center rounded-full text-slate-300 hover:text-rose-600 hover:bg-rose-50 focus:text-rose-600 focus:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-200 transition disabled:opacity-50"
+      className="relative z-10 h-7 w-7 shrink-0 inline-flex items-center justify-center rounded-full text-slate-500 hover:text-rose-700 hover:bg-rose-50 focus:text-rose-700 focus:bg-rose-50 transition disabled:opacity-50"
     >
       {pending ? (
         <Loader2 className="h-4 w-4 animate-spin" />

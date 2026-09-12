@@ -57,7 +57,7 @@ export default function CatalogueClient({
                 <p className="text-sm font-medium text-slate-800 truncate">
                   {item.label}
                   {!item.active && (
-                    <span className="ml-2 text-xs font-normal text-slate-400">
+                    <span className="ml-2 text-xs font-normal text-slate-500">
                       inactive
                     </span>
                   )}
@@ -75,7 +75,7 @@ export default function CatalogueClient({
                     type="button"
                     onClick={() => setEdite(item.id)}
                     aria-label={`Modifier ${item.label}`}
-                    className="p-2 text-slate-400 hover:text-slate-700"
+                    className="p-2 text-slate-500 hover:text-slate-700"
                   >
                     <Pencil className="h-4 w-4" aria-hidden="true" />
                   </button>
@@ -116,7 +116,7 @@ function BoutonSupprimer({ item }: { item: CatalogItem }) {
         type="button"
         onClick={() => setConfirme(true)}
         aria-label={`Supprimer ${item.label}`}
-        className="p-2 text-slate-400 hover:text-rose-600"
+        className="p-2 text-slate-500 hover:text-rose-600"
       >
         <Trash2 className="h-4 w-4" aria-hidden="true" />
       </button>
@@ -200,7 +200,7 @@ function Formulaire({
           type="button"
           onClick={onFerme}
           aria-label="Fermer"
-          className="text-slate-400 hover:text-slate-600"
+          className="text-slate-500 hover:text-slate-600"
         >
           <X className="h-4 w-4" aria-hidden="true" />
         </button>
@@ -269,7 +269,7 @@ function Formulaire({
               </option>
             ))}
           </select>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             Sert à distinguer ce qui peut nourrir une attestation de présence.
           </p>
         </div>
@@ -321,4 +321,4 @@ function Formulaire({
 }
 
 const styleChamp =
-  "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-200";
+  "w-full rounded-lg border border-slate-500 px-3 py-2 text-sm bg-white focus:border-brand-400 focus:ring-2 focus:ring-brand-100";

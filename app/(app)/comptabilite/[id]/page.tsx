@@ -31,6 +31,15 @@ import BarreActions from "./BarreActions";
 import ReglementsSection from "./ReglementsSection";
 import PanneauPartage from "../transmissions/PanneauPartage";
 
+import type { Metadata } from "next";
+/* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
+   patient le ferait entrer dans l'historique du navigateur, parfois synchronisé
+   entre appareils, parfois affiché devant quelqu'un d'autre. C'est le même
+   raisonnement que celui de la page de consultation publique, et il vaut
+   autant ici. Distinguer les pages entre elles suffit. */
+export const metadata: Metadata = { title: "Pièce comptable · Psychomotime" };
+
+
 /**
  * Une pièce comptable.
  *
@@ -131,7 +140,7 @@ export default async function PiecePage({
 
       {d.rectifies_number && (
         <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 mb-5">
-          <FileText className="h-5 w-5 shrink-0 text-slate-400 mt-0.5" aria-hidden="true" />
+          <FileText className="h-5 w-5 shrink-0 text-slate-500 mt-0.5" aria-hidden="true" />
           <div className="text-sm text-slate-600">
             <p>
               {KIND_LABELS[d.kind]} rectifiant la facture{" "}
@@ -314,7 +323,7 @@ function Recapitulatif({
       )}
       {d.internal_note && (
         <div className="mt-3 pt-3 border-t border-slate-100">
-          <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
             Note interne — jamais imprimée
           </p>
           <p className="text-sm text-slate-600 whitespace-pre-wrap mt-0.5">
@@ -337,7 +346,7 @@ function BandeauReprise({
 
   return (
     <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 mb-5">
-      <Info className="h-5 w-5 shrink-0 text-slate-400 mt-0.5" aria-hidden="true" />
+      <Info className="h-5 w-5 shrink-0 text-slate-500 mt-0.5" aria-hidden="true" />
       <div className="text-sm text-slate-600">
         <p className="font-medium text-slate-700">
           Pièce reprise de la version précédente
@@ -368,7 +377,7 @@ function BandeauReprise({
 function Ligne({ terme, valeur }: { terme: string; valeur: string }) {
   return (
     <div>
-      <dt className="text-xs text-slate-400">{terme}</dt>
+      <dt className="text-xs text-slate-500">{terme}</dt>
       <dd className="text-slate-700">{valeur}</dd>
     </div>
   );

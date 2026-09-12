@@ -68,7 +68,7 @@ function BlocMotDePasse() {
         id="titre-mot-de-passe"
         className="text-sm font-medium text-slate-700 flex items-center gap-2"
       >
-        <KeyRound className="h-4 w-4 text-slate-400" aria-hidden="true" />
+        <KeyRound className="h-4 w-4 text-slate-500" aria-hidden="true" />
         Changer le mot de passe
       </h3>
 
@@ -140,7 +140,7 @@ function BlocEmail({ email }: { email: string | null }) {
         id="titre-email"
         className="text-sm font-medium text-slate-700 flex items-center gap-2"
       >
-        <Mail className="h-4 w-4 text-slate-400" aria-hidden="true" />
+        <Mail className="h-4 w-4 text-slate-500" aria-hidden="true" />
         Changer l&apos;adresse e-mail
       </h3>
       <p className="text-sm text-slate-500">
@@ -211,7 +211,7 @@ function Champ({
         onChange={(e) => onChange(e.target.value)}
         autoComplete={autoComplete}
         aria-describedby={aideId}
-        className="w-full max-w-sm rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100 transition"
+        className="w-full max-w-sm rounded-lg border border-slate-500 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100 transition"
       />
       {aide && (
         <p id={aideId} className="text-xs text-slate-500 mt-1 max-w-sm">

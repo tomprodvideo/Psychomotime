@@ -81,7 +81,7 @@ export default function ArchiveControls({
           value={motif}
           onChange={(e) => setMotif(e.target.value)}
           placeholder="Fin de suivi, déménagement, relais transmis…"
-          className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+          className="w-full rounded-lg border border-slate-500 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
         />
         <p className="text-xs text-slate-500 mt-1.5">
           Les parcours encore ouverts seront clos. Rien n&apos;est effacé.

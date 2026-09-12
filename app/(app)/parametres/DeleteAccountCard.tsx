@@ -39,7 +39,7 @@ export default function DeleteAccountCard() {
         <strong>Exportez-les avant si vous en avez besoin</strong> — depuis
         Comptabilité, bouton « Exporter ».
       </p>
-      <p className="text-xs text-slate-400 mt-2">
+      <p className="text-xs text-slate-500 mt-2">
         Si d&apos;autres praticiens partagent votre cabinet, il n&apos;est pas
         supprimé : seule votre appartenance est retirée, et leurs données
         restent les leurs.

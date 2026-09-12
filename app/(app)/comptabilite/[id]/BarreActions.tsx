@@ -65,7 +65,7 @@ export default function BarreActions({
               type="button"
               onClick={() => setConfirmation("supprimer")}
               disabled={enCours}
-              className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-rose-700 border border-slate-200 px-3 py-2 rounded-lg disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-rose-700 border border-slate-500 px-3 py-2 rounded-lg disabled:opacity-50"
             >
               <Trash2 className="h-4 w-4" aria-hidden="true" />
               Supprimer
@@ -96,7 +96,7 @@ export default function BarreActions({
                 })
               }
               disabled={enCours}
-              className="inline-flex items-center gap-1.5 text-sm text-slate-600 border border-slate-200 px-3 py-2 rounded-lg disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 text-sm text-slate-600 border border-slate-500 px-3 py-2 rounded-lg disabled:opacity-50"
             >
               Marquer refusé
             </button>
@@ -125,7 +125,7 @@ export default function BarreActions({
               type="button"
               onClick={() => setConfirmation("remplacement")}
               disabled={enCours}
-              className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-800 border border-slate-200 px-3 py-2 rounded-lg disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-800 border border-slate-500 px-3 py-2 rounded-lg disabled:opacity-50"
             >
               <FileSignature className="h-4 w-4" aria-hidden="true" />
               Facture de remplacement
@@ -134,7 +134,7 @@ export default function BarreActions({
               type="button"
               onClick={() => setConfirmation("avoir")}
               disabled={enCours}
-              className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-800 border border-slate-200 px-3 py-2 rounded-lg disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-800 border border-slate-500 px-3 py-2 rounded-lg disabled:opacity-50"
             >
               <FileMinus className="h-4 w-4" aria-hidden="true" />
               Créer un avoir
@@ -163,7 +163,7 @@ export default function BarreActions({
                 type="date"
                 value={dateEmission}
                 onChange={(e) => setDateEmission(e.target.value)}
-                className="rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white"
+                className="rounded-lg border border-slate-500 px-3 py-2 text-sm bg-white"
               />
             </div>
             <button
@@ -254,7 +254,7 @@ export default function BarreActions({
               value={motif}
               onChange={(e) => setMotif(e.target.value)}
               placeholder="Erreur de tarif sur la séance du 12 mars"
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white"
+              className="w-full rounded-lg border border-slate-500 px-3 py-2 text-sm bg-white"
             />
           </div>
           <div className="flex items-center gap-2 mt-3">

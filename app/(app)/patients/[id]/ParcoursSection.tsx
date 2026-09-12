@@ -153,14 +153,14 @@ export default function ParcoursSection({
 
                 {canReadClinical && obj.length > 0 && (
                   <div className="mt-3 pt-3 border-t border-slate-200">
-                    <h4 className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-400 mb-1.5">
+                    <h4 className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-500 mb-1.5">
                       <Target className="h-3.5 w-3.5" aria-hidden="true" />
                       Objectifs
                     </h4>
                     <ul className="space-y-1 list-none p-0 m-0">
                       {obj.map((o) => (
                         <li key={o.id} className="text-sm text-slate-700">
-                          <span className="text-slate-400 mr-1.5">•</span>
+                          <span className="text-slate-500 mr-1.5">•</span>
                           {o.label}
                           <span className="text-xs text-slate-500 ml-2">
                             ({OBJECTIVE_STATUS_LABELS[o.status]})
@@ -196,7 +196,7 @@ export default function ParcoursSection({
 function Ligne({ terme, valeur }: { terme: string; valeur: string }) {
   return (
     <div>
-      <dt className="text-slate-400">{terme}</dt>
+      <dt className="text-slate-500">{terme}</dt>
       <dd className="text-slate-700">{valeur}</dd>
     </div>
   );
@@ -205,7 +205,7 @@ function Ligne({ terme, valeur }: { terme: string; valeur: string }) {
 /* --------------------------------------------------------------- dialogue */
 
 const CHAMP =
-  "w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100 transition";
+  "w-full rounded-lg border border-slate-500 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100 transition";
 
 const CLOS: PathwayStatus[] = ["termine", "interrompu", "reoriente"];
 
@@ -254,7 +254,7 @@ function DialogueParcours({
             type="button"
             onClick={onClose}
             aria-label="Fermer"
-            className="text-slate-400 hover:text-slate-600 rounded p-1"
+            className="text-slate-500 hover:text-slate-600 rounded p-1"
           >
             <X className="h-5 w-5" aria-hidden="true" />
           </button>

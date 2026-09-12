@@ -132,7 +132,7 @@ export default function EnteteAttestation({
                 </optgroup>
               )}
             </select>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               L&apos;entourage du dossier est proposé en premier, avec son rôle.
               Un contact pris ailleurs dans le cabinet n&apos;a aucun lien établi
               avec cette personne : ce document la nomme, elle et ses dates de
@@ -179,7 +179,7 @@ export default function EnteteAttestation({
             defaultValue={attestation.note ?? ""}
             className={styleChamp}
           />
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             Visible par le destinataire. Une attestation n&apos;a pas à porter de
             contenu clinique : ni motif, ni observation, ni hypothèse.
           </p>
@@ -198,7 +198,7 @@ export default function EnteteAttestation({
             defaultValue={attestation.internal_note ?? ""}
             className={styleChamp}
           />
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             Jamais imprimée, jamais transmise.
           </p>
         </div>
@@ -229,4 +229,4 @@ export default function EnteteAttestation({
 }
 
 const styleChamp =
-  "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-200";
+  "w-full rounded-lg border border-slate-500 px-3 py-2 text-sm bg-white focus:border-brand-400 focus:ring-2 focus:ring-brand-100";

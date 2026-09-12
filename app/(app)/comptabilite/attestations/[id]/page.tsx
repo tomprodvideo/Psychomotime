@@ -26,6 +26,15 @@ import FaitsAttestes from "./FaitsAttestes";
 import ActionsAttestation from "./ActionsAttestation";
 import PanneauPartage from "../../transmissions/PanneauPartage";
 
+import type { Metadata } from "next";
+/* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
+   patient le ferait entrer dans l'historique du navigateur, parfois synchronisé
+   entre appareils, parfois affiché devant quelqu'un d'autre. C'est le même
+   raisonnement que celui de la page de consultation publique, et il vaut
+   autant ici. Distinguer les pages entre elles suffit. */
+export const metadata: Metadata = { title: "Attestation · Psychomotime" };
+
+
 /**
  * Une attestation.
  *
@@ -208,7 +217,7 @@ export default async function AttestationPage({
             )}
             {a.internal_note && (
               <div className="mt-3 pt-3 border-t border-slate-100">
-                <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
                   Note interne — jamais imprimée
                 </p>
                 <p className="text-sm text-slate-600 whitespace-pre-wrap mt-0.5">
@@ -249,7 +258,7 @@ export default async function AttestationPage({
               {complete.seances.map((s) => (
                 <li key={s.appointment_id} className="px-5 py-2.5 text-sm text-slate-700">
                   {frDate(s.starts_at.slice(0, 10))}
-                  <span className="text-slate-400">
+                  <span className="text-slate-500">
                     {" · "}
                     {a.detail_nature
                       ? (NATURE_ACTE_LABELS[s.kind] ?? s.kind)
@@ -263,7 +272,7 @@ export default async function AttestationPage({
               {complete.reglements.map((r) => (
                 <li key={r.payment_id} className="px-5 py-2.5 text-sm text-slate-700">
                   {formatCents(r.amount_cents)}
-                  <span className="text-slate-400">
+                  <span className="text-slate-500">
                     {" · "}
                     {frDate(r.received_on)}
                   </span>
@@ -309,7 +318,7 @@ export default async function AttestationPage({
 function Ligne({ terme, valeur }: { terme: string; valeur: string }) {
   return (
     <div>
-      <dt className="text-xs text-slate-400">{terme}</dt>
+      <dt className="text-xs text-slate-500">{terme}</dt>
       <dd className="text-slate-700">{valeur}</dd>
     </div>
   );

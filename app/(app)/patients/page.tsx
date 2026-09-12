@@ -10,6 +10,15 @@ import PatientFormDialog from "./PatientFormDialog";
 import PatientsToolbar from "./PatientsToolbar";
 import CreatePracticeCard from "./CreatePracticeCard";
 
+import type { Metadata } from "next";
+/* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
+   patient le ferait entrer dans l'historique du navigateur, parfois synchronisé
+   entre appareils, parfois affiché devant quelqu'un d'autre. C'est le même
+   raisonnement que celui de la page de consultation publique, et il vaut
+   autant ici. Distinguer les pages entre elles suffit. */
+export const metadata: Metadata = { title: "Dossiers · Psychomotime" };
+
+
 export default async function PatientsPage({
   searchParams,
 }: {
@@ -126,7 +135,7 @@ export default async function PatientsPage({
                           <p className="font-medium text-slate-800 truncate">
                             {patientName(p)}
                           </p>
-                          <p className="text-xs text-slate-400">
+                          <p className="text-xs text-slate-500">
                             {p.birth_date
                               ? `${frDate(p.birth_date)}${age ? ` · ${age}` : ""}`
                               : "Date de naissance non renseignée"}

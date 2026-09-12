@@ -18,6 +18,15 @@ import { resoudrePeriode, versParams } from "./periode";
 import SelecteurPeriode from "./SelecteurPeriode";
 import NouvellePiece from "./NouvellePiece";
 
+import type { Metadata } from "next";
+/* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
+   patient le ferait entrer dans l'historique du navigateur, parfois synchronisé
+   entre appareils, parfois affiché devant quelqu'un d'autre. C'est le même
+   raisonnement que celui de la page de consultation publique, et il vaut
+   autant ici. Distinguer les pages entre elles suffit. */
+export const metadata: Metadata = { title: "Comptabilité · Psychomotime" };
+
+
 /**
  * Comptabilité — la période d'abord.
  *
@@ -204,7 +213,7 @@ export default async function ComptabilitePage({
                 Pièces comptables de la période {periode.libelle}
               </caption>
               <thead>
-                <tr className="text-left text-xs uppercase tracking-wide text-slate-400 border-b border-slate-100">
+                <tr className="text-left text-xs uppercase tracking-wide text-slate-500 border-b border-slate-100">
                   <th scope="col" className="px-4 py-2.5 font-medium">Pièce</th>
                   <th scope="col" className="px-4 py-2.5 font-medium">Date</th>
                   <th scope="col" className="px-4 py-2.5 font-medium">Patient</th>
@@ -239,7 +248,7 @@ function LignePiece({ d }: { d: DocumentListItem }) {
         >
           {d.number ?? documentTitre(d)}
         </Link>
-        <span className="block text-xs text-slate-400">
+        <span className="block text-xs text-slate-500">
           {KIND_SHORT[d.kind]}
           {d.repris_de_v1 && " · repris de la version précédente"}
         </span>
@@ -258,15 +267,15 @@ function LignePiece({ d }: { d: DocumentListItem }) {
         ) : d.patient_nom ? (
           <span title="Le dossier lié n'existe plus ; le nom porté par la pièce est conservé.">
             {d.patient_nom}{" "}
-            <span className="text-xs text-slate-400">(dossier non lié)</span>
+            <span className="text-xs text-slate-500">(dossier non lié)</span>
           </span>
         ) : (
-          <span className="text-slate-400">—</span>
+          <span className="text-slate-500">—</span>
         )}
       </td>
       <td
         className={`px-4 py-2.5 text-right tabular-nums ${
-          annulee ? "text-slate-400 line-through" : "text-slate-700"
+          annulee ? "text-slate-500 line-through" : "text-slate-700"
         }`}
       >
         {d.kind === "avoir" && "− "}

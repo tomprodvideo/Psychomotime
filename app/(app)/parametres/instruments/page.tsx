@@ -11,6 +11,15 @@ import {
 import type { BandSetRow, InstrumentScale } from "@/lib/dossier/types";
 import RegistreClient from "./RegistreClient";
 
+import type { Metadata } from "next";
+/* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
+   patient le ferait entrer dans l'historique du navigateur, parfois synchronisé
+   entre appareils, parfois affiché devant quelqu'un d'autre. C'est le même
+   raisonnement que celui de la page de consultation publique, et il vaut
+   autant ici. Distinguer les pages entre elles suffit. */
+export const metadata: Metadata = { title: "Instruments · Psychomotime" };
+
+
 /**
  * Registre des instruments.
  *
@@ -74,7 +83,7 @@ export default async function RegistrePage() {
 
       <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 mb-6">
         <ShieldAlert
-          className="h-5 w-5 shrink-0 text-slate-400 mt-0.5"
+          className="h-5 w-5 shrink-0 text-slate-500 mt-0.5"
           aria-hidden="true"
         />
         <div className="text-sm text-slate-600">

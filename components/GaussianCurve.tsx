@@ -108,7 +108,15 @@ const BAND_H = 34;
 
 export default function GaussianCurve() {
   return (
+    /* UN LECTEUR D'ÉCRAN RECEVAIT UNE SUITE DE FRAGMENTS — « -3 -2 -1 0 1 2 3
+       34,13 % 13,6 % … » — sans structure ni sens. `role="img"` referme le
+       dessin sur lui-même et le fait annoncer d'une phrase.
+       La description dit ce que la figure MONTRE, sans rien conclure : la
+       position d'un résultat dans cette courbe s'interprète par le
+       psychomotricien, pas par une étiquette. */
     <svg
+      role="img"
+      aria-label="Courbe de répartition en cloche, graduée en déviations standard de -3 à +3, avec le pourcentage attendu dans chaque intervalle et les libellés des zones."
       viewBox="0 0 820 430"
       className="w-full h-auto"
       style={{

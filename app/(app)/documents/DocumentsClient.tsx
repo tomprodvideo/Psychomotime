@@ -213,7 +213,7 @@ export default function DocumentsClient({
                     value={renameVal}
                     onChange={(e) => setRenameVal(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && saveRename(f.id)}
-                    className="flex-1 rounded border border-slate-200 py-1 px-2 text-sm outline-none focus:border-brand-400"
+                    className="flex-1 rounded border border-slate-500 py-1 px-2 text-sm outline-none focus:border-brand-400"
                   />
                   <button
                     onClick={() => saveRename(f.id)}
@@ -223,7 +223,7 @@ export default function DocumentsClient({
                   </button>
                   <button
                     onClick={() => setRenaming(null)}
-                    className="p-1 text-slate-400"
+                    className="p-1 text-slate-500"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -245,7 +245,7 @@ export default function DocumentsClient({
                       setRenaming(f.id);
                       setRenameVal(f.name);
                     }}
-                    className="p-0.5 text-slate-400 hover:text-brand-600 md:opacity-0 md:group-hover:opacity-100"
+                    className="p-0.5 text-slate-500 hover:text-brand-600 md:opacity-0 md:group-hover:opacity-100"
                     title="Renommer"
                   >
                     <Pencil className="h-3.5 w-3.5" />
@@ -255,7 +255,7 @@ export default function DocumentsClient({
                       e.stopPropagation();
                       deleteFolder(f.id);
                     }}
-                    className="p-0.5 text-slate-400 hover:text-rose-600 md:opacity-0 md:group-hover:opacity-100"
+                    className="p-0.5 text-slate-500 hover:text-rose-600 md:opacity-0 md:group-hover:opacity-100"
                     title="Supprimer"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -303,7 +303,7 @@ export default function DocumentsClient({
 
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm">
           {visibleDocs.length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-12">
+            <p className="text-sm text-slate-500 text-center py-12">
               Aucun fichier ici. Cliquez sur « Importer un fichier ».
             </p>
           ) : (
@@ -325,21 +325,21 @@ export default function DocumentsClient({
                       <p className="text-sm font-medium text-slate-700 truncate hover:text-brand-700">
                         {d.name}
                       </p>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-slate-500">
                         {formatBytes(d.size)} · {frDate(d.created_at)}
                       </p>
                     </div>
                   </button>
                   <button
                     onClick={() => download(d)}
-                    className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded"
+                    className="p-1.5 text-slate-500 hover:text-brand-600 hover:bg-brand-50 rounded"
                     title="Télécharger"
                   >
                     <Download className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => deleteDoc(d)}
-                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded"
+                    className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded"
                     title="Supprimer"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -350,7 +350,7 @@ export default function DocumentsClient({
           )}
         </div>
         {pending && (
-          <p className="text-xs text-slate-400 mt-2">Actualisation…</p>
+          <p className="text-xs text-slate-500 mt-2">Actualisation…</p>
         )}
       </div>
 
@@ -374,7 +374,7 @@ export default function DocumentsClient({
                 )}
                 <button
                   onClick={() => setPreview(null)}
-                  className="p-1.5 text-slate-400 hover:text-slate-600"
+                  className="p-1.5 text-slate-500 hover:text-slate-600"
                   title="Fermer"
                 >
                   <X className="h-5 w-5" />
@@ -383,7 +383,7 @@ export default function DocumentsClient({
             </div>
             <div className="flex-1 bg-slate-100 flex items-center justify-center overflow-auto">
               {previewLoading || !preview ? (
-                <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+                <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
               ) : isPdf(preview.doc) ? (
                 <iframe
                   src={preview.url}
@@ -439,7 +439,7 @@ function FolderRow({
       }`}
     >
       <span className="truncate">{label}</span>
-      <span className="text-xs text-slate-400">{count}</span>
+      <span className="text-xs text-slate-500">{count}</span>
     </button>
   );
 }
