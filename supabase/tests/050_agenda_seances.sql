@@ -370,3 +370,53 @@ begin
 end
 $$;
 rollback;
+
+-- ---------------------------------------------------------------------------
+--  Le défaut de facturation suit l'ISSUE, pas l'ordre de saisie
+-- ---------------------------------------------------------------------------
+--  Une séance saisie après coup, directement avec l'issue « honoré », restait
+--  non facturable sans que rien ne le dise : elle disparaissait ensuite de tout
+--  ce qui s'appuie sur les séances réalisées. Un silence, pas un refus.
+begin;
+select tests.authenticate_as('a0000000-0000-4000-8000-000000000001'::uuid);
+do $$
+declare
+  v_honore uuid; v_absent uuid; v_annule uuid;
+  v_facturable boolean;
+begin
+  -- Séance saisie après coup, déjà honorée.
+  insert into public.appointments
+    (practice_id, patient_id, kind, starts_at, ends_at, attendance)
+  values ('a1111111-1111-4111-8111-111111111111',
+          'a6000000-0000-4000-8000-000000000001', 'seance',
+          now() - interval '2 days', now() - interval '2 days' + interval '45 min',
+          'honore')
+  returning id, billable into v_honore, v_facturable;
+  perform tests.assert(v_facturable,
+    'Une séance saisie après coup, déjà honorée, doit être facturable par défaut.');
+
+  -- Une absence excusée reste facturable par défaut : beaucoup de cabinets la
+  -- facturent, et le praticien décide.
+  insert into public.appointments
+    (practice_id, patient_id, kind, starts_at, ends_at, attendance)
+  values ('a1111111-1111-4111-8111-111111111111',
+          'a6000000-0000-4000-8000-000000000001', 'seance',
+          now() - interval '3 days', now() - interval '3 days' + interval '45 min',
+          'absent_excuse')
+  returning id, billable into v_absent, v_facturable;
+  perform tests.assert(v_facturable,
+    'Une absence excusée reste facturable par défaut ; le praticien tranche.');
+
+  -- Une annulation par le praticien ne l'est pas.
+  insert into public.appointments
+    (practice_id, patient_id, kind, starts_at, ends_at, attendance, attendance_note)
+  values ('a1111111-1111-4111-8111-111111111111',
+          'a6000000-0000-4000-8000-000000000001', 'seance',
+          now() - interval '4 days', now() - interval '4 days' + interval '45 min',
+          'annule_praticien', 'Empêchement du praticien.')
+  returning id, billable into v_annule, v_facturable;
+  perform tests.assert(not v_facturable,
+    'Une annulation par le praticien ne doit pas être facturable par défaut.');
+end
+$$;
+rollback;

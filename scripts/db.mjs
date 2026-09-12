@@ -16,6 +16,8 @@
  *   node scripts/db.mjs test     exécute les tests SQL de supabase/tests/
  *   node scripts/db.mjs cutover  rejoue la bascule v1 -> cible sur une base
  *                                jetable, puis vérifie le résultat
+ *   node scripts/db.mjs concurrence  émet des pièces EN PARALLÈLE et vérifie
+ *                                    que la numérotation ne se répète pas
  *   node scripts/db.mjs psql     ouvre une session psql sur la base locale
  *
  * Variables d'environnement
@@ -25,7 +27,7 @@
  *   LOCAL_DB_USER  (défaut: utilisateur courant)
  */
 
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { readdirSync, existsSync } from "node:fs";
 import { join, basename } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -178,6 +180,67 @@ switch (cmd) {
   case "test":
     process.exit(runTests());
     break;
+  case "concurrence": {
+    // La numérotation ne peut pas se prouver dans une seule session : il faut
+    // de VRAIS accès simultanés. On lance donc N processus psql en parallèle,
+    // chacun réservant un rang, et on vérifie qu'aucun ne se répète et qu'il
+    // n'y a aucun trou. C'est le critère du mandat : cent créations
+    // simultanées produisent cent numéros distincts et continus.
+    const N = Number(process.env.CONCURRENCE_N || 50);
+    const serie = `CONCURRENCE-${Date.now()}`;
+    console.log(`${C.dim}· ${N} réservations simultanées sur la série ${serie}${C.reset}`);
+
+    const cabinet = "a1111111-1111-4111-8111-111111111111";
+
+    // `spawn`, et surtout PAS `spawnSync` : enveloppé dans une promesse,
+    // `spawnSync` s'exécute quand même de bout en bout avant de rendre la main,
+    // et les processus se suivent au lieu de se chevaucher. Le test paraissait
+    // alors concurrent sans l'être — il a validé une version délibérément
+    // racée avant que cette erreur ne soit vue.
+    const reserver = () =>
+      new Promise((resolve) => {
+        const p = spawn("psql", [
+          ...baseArgs(DB_NAME),
+          "-v", "ON_ERROR_STOP=1", "--no-psqlrc", "-tAc",
+          `select app.next_billing_seq('${cabinet}'::uuid, '${serie}');`,
+        ]);
+        let sortie = "";
+        p.stdout.on("data", (d) => (sortie += d));
+        p.on("close", (code) =>
+          resolve(code === 0 ? Number(sortie.trim()) : null),
+        );
+      });
+
+    const resultats = await Promise.all(
+      Array.from({ length: N }, () => reserver()),
+    );
+
+    const echecs = resultats.filter((r) => r === null).length;
+    const valeurs = resultats.filter((r) => r !== null);
+    const uniques = new Set(valeurs);
+    const attendues = new Set(Array.from({ length: N }, (_, i) => i + 1));
+
+    const problemes = [];
+    if (echecs > 0) problemes.push(`${echecs} réservation(s) en échec`);
+    if (uniques.size !== valeurs.length) {
+      problemes.push(
+        `${valeurs.length - uniques.size} numéro(s) attribué(s) deux fois`,
+      );
+    }
+    for (const n of attendues) {
+      if (!uniques.has(n)) problemes.push(`trou dans la série : ${n} manquant`);
+    }
+
+    if (problemes.length > 0) {
+      console.log(`  ${C.red}✗${C.reset} numérotation sous concurrence`);
+      for (const p of problemes) console.log(`    ${C.red}${p}${C.reset}`);
+      process.exit(1);
+    }
+    console.log(
+      `  ${C.green}✓${C.reset} ${N} numéros distincts et continus, sans trou ni doublon`,
+    );
+    break;
+  }
   case "cutover": {
     // La bascule ne peut être prouvée que sur une base qui porte RÉELLEMENT le
     // modèle v1. On en fabrique une, on rejoue les migrations dans l'ordre, et

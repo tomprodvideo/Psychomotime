@@ -21,7 +21,7 @@ Colonnes : **Origine** — `AUDIT` (audit fonctionnel du 2026-09-11), `MANDAT` (
 | A-06 | AUDIT | NS 7 → orange dans le tableau, vert sur la courbe ; la légende range 7 dans deux bandes | Un score produit la même couleur et le même libellé dans le formulaire, le tableau, le graphique et le PDF | L3 | `lib/scales.ts` — fonction unique ; bornes et mots en base ; `validate_band_set` refuse tout chevauchement | `lib/scales.test.mts` (17), `lib/scales.architecture.test.mts` (6), `060_registre_instruments` | **en cours** — la règle est unique et testée ; reste à brancher les quatre surfaces quand le moteur de bilans arrivera |
 | A-07 | AUDIT | Un échec d'enregistrement de bilan s'affiche « Enregistré ✓ » | Aucune erreur d'écriture ne peut être rendue comme un succès | L0 | `ecritureReussie` + `.select()` sur chaque mutation ; 9 actions et 6 écrans corrigés | build + parcours vérifiés ; test serveur à ajouter au L1 | **fait** |
 | A-08 | AUDIT | Aucune sauvegarde automatique ; tout l'état vit en mémoire du navigateur | Autosauvegarde serveur débouncée et idempotente, état de synchronisation visible, reprise après erreur, protection avant fermeture | L4 | — | — | à faire |
-| A-09 | AUDIT | Ré-enregistrer une ancienne facture la retarife aux taux du jour | Les paramètres applicables sont ceux de la date d'émission ; une pièce émise est immuable | L5 | — | — | à faire |
+| A-09 | AUDIT | Ré-enregistrer une ancienne facture la retarife aux taux du jour | Les paramètres applicables sont ceux de la date d'émission ; une pièce émise est immuable | L5 | Instantané figé à l'émission ; déclencheurs d'immuabilité sur la pièce et ses lignes | `070_moteur_comptable` § 3 | **fait** |
 | A-10 | AUDIT | Modifier le nom détache le bilan du patient, sans moyen de le rattacher | Le rattachement est relationnel ; un document orphelin est signalé et rattachable | L1 | Bascule `0003` : identifiants conservés, clés étrangères repointées | `npm run db:cutover` — jointure bilan → patient vérifiée | **en cours** — le lien tient ; la réconciliation d'un bilan orphelin arrive au L3 |
 | A-11 | AUDIT | L'abonnement n'est contrôlé que dans 3 pages, aucune server action | Contrôle d'accès dans chaque cas d'usage serveur, pas seulement dans l'UI | L0 | `lib/auth/guard.ts` câblé sur les 21 actions ; lecture autorisée sans abonnement, écriture non | `030_garanties_socle` § 5 | **fait** |
 | A-12 | AUDIT | Le loyer mensuel n'entre dans aucune formule | Le loyer est une charge du cabinet et entre dans les agrégats correspondants | L5 | — | — | à faire |
@@ -42,7 +42,7 @@ Colonnes : **Origine** — `AUDIT` (audit fonctionnel du 2026-09-11), `MANDAT` (
 | A-27 | AUDIT | La liste des champs du lien public existe en double, SQL et TypeScript, sans lien | Contrat unique, ou concordance testée entre les deux | L7 | — | — | à faire |
 | A-28 | AUDIT | Le rôle admin repose sur une adresse e-mail codée en dur dans le SQL | Rôle porté par une donnée, pas par une constante | L0 | `platform_admins`, `app.is_platform_admin()` | `030_garanties_socle`, `020_isolation_cabinets` § 5 | **fait** |
 | A-29 | AUDIT | Supprimer un patient efface physiquement, mais nom et contenu clinique survivent dans les bilans | Archivage, effacement raisonné, et cohérence de ce qui subsiste | L1 | `archive_patient` / `unarchive_patient` ; aucun bouton de suppression | `040_dossier_patient` §10 | **en cours** — l'archivage remplace la suppression ; l'effacement raisonné relève des droits des personnes |
-| A-30 | AUDIT | La période comptable est une cascade de replis ; mois et année peuvent venir de sources différentes | Dates explicites et distinctes : prestation, émission, échéance, rattachement, encaissement | L5 | — | — | à faire |
+| A-30 | AUDIT | La période comptable est une cascade de replis ; mois et année peuvent venir de sources différentes | Dates explicites et distinctes : prestation, émission, échéance, rattachement, encaissement | L5 | `billing_documents` : cinq colonnes de date ; `service_dates` sur la ligne | `070_moteur_comptable` | **fait** |
 
 ### A bis. Défauts découverts par les audits de refonte (hors audit initial)
 
@@ -58,6 +58,9 @@ Colonnes : **Origine** — `AUDIT` (audit fonctionnel du 2026-09-11), `MANDAT` (
 | A-38 | ORCH | Le schéma adhère à Supabase par `auth.uid()` dans chaque politique | Un seul point de contact, vérifié par test | L0 | `app.current_user_id()` | `010_couverture_rls` § 5 | **fait** |
 | A-39 | ORCH | Trois implémentations concurrentes de la même règle de cotation divergent aux valeurs 4, 7 et 17 ; une teinte signifie « très supérieur » en tableau et « moyenne » sur la courbe | Une échelle porte ses propres bandes, versionnées ; même score → même couleur et même libellé dans les quatre rendus | L3 | `lib/scales.ts` seule autorité ; test d'architecture interdisant toute autre | `lib/scales.architecture.test.mts` — dette v1 nommée, plafonnée à 3 fichiers | **en cours** |
 | A-40 | ORCH | `has_pco` est une donnée de santé imprimée sur la facture et exportée en clair dans le CSV | Le rattachement à un parcours PCO change le circuit, il ne s'imprime pas sur un document familial | L5 | — | — | à faire |
+| A-49 | ORCH | Une séance saisie après coup, déjà honorée, restait NON facturable sans que rien ne le dise | Le défaut de facturation suit l'issue, pas l'ordre de saisie | L2 | `0010_rdv_facturable_par_defaut.sql` | `050_agenda_seances` | **fait** |
+| A-50 | ORCH | Rien n'empêchait de facturer le patient d'un autre cabinet : une clé étrangère ne connaît pas le locataire | Garde de cohérence sur patient, parcours, payeur, pièce rectifiée et affectation | L5 | `app.guard_billing_document_coherence` | `070_moteur_comptable` § 8 | **fait** |
+| A-51 | ORCH | Le test de concurrence de la numérotation n'était PAS concurrent : `spawnSync` sérialisait les processus, et il validait une version délibérément racée | Processus réellement parallèles, vérifiés par mutation | L5 | `scripts/db.mjs` — `spawn` asynchrone | `npm run db:concurrence` | **fait** |
 | A-46 | ORCH | Les bornes, couleurs et mots de cotation vivaient dans le code, à trois endroits | Ils deviennent des DONNÉES saisies et assumées par le praticien ; le logiciel ne tranche plus à sa place | L3 | `0007_registre_instruments.sql` | `060_registre_instruments`, vérifié en production | **fait** |
 | A-47 | ORCH | Un découpage pouvait attribuer une même valeur à deux bandes | `validate_band_set` refuse chevauchement, trou et libellé absent ; un découpage invalide ne peut pas devenir actif | L3 | `validate_band_set`, `activate_band_set` | `060_registre_instruments` § 2 | **fait** |
 | A-48 | ORCH | Rien n'empêchait le produit d'accueillir du contenu éditeur | Le schéma n'a aucune place pour items, consignes, grilles ou tables d'étalonnage ; un test refuse toute colonne suspecte | L3 | `0007` + contrôle de nommage | `060_registre_instruments` § 6 | **fait** |
@@ -86,8 +89,8 @@ Colonnes : **Origine** — `AUDIT` (audit fonctionnel du 2026-09-11), `MANDAT` (
 | B-13 | AUDIT | Le stockage de documents : bucket privé, chemin anonymisé, URL signées courtes | L3 | — | à faire |
 | B-14 | AUDIT | Les messages de suppression disent honnêtement ce qui est conservé et ce qui est perdu | L1 | — | à faire |
 | B-15 | AUDIT | Aucun analytics, aucune télémétrie tierce ne capte de contenu clinique | L8 | — | à faire |
-| B-16 | AUDIT | Ouvrir puis annuler un formulaire de facture ne consomme pas de numéro | L5 | — | à faire |
-| B-17 | AUDIT | La numérotation est atomique : deux créations simultanées ne peuvent pas obtenir le même numéro | L5 | — | à faire |
+| B-16 | AUDIT | Ouvrir puis annuler un formulaire de facture ne consomme pas de numéro | L5 | `070_moteur_comptable` § 1 | **fait** |
+| B-17 | AUDIT | La numérotation est atomique : deux créations simultanées ne peuvent pas obtenir le même numéro | L5 | `npm run db:concurrence` — 50 processus réellement parallèles | **fait** |
 
 ## C. Exigences structurantes du mandat (fonctions absentes)
 
@@ -103,8 +106,8 @@ Colonnes : **Origine** — `AUDIT` (audit fonctionnel du 2026-09-11), `MANDAT` (
 | C-08 | MANDAT | Passations multiples par bilan, chacune datée, avec son âge calculé | L3 | à faire |
 | C-09 | MANDAT | Comparaison bilan initial / réévaluation, avec signalement des changements de version et de conditions | L4 | à faire |
 | C-10 | MANDAT | Versions de comptes rendus immuables, addendum, restauration | L4 | à faire |
-| C-11 | MANDAT | Catalogue de prestations historisé ; devis de bilan, de séances, mixte, forfait | L5 | à faire |
-| C-12 | MANDAT | Factures multi-lignes, avoirs, paiements partiels et groupés, trop-perçus, remboursements, relances | L5 | à faire |
+| C-11 | MANDAT | Catalogue de prestations historisé ; devis de bilan, de séances, mixte, forfait | L5 | **fait pour le socle** — `service_catalog_items`, devis comme nature de document ; interface au lot suivant |
+| C-12 | MANDAT | Factures multi-lignes, avoirs, paiements partiels et groupés, trop-perçus, remboursements, relances | L5 | **fait pour le socle** — lignes, avoirs référencés, affectations partielles et groupées, trop-perçu visible, remboursement = paiement négatif ; relances au lot suivant |
 | C-13 | MANDAT | Dépenses ponctuelles et récurrentes, justificatifs, rapprochement | L5 | à faire |
 | C-14 | MANDAT | Attestation de présence (séances réalisées, aucun contenu clinique) et attestation de paiement (paiements réellement affectés) | L5 | **en cours** — la source unique existe : vue `realised_sessions`, qui exclut par construction les rendez-vous à venir, annulés, non qualifiés et sans patient |
 | C-15 | MANDAT | Exports réconciliables CSV/XLSX/PDF pour l'expert-comptable | L5 | à faire |
