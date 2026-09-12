@@ -410,7 +410,7 @@ export async function creerRectification(fd: FormData): Promise<Resultat> {
 
   const aRecopier = (lignes ?? []) as unknown as Record<string, unknown>[];
   if (aRecopier.length > 0) {
-    const { data: creees } = await supabase
+    const { data: creees, error: erreurLignes } = await supabase
       .from("billing_lines")
       .insert(
         aRecopier.map((l) => {
@@ -424,6 +424,21 @@ export async function creerRectification(fd: FormData): Promise<Resultat> {
         }),
       )
       .select("id, position");
+
+    /* La recopie des lignes peut échouer. La pièce, elle, existe déjà : rendre
+     * `ok` sans le dire donnerait un brouillon VIDE présenté comme une
+     * rectification prête — et une pièce sans ligne ne peut pas être émise,
+     * sans que rien n'explique pourquoi. */
+    if (erreurLignes) {
+      return {
+        ok: true,
+        id: nouveau,
+        message:
+          "La pièce a été créée, mais la reprise de ses lignes a échoué : " +
+          messageErreur(erreurLignes) +
+          " Saisissez-les à la main avant de l'émettre.",
+      };
+    }
 
     /* UNE FACTURE DE REMPLACEMENT REPREND LES SÉANCES DE CELLE QU'ELLE REMPLACE.
      *
@@ -460,7 +475,21 @@ export async function creerRectification(fd: FormData): Promise<Resultat> {
           Boolean(r.line_id));
 
       if (aRattacher.length > 0) {
-        await supabase.from("billing_line_appointments").insert(aRattacher);
+        const { error: erreurLiens } = await supabase
+          .from("billing_line_appointments")
+          .insert(aRattacher);
+        // Les séances resteraient alors accrochées à la pièce remplacée : le
+        // sélecteur de séances de la nouvelle pièce serait vide, et l'attestation
+        // de présence à venir suivrait une pièce qui ne vaut plus.
+        if (erreurLiens) {
+          return {
+            ok: true,
+            id: nouveau,
+            message:
+              "La pièce a été créée, mais les séances n'ont pas pu y être rattachées : " +
+              messageErreur(erreurLiens),
+          };
+        }
       }
     }
   }
