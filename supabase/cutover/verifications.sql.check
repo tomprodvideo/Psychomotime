@@ -442,7 +442,7 @@ declare
     'bilans', 'invoices', 'expenses', 'settings', 'subscriptions',
     'doc_folders', 'documents', 'invoice_counters',
     'is_admin', 'delete_my_account', 'next_invoice_seq', 'handle_new_user',
-    'invoice_by_token', 'invoice_lines_total',
+    'invoice_lines_total',
     -- Fonctions v1 sans chemin épinglé. Elles disparaîtront avec leurs tables ;
     -- les fonctions du modèle cible, elles, n'ont plus d'exemption.
     'update_updated_at_column'

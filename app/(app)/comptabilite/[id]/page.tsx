@@ -11,6 +11,7 @@ import {
   listSeancesFacturables,
 } from "@/lib/compta/queries";
 import { listContacts, listPathways, listPatients } from "@/lib/dossier/queries";
+import { listLiens } from "@/lib/transmissions/queries";
 import { contactName, patientName } from "@/lib/dossier/types";
 import {
   BILLING_FUNDING_LABELS,
@@ -23,6 +24,7 @@ import EnteteForm from "./EnteteForm";
 import LignesEditeur from "./LignesEditeur";
 import BarreActions from "./BarreActions";
 import ReglementsSection from "./ReglementsSection";
+import PanneauPartage from "../transmissions/PanneauPartage";
 
 /**
  * Une pièce comptable.
@@ -47,7 +49,7 @@ export default async function PiecePage({
   const modifiable = estModifiable(d) && practice.canWrite;
   const aujourdhui = new Date().toISOString().slice(0, 10);
 
-  const [catalogue, patients, contacts, parcours, seances] = await Promise.all([
+  const [catalogue, patients, contacts, parcours, seances, liens] = await Promise.all([
     modifiable ? listCatalog(practice) : Promise.resolve([]),
     modifiable
       ? listPatients(practice, { pageSize: 100 })
@@ -59,6 +61,7 @@ export default async function PiecePage({
     modifiable && d.patient_id
       ? listSeancesFacturables(practice, d.patient_id)
       : Promise.resolve([]),
+    listLiens(practice, { type: "billing_document", id }),
   ]);
 
   return (
@@ -173,6 +176,16 @@ export default async function PiecePage({
             modifiable={modifiable}
           />
         </Card>
+
+        {d.status !== "brouillon" && (
+          <PanneauPartage
+            sujetType="billing_document"
+            sujetId={d.id}
+            liens={liens.items}
+            contacts={contacts.map((c) => ({ id: c.id, nom: contactName(c) }))}
+            modifiable={practice.canWrite}
+          />
+        )}
 
         {d.kind !== "devis" && d.status !== "brouillon" && (
           <ReglementsSection

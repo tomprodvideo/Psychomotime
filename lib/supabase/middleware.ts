@@ -1,11 +1,41 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-// /facture/<jeton>   : consultation par le patient, qui n'a pas de compte.
+// /document/<jeton> : consultation par un destinataire qui n'a pas de compte.
 // /mot-de-passe/...  : on y arrive justement parce qu'on ne peut plus se
 //                      connecter. Les écrans eux-mêmes exigent ce qu'il faut :
 //                      /nouveau redirige sans la session créée par le lien.
-const PUBLIC_PATHS = ["/login", "/auth", "/facture", "/mot-de-passe"];
+const PUBLIC_PATHS = ["/login", "/auth", "/document", "/mot-de-passe"];
+
+/**
+ * Le chemin de consultation par jeton.
+ *
+ * LE JETON EST DANS L'URL, et c'est inévitable : le destinataire n'a pas de
+ * compte, le lien EST la clé. Tout ce qui suit vise donc à l'empêcher de
+ * fuiter ailleurs que dans la barre d'adresse de qui l'a reçu.
+ */
+const CHEMIN_PUBLIC_JETON = "/document";
+
+/**
+ * En-têtes posés sur la consultation par jeton.
+ *
+ *  · `no-store` — rien de ce document ne doit rester dans un cache partagé, ni
+ *    dans celui d'un mandataire d'entreprise, ni sur un poste prêté.
+ *  · `no-referrer` — sans quoi le jeton complet part dans l'en-tête `Referer`
+ *    de la moindre ressource externe ou du moindre lien suivi. C'est la fuite
+ *    la plus facile à provoquer et la plus difficile à voir.
+ *  · `noindex, nofollow, noarchive` — un lien qui atterrit dans un moteur de
+ *    recherche cesse d'être un secret. L'en-tête double la balise de la page :
+ *    elle couvre aussi le PDF et les réponses d'erreur.
+ *  · `DENY` en cadre — un document remis ne s'encadre pas dans une page tierce.
+ */
+function enTetesDocumentPublic(res: NextResponse): NextResponse {
+  res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  res.headers.set("Referrer-Policy", "no-referrer");
+  res.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet");
+  res.headers.set("X-Frame-Options", "DENY");
+  return res;
+}
 
 export async function updateSession(request: NextRequest) {
   // Tant que la clé Supabase n'est pas renseignée, on laisse passer
@@ -46,6 +76,12 @@ export async function updateSession(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
   const isPublic = PUBLIC_PATHS.some((p) => path.startsWith(p));
+
+  // La consultation par jeton sort ici, avec ses en-têtes : elle n'a besoin
+  // d'aucune session, et la suite du traitement ne la concerne pas.
+  if (path.startsWith(CHEMIN_PUBLIC_JETON)) {
+    return enTetesDocumentPublic(supabaseResponse);
+  }
 
   // Une Server Action arrive en POST. Une redirection depuis le proxy renvoie
   // un 307, qui REJOUE le corps de la requête ET l'en-tête « Next-Action » sur

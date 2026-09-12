@@ -89,15 +89,16 @@ as $$
   -- 6. Fonction du schéma public exécutable par `anon`. PostgREST l'expose
   --    alors en `/rest/v1/rpc/...` à un visiteur sans session.
   --
-  --    DEUX EXCEPTIONS NOMMÉES, et deux seulement :
-  --     · `invoice_by_token` est publique par conception — elle sert la facture
-  --       d'un patient qui n'a pas de compte ;
-  --     · `handle_new_user` est un DÉCLENCHEUR de la v1, inerte hors de son
-  --       contexte (pas d'enregistrement NEW), qui disparaîtra avec la reprise
-  --       de la table `subscriptions`.
+  --    UNE SEULE EXCEPTION NOMMÉE :
+  --     · `shared_document` est publique par conception — elle sert un document
+  --       à un destinataire qui n'a pas de compte, sur présentation d'un jeton.
+  --       C'est la SEULE porte ouverte sans session, et elle est écrite en
+  --       supposant un appelant hostile qui ne possède qu'une chaîne.
   --
-  --    Attention au pseudo-rôle PUBLIC : révoquer sur `anon` seul ne suffit
-  --    pas, `anon` hérite de ce qui est accordé à PUBLIC.
+  --    Les deux exceptions précédentes ont disparu, et c'est le but de cette
+  --    liste : elle doit RÉTRÉCIR. `handle_new_user` a été retirée de l'API au
+  --    lot de la suppression de compte ; `invoice_by_token`, jeton en clair et
+  --    double liste de champs, est remplacée ici.
   select format('Fonction %I.%I : exécutable par anon (exposée en RPC sans session).',
                 n.nspname, p.proname)
   from pg_proc p
@@ -105,7 +106,7 @@ as $$
   where n.nspname = 'public'
     and p.prokind = 'f'
     and has_function_privilege('anon', p.oid, 'execute')
-    and p.proname not in ('invoice_by_token', 'handle_new_user')
+    and p.proname not in ('shared_document')
 
   union all
 

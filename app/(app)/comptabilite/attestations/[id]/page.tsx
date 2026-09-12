@@ -12,6 +12,7 @@ import {
   listReglementsAttestables,
   listSeancesAttestables,
 } from "@/lib/attestations/queries";
+import { listLiens } from "@/lib/transmissions/queries";
 import {
   ATTESTATION_KIND_EXPLICATIONS,
   ATTESTATION_KIND_LABELS,
@@ -23,6 +24,7 @@ import {
 import EnteteAttestation from "./EnteteAttestation";
 import FaitsAttestes from "./FaitsAttestes";
 import ActionsAttestation from "./ActionsAttestation";
+import PanneauPartage from "../../transmissions/PanneauPartage";
 
 /**
  * Une attestation.
@@ -48,7 +50,7 @@ export default async function AttestationPage({
   const modifiable = attestationModifiable(a) && practice.canWrite;
   const aujourdhui = new Date().toISOString().slice(0, 10);
 
-  const [liens, contacts, seances, reglements] = await Promise.all([
+  const [liens, contacts, seances, reglements, liensPartage] = await Promise.all([
     /* LE DESTINATAIRE SE CHOISIT D'ABORD PARMI L'ENTOURAGE DU DOSSIER, avec
      * son rôle. Proposer indistinctement tous les contacts du cabinet rendait
      * possible d'adresser à la famille d'un autre patient un document qui
@@ -67,6 +69,7 @@ export default async function AttestationPage({
           au: a.period_end ?? undefined,
         })
       : Promise.resolve([]),
+    listLiens(practice, { type: "attestation", id }),
   ]);
 
   const choisies = new Set<string>([
@@ -266,6 +269,15 @@ export default async function AttestationPage({
             </ul>
           )}
         </Card>
+        {a.status !== "brouillon" && (
+          <PanneauPartage
+            sujetType="attestation"
+            sujetId={a.id}
+            liens={liensPartage.items}
+            contacts={contacts.map((c) => ({ id: c.id, nom: contactName(c) }))}
+            modifiable={practice.canWrite}
+          />
+        )}
       </div>
     </div>
   );
