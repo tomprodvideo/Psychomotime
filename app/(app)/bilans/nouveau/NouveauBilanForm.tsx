@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { estUneRetouche } from "@/lib/bilans/rattachement";
 import { useFormStatus } from "react-dom";
 import type { Patient } from "@/lib/types";
 import { BILAN_TYPES, type BilanType } from "@/lib/constants";
@@ -102,17 +103,46 @@ export default function NouveauBilanForm({
             ))}
           </select>
         )}
+        {/* CORRIGER LE NOM NE DÉTACHE PLUS LE BILAN DU DOSSIER.
+          *
+          * Cette saisie effaçait l'identifiant du patient à chaque frappe.
+          * Choisir « Zéphyr Pirouette » dans la liste puis corriger une
+          * coquille suffisait donc à rompre le lien : le bilan disparaissait de
+          * la fiche, perdait la date de naissance et l'âge, et plus rien ne
+          * proposait de le rattacher. C'est le risque n° 1 de la sécurité
+          * clinique — l'attribution au mauvais dossier — atteignable en deux
+          * frappes, et documenté § C-6.
+          *
+          * Le lien ne se rompt plus que si le nom s'éloigne VRAIMENT de celui
+          * du dossier choisi : un bilan peut légitimement être établi pour
+          * quelqu'un qui n'a pas encore de dossier, et forcer le rattachement
+          * serait aussi faux que l'inverse. */}
         <input
           name="patient_name"
           required
           value={patientName}
           onChange={(e) => {
-            setPatientName(e.target.value);
-            setPatientId("");
+            const saisi = e.target.value;
+            setPatientName(saisi);
+            if (!patientId) return;
+            const p = patients.find((x) => x.id === patientId);
+            const duDossier = p ? `${p.first_name} ${p.last_name}`.trim() : "";
+            if (!estUneRetouche(saisi, duDossier)) setPatientId("");
           }}
           placeholder="Prénom et nom du patient"
           className={inputCls}
+          aria-describedby={patientId ? "lien-dossier" : undefined}
         />
+        {/* L'état du rattachement est ÉCRIT, pas deviné. Sans cela, rien à
+          * l'écran ne distingue un bilan rattaché d'un bilan orphelin. */}
+        <p
+          id="lien-dossier"
+          className={`text-xs mt-1 ${patientId ? "text-brand-700" : "text-amber-700"}`}
+        >
+          {patientId
+            ? "Ce bilan est rattaché au dossier : il apparaîtra dans la fiche du patient."
+            : "Ce bilan n'est rattaché à aucun dossier. Il n'apparaîtra pas dans une fiche patient."}
+        </p>
       </div>
 
       <div className="grid sm:grid-cols-2 gap-4">
