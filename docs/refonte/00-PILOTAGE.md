@@ -91,7 +91,7 @@ Tout document de cette refonte utilise ces marqueurs, sans exception :
 | L2 | Agenda, séances, présences, objectifs | **livré et en service** |
 | L3 | Moteur de bilans configurable + registre d'instruments | **registre livré** ; moteur suspendu à des arbitrages cliniques |
 | L4 | Composition documentaire, statuts, versions, exports | à faire |
-| L5 | Devis, factures, avoirs, paiements, attestations, PCO | à faire |
+| L5 | Devis, factures, avoirs, paiements, attestations, PCO | **moteur et interface livrés et en service** ; attestations à faire |
 | L6 | Assistance IA encadrée | à faire |
 | L7 | Transmissions sécurisées, liens révocables, journalisation | à faire |
 | L8 | Design system, accessibilité, performance | à faire |
@@ -121,23 +121,62 @@ Détail : `docs/refonte/02-LOTS.md`.
 | Règle de cotation UNIQUE, sortie du code | `lib/scales.ts` + test d'architecture qui interdit toute autre autorité |
 | Arithmétique monétaire en centimes entiers | `lib/money.ts` + 15 tests, dont la preuve du défaut corrigé |
 | Règle d'accès unique et fermée par défaut | `lib/subscription.ts` + `app.subscription_is_active` |
+| Moteur comptable : quatre natures de pièces, immuabilité après émission, avoirs, factures de remplacement | `0009_moteur_comptable.sql`, `supabase/tests/070_moteur_comptable.sql` — 15 scénarios |
+| Numérotation atomique, prouvée par des accès RÉELLEMENT simultanés | `npm run db:concurrence` — 50 processus parallèles, 50 numéros distincts et continus ; la version séquentielle du test laissait passer un compteur non atomique |
+| Un devis et une facture ne portent jamais le même numéro imprimé | préfixe par nature dans `issue_billing_document` + scénario 13 de `070` |
+| Un numéro déjà employé n'est jamais réattribué | boucle de recherche du premier rang libre + scénario 15 de `070` |
+| Date d'émission paramétrable, instantané daté d'elle | scénario 14 de `070` — une facture d'octobre pour des séances de septembre porte sa vraie date |
+| Règlements affectés : paiement groupé, partiel, trop-perçu | `payments` + `payment_allocations`, garde `app.guard_allocation` |
+| Une séance déjà facturée n'est pas facturable deux fois | `billing_line_appointments` + `listSeancesFacturables` |
+| Totaux de période vérifiables sans base | `lib/compta/totaux.ts` + 10 cas écrits à la main — devis, avoir, pièce annulée, remplacée, trop-perçu |
+| Export comptable sans contenu clinique ni note interne | `lib/compta/csv.ts` + 7 tests |
+| **Reprise des factures v1 appliquée en production le 2026-09-12** | 9 factures → 9 pièces émises, 9 lignes, 8 règlements imputés ; `invoices` conservée intacte pour les liens de partage déjà envoyés |
+| Gabarit de numérotation de la v1 conservé à la bascule | `0011` section A — sans lui, « F2026-008 » devenait « 2026-008 » au lendemain de la bascule |
+| Charges du cabinet, récurrences DATÉES | `0012_charges_cabinet.sql` — une récurrence sans date de début réécrirait les années closes |
+| Interface comptable complète sur le modèle cible | `/comptabilite`, `/comptabilite/[id]`, `/document`, `/catalogue`, `/charges`, `/reglements`, `/export` |
+| Chemin de recherche épinglé sur TOUTE fonction, pas seulement `security definer` | `0013_search_path_epingle.sql` ; contrôle local élargi en conséquence |
 
-Commandes : `npm run verify` (lint + typecheck + 42 tests unitaires + 3 fichiers de tests SQL).
+Commandes : `npm run verify` — lint, typecheck, **101 tests unitaires**, **7 fichiers de tests SQL**, 50 numérotations réellement concurrentes, et la bascule v1 rejouée sur une base jetable.
+
+`npm run db:test` **reconstruit la base avant de tester**. Sans cela, les tests s'exécutaient sur le
+schéma laissé par la dernière commande : une migration corrigée et non rejouée passait inaperçue, et
+« tous passent » portait sur du code qui n'était plus celui du dépôt. Le cas s'est produit le 2026-09-12.
 
 ## 8. Prochaine action exacte
 
-Lots 0 et 1 **terminés et en service**.
+Lots 0, 1, 2 et 5 **terminés et en service**. Lot 3 : registre d'instruments
+livré, moteur de bilans suspendu à des arbitrages cliniques.
 
-Lot 3 — moteur de bilans configurable : catalogue des natures de documents,
-domaines activables dont aucun n'est obligatoire, registre versionné des
-instruments avec leur statut de licence, passations multiples datées avec l'âge
-calculé à la passation, échelles portant leurs propres bandes et leur
-vocabulaire `[C-06, C-07, C-08, A-04, A-05, A-06, A-22, A-39]`.
+**Ce qui vient ensuite, dans cet ordre :**
 
-C'est le lot le plus lourd de la refonte, et celui qui dépend le plus de
-décisions humaines : les seuils et le vocabulaire imprimés sur un document
-remis à une famille ne peuvent être arbitrés que par une psychomotricienne
-(`01-TRACABILITE.md`, section D).
+1. **Attestations de présence et de paiement.** Elles reposent désormais sur des
+   fondations vérifiables — le lien `billing_line_appointments` garantit qu'une
+   attestation ne peut s'appuyer que sur des rendez-vous dont l'issue est
+   « honoré », et la vue `realised_sessions` exclut par construction tout le
+   reste. C'est le lot le plus court et le plus attendu au quotidien.
+2. **L7 — transmissions.** L'envoi par courriel et le partage par lien ont
+   disparu avec l'ancien écran comptable, et c'est délibéré : ils reposaient sur
+   un jeton en clair, sans révocation ni expiration contrôlée. Les rétablir à
+   l'identique aurait réinstallé un défaut connu. Tant que ce lot n'est pas
+   fait, `invoices` et la page publique `/facture/[token]` restent en place pour
+   les liens DÉJÀ envoyés `[A-27, A-36, A-37]`.
+3. **L3 — moteur de bilans.** Le plus lourd, et celui qui dépend le plus de
+   décisions humaines : les seuils et le vocabulaire imprimés sur un document
+   remis à une famille ne peuvent être arbitrés que par une psychomotricienne
+   (`01-TRACABILITE.md`, section D).
+
+### Ce que la livraison du lot 5 n'a PAS vérifié
+
+L'interface comptable **n'a jamais été parcourue connectée**. Les écrans
+compilent, les routes existent, le déploiement est passé sans erreur
+d'exécution, et les données reprises ont toutes la forme attendue — neuf pièces
+numérotées, datées, avec leur instantané et leur patient rattaché. Mais aucun
+clic n'a été fait sur ces écrans.
+
+C'est une limite assumée : la vérification du 2026-09-11 passait par la création
+d'un compte de test, ce que je ne refais pas. **La première praticienne à ouvrir
+`/comptabilite` est donc la première à voir ces écrans fonctionner**, et c'est à
+elle de signaler ce qui ne se comporte pas comme prévu.
 
 ### Vérification au navigateur, 2026-09-11
 

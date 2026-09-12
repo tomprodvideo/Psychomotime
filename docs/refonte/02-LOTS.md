@@ -105,6 +105,28 @@ identifiants professionnels datés `[A-13]` ; circuit PCO complet `[A-14]` ; att
 **Critères.** La somme des lignes d'un export retombe exactement sur le récapitulatif.
 Cent créations simultanées produisent cent numéros distincts et continus.
 
+**État au 2026-09-12 — moteur et interface livrés et en service.**
+
+Fait : arithmétique en centimes entiers ; catalogue historisé — une ligne RECOPIE le
+tarif et ne le relit plus jamais ; devis, factures, avoirs, factures de remplacement ;
+numérotation atomique prouvée par 50 processus réellement parallèles ; instantané
+immuable ; cinq dates distinctes ; règlements affectés — groupés, partiels, trop-perçus ;
+charges et récurrences datées ; loyer intégré au net encaissé ; export CSV sans contenu
+clinique ; reprise complète des factures de la v1, gabarit de numérotation compris.
+
+Reste : les **attestations** de présence et de paiement `[C-14]` — les fondations
+existent, le lien `billing_line_appointments` garantit qu'elles ne pourront s'appuyer
+que sur des rendez-vous honorés ; les **relances** `[C-12]` ; les **retours et rejets**
+du circuit PCO `[A-14]`.
+
+Non repris délibérément : l'envoi par courriel et le partage par lien, qui reposaient sur
+un jeton en clair sans révocation. Ils reviennent au L7. Les liens DÉJÀ envoyés
+continuent de fonctionner — `invoices` et `/facture/[token]` restent en place.
+
+Non vérifié : **aucun de ces écrans n'a été parcouru connecté.** Ils compilent, les
+routes existent, le déploiement ne produit aucune erreur d'exécution, et les données
+reprises ont la forme attendue. Mais le premier clic reste à faire.
+
 ---
 
 ## L6 — Assistance IA encadrée
