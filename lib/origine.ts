@@ -43,8 +43,11 @@
  * reste le moyen de trancher sans toucher au code.
  */
 const HOTES_DU_PRODUIT = [
-  "psychomotime.com",
+  // `www` d'abord : c'est l'hôte réellement servi. Vérifié — l'apex répond 308
+  // vers celui-ci. Bâtir un lien sur l'apex coûterait un saut de plus, sur un
+  // lien qu'on envoie par courriel et qui porte parfois un jeton.
   "www.psychomotime.com",
+  "psychomotime.com",
   "psychomotime.vercel.app",
 ] as const;
 

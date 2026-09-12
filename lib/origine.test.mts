@@ -2,7 +2,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { origineAutorisee } from "@/lib/origine";
 
-const CANONIQUE = "https://psychomotime.com";
+/* L'apex répond 308 vers `www` : c'est donc `www` qui est canonique, et un
+ * contrôle le fige — inverser la liste ferait échouer ce fichier. */
+const CANONIQUE = "https://www.psychomotime.com";
 const PROD = { VERCEL_PROJECT_PRODUCTION_URL: "psychomotime.vercel.app" };
 
 test("un hôte proposé par la requête ne suffit pas", () => {
@@ -83,9 +85,9 @@ test("le protocole proposé n'est pas recopié tel quel", () => {
 test("un protocole en clair ne dégrade pas un lien vers la production", () => {
   // Un `x-forwarded-proto: http` proposé par la requête ne doit pas faire
   // partir en clair un lien qui porte un jeton.
-  assert.equal(origineAutorisee("psychomotime.com", "http", PROD), CANONIQUE);
+  assert.equal(origineAutorisee("psychomotime.com", "http", PROD), "https://psychomotime.com");
   assert.equal(
     origineAutorisee(null, "http", { SITE_ORIGIN: "psychomotime.com" }),
-    CANONIQUE,
+    "https://psychomotime.com",
   );
 });
