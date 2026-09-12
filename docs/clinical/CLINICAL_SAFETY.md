@@ -31,8 +31,8 @@ Le produit soutient le travail du psychomotricien sans décider à sa place. Le 
 
 | Contrôle attendu | État | Preuve |
 |---|---|---|
-| États explicites du contenu | ❌ | Deux états seulement, `brouillon` et `finalisé`, sur un interrupteur réversible sans horodatage ni confirmation (`app/(app)/bilans/[id]/BilanEditor.tsx:884-889`). Ni `généré`, ni `relu`, ni `validé`, ni `partagé`, ni `corrigé`, ni `archivé`. |
-| Distinction visuelle et technique des contenus générés | ❌ | Le texte reformulé remplace le champ sans marqueur. Rien en base ne conserve la provenance : `content` est un `Record<string, string>` (`lib/types.ts:224`). |
+| États explicites du contenu | ⚠️ | Toujours deux états, `brouillon` et `finalisé`, sur un interrupteur réversible sans horodatage ni confirmation. Mais **le brouillon est désormais marqué sur le document**, écran et papier compris. Ni `généré`, ni `relu`, ni `validé`, ni `partagé`, ni `archivé`. |
+| Distinction visuelle et technique des contenus générés | ⚠️ | **Traité dans l’éditeur** : date, modèle et texte d’avant sont consignés sous `content.__ia__`, une mention s’affiche, l’annulation est durable (`lib/bilans/provenance.ts`). **Pas sur le document imprimé** : à trancher. |
 | Conservation de la source et des modifications | ❌ | Aucune table d’historique, aucune version. `updated_at` est écrasé à chaque enregistrement (`app/(app)/bilans/actions.ts:104`). |
 | Correction sans effacement silencieux | ❌ | Un bilan `finalisé` est réécrit intégralement, sans trace. Le serveur accepte le statut posté par le client sans relire l’état en base (`app/(app)/bilans/actions.ts:101,107`). |
 | Confirmation du destinataire | ❌ | Le partage se fait par `mailto:` vers `patients.email` uniquement. Le responsable légal n’est jamais destinataire. Aucun partage n’est enregistré. |
@@ -41,9 +41,14 @@ Le produit soutient le travail du psychomotricien sans décider à sa place. Le 
 
 ## Risques constatés, propres à ce produit
 
-### C-1 — Un brouillon s’imprime à l’identique d’un document validé — **élevé**
+### C-1 — Un brouillon s’imprime à l’identique d’un document validé — **corrigé le 2026-09-12**
 
-Le rendu d’aperçu et le PDF ne mentionnent le statut **à aucun endroit** : zéro occurrence de `status`, `brouillon` ou `finalis` dans `app/(app)/bilans/[id]/apercu/page.tsx`. Un bilan en cours de rédaction sort de l’imprimante avec la même mise en page et la même signature qu’un bilan achevé. Correction attendue : filigrane ou bandeau tant que `status !== 'finalisé'`.
+**Corrigé.** Un bandeau « Brouillon — document de travail » est posé en tête du
+document tant que le bilan n’est pas finalisé, et il survit à l’impression. On
+ne REFUSE pas d’imprimer, contrairement à la comptabilité : relire un bilan sur
+papier pour l’annoter fait partie du travail.
+
+Constat d’origine : le rendu d’aperçu et le PDF ne mentionnaient le statut **à aucun endroit** : zéro occurrence de `status`, `brouillon` ou `finalis` dans `app/(app)/bilans/[id]/apercu/page.tsx`. Un bilan en cours de rédaction sortait de l’imprimante avec la même mise en page et la même signature qu’un bilan achevé.
 
 ### C-2 — La légende des scores se contredit elle-même à la note 7 — **élevé**
 
@@ -66,26 +71,61 @@ Le terme est imprimé dans l’encadré d’interprétation (`lib/constants.ts:7
 
 `ageFromBirth` utilise `new Date()` (`lib/format.ts:26`) et est appelé sans jamais recevoir `bilan_date`. Un bilan passé en février et réimprimé en septembre affiche un âge faussé de sept mois, sur un document dont toute la lecture repose sur des normes par classe d’âge. Le groupe d’âge M-ABC est par ailleurs choisi à la main sans aucun contrôle de cohérence avec la date de naissance, pourtant disponible dans le même composant.
 
-### C-5 — Le contenu reformulé devient indiscernable du texte du praticien — **élevé**
+### C-5 — Le contenu reformulé devient indiscernable du texte du praticien — **partiellement corrigé le 2026-09-12**
 
-L’intention est bonne : la consigne système interdit explicitement d’inventer une information, un chiffre ou un résultat, et impose de conserver les données factuelles (`app/(app)/bilans/ai-actions.ts:38-40`). Mais :
+L’intention est bonne : la consigne système interdit explicitement d’inventer une information, un chiffre ou un résultat, et impose de conserver les données factuelles (`app/(app)/bilans/ai-actions.ts:38-40`).
+
+**Constat d’origine — six points, dont trois sont traités depuis :**
 
 - **rien ne vérifie que la consigne a été respectée** : le texte renvoyé écrase le champ sans comparaison ni signalement ;
-- **rien ne conserve la provenance** : après enregistrement, il est impossible de savoir qu’une section a été reformulée ;
-- **l’annulation est éphémère** : l’état de reprise est détruit à la première frappe dans le champ et perdu au rechargement ;
+- ~~**rien ne conserve la provenance**~~ *(traité)* : après enregistrement, il était impossible de savoir qu’une section avait été reformulée ;
+- ~~**l’annulation est éphémère**~~ *(traité)* : l’état de reprise était détruit à la première frappe dans le champ et perdu au rechargement ;
 - **la consigne de style pousse à la suppression** (« sois SYNTHÉTIQUE », « supprime le remplissage », « le résultat doit être COURT ») en tension avec « ne perds aucune information factuelle » — sur des notes de passation, une réserve clinique nuancée est précisément ce qu’une optimisation de densité élimine ;
 - **le prompt fait endosser au modèle l’identité professionnelle** (« Tu es psychomotricien(ne) diplômé(e) d’État expérimenté(e) »), alors que le texte sort sous la signature du praticien ;
 - **aucune section n’est exclue**, y compris la conclusion.
 
-Ce point contredit la règle 5 de `CLAUDE.md`. Correction minimale possible sans migration : conserver le texte source, la date et le modèle dans une clé dédiée du jsonb `content`, afficher la mention dans l’éditeur, et rendre l’annulation durable.
+**Ce qui est corrigé.** La provenance — date, modèle, texte d’avant, texte rendu
+— est consignée dans la clé `__ia__` du jsonb du bilan (`lib/bilans/provenance.ts`).
+Une mention s’affiche dans l’éditeur et distingue un texte intact d’un texte
+repris en main. L’annulation survit au rechargement et n’est plus détruite par
+la première frappe. Un contrôle interdit que la mention contienne « relu »,
+« validé » ou « vérifié » : le produit sait qu’un modèle a écrit, pas qu’un
+humain a jugé.
 
-### C-6 — Un bilan peut se détacher de toute fiche patient — **moyen**
+**Ce qui reste ouvert**, et qui relève d’arbitrages du lot 6 : la consigne de
+style pousse toujours à la concision là où elle demande de ne rien perdre ; le
+prompt fait endosser au modèle l’identité professionnelle ; aucune section n’est
+exclue de la reformulation, pas même la conclusion ; et la provenance
+n’apparaît pas sur le document imprimé — à trancher.
 
-Saisir un nom en texte libre efface l’identifiant patient (`app/(app)/bilans/nouveau/NouveauBilanForm.tsx:105-115`). Le bilan disparaît alors de la fiche du patient, perd date de naissance et âge, et aucune réconciliation n’est proposée ensuite. C’est le risque d’attribution listé plus haut, atteignable en deux frappes.
+### C-6 — Un bilan peut se détacher de toute fiche patient — **corrigé le 2026-09-12**
 
-### C-7 — Perte de saisie en séance — **élevé**
+**Corrigé.** Le lien ne tombe plus que si le nom saisi s’éloigne vraiment de
+celui du dossier choisi (`lib/bilans/rattachement.ts`, contrôlé et falsifié) :
+corriger un accent, ajouter un second prénom ou retirer un trait d’union
+conserve le rattachement. Un nom entièrement différent le rompt — c’est
+légitime, un bilan peut concerner quelqu’un sans dossier — et **l’écran le dit
+dans les deux cas**, ce qui n’existait pas.
 
-Aucune sauvegarde automatique, aucun garde-fou à la fermeture d’onglet : recherche de `beforeunload`, `autosave`, `setInterval` et `localStorage` dans `app/`, `lib/` et `components/` → aucune occurrence. L’indicateur « Modifications non enregistrées » est purement passif.
+Constat d’origine : saisir un nom en texte libre effaçait l’identifiant patient à
+chaque frappe. Le bilan disparaissait de la fiche, perdait date de naissance et
+âge, et aucune réconciliation n’était proposée. C’était le risque d’attribution
+listé plus haut, atteignable en deux frappes.
+
+### C-7 — Perte de saisie en séance — **corrigé le 2026-09-12**
+
+**Corrigé.** Enregistrement périodique au bout de trente secondes tant qu’il
+reste des modifications, et avertissement à la fermeture de l’onglet. La
+sauvegarde va au SERVEUR, où la donnée est déjà : écrire un brouillon dans le
+stockage local aurait déposé des notes cliniques sur un poste parfois partagé,
+survivant à la déconnexion.
+
+**L’enregistrement automatique ne vaut que pour un brouillon.** Un bilan
+finalisé se modifie déjà sans laisser de trace (§ C-4) ; l’enregistrer tout seul
+ferait changer le document remis sans que personne n’ait cliqué.
+
+Constat d’origine : aucune sauvegarde automatique, aucun garde-fou à la fermeture
+d’onglet. L’indicateur « Modifications non enregistrées » était purement passif.
 
 ### C-8 — Supprimer une section de trame orpheline le texte des bilans existants — **moyen**
 
