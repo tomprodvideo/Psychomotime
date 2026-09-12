@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { formatCents } from "@/lib/money";
+import { liste } from "@/lib/liste";
 import { frDate } from "@/lib/format";
 import { getDocumentPublic } from "@/lib/transmissions/queries";
 import {
@@ -112,7 +113,8 @@ function EnTete({
   titre: string;
 }) {
   const e = d.emetteur;
-  const identifiants = (e.identifiants ?? []).filter((i) => i?.valeur);
+  const identifiants = liste<{ type?: string; valeur?: string }>(e.identifiants)
+    .filter((i) => i?.valeur);
   return (
     <header className="flex justify-between gap-8 mb-10">
       <div className="text-sm text-slate-700">
@@ -179,7 +181,7 @@ const TITRES_PIECE: Record<string, string> = {
 };
 
 function Piece({ d }: { d: Extract<DocumentPublic, { nature: "billing_document" }> }) {
-  const lignes = d.lignes ?? [];
+  const lignes = liste<NonNullable<typeof d.lignes>[number]>(d.lignes);
   const exonere = lignes.every((l) => l.tva === "exoneration_soins");
   const payeurTiers = Boolean(d.destinataire?.nom?.trim());
 
@@ -222,9 +224,9 @@ function Piece({ d }: { d: Extract<DocumentPublic, { nature: "billing_document" 
               <td className="py-3 pr-4">
                 <span className="text-slate-800">{l.libelle}</span>
                 {l.intro && <span className="block text-slate-500 mt-0.5">{l.intro}</span>}
-                {(l.dates ?? []).length > 0 && (
+                {liste<string>(l.dates).length > 0 && (
                   <span className="block text-slate-600 mt-0.5">
-                    {(l.dates ?? []).map((x) => frDate(x)).join(", ")}
+                    {liste<string>(l.dates).map((x) => frDate(x)).join(", ")}
                   </span>
                 )}
                 {l.note && (
@@ -275,10 +277,10 @@ function Piece({ d }: { d: Extract<DocumentPublic, { nature: "billing_document" 
 }
 
 function Attestation({ d }: { d: Extract<DocumentPublic, { nature: "attestation" }> }) {
-  const seances = d.seances ?? [];
-  const reglements = d.reglements ?? [];
-  const payeurs = (d.payeurs ?? []).filter((p) => p && p.trim() !== "");
-  const factures = (d.factures ?? []).filter((f) => f?.numero);
+  const seances = liste<NonNullable<typeof d.seances>[number]>(d.seances);
+  const reglements = liste<NonNullable<typeof d.reglements>[number]>(d.reglements);
+  const payeurs = liste<string>(d.payeurs).filter((p) => typeof p === "string" && p.trim() !== "");
+  const factures = liste<NonNullable<typeof d.factures>[number]>(d.factures).filter((f) => f?.numero);
   const formule = formulePresence(seances.map((x) => x.nature ?? "seance"));
   const detail = d.detail_nature || formule.forcerNature;
   const signataire = d.emetteur.praticien;

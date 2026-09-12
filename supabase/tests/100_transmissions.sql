@@ -38,11 +38,17 @@ begin
            'patient', jsonb_build_object('nom', 'Patient de test')))
    where id = v_doc;
 
+  /* La date de création est DÉDUITE de l'échéance quand celle-ci est passée :
+   * la base borne désormais la validité, et un lien qui expire hier n'a pas pu
+   * être créé aujourd'hui. C'est la forme réelle d'un lien périmé — créé il y
+   * a quelque temps, pour une durée qui s'est écoulée. */
   insert into public.shared_links
-    (practice_id, subject_type, subject_id, token_hash, token_hint, expires_at)
+    (practice_id, subject_type, subject_id, token_hash, token_hint,
+     expires_at, created_at)
   values (p_cabinet, 'billing_document', v_doc,
           encode(sha256(convert_to(p_jeton, 'UTF8')), 'hex'),
-          right(p_jeton, 4), p_expire)
+          right(p_jeton, 4), p_expire,
+          least(now(), p_expire - interval '30 days'))
   returning id into v_lien;
 
   return v_doc;
@@ -124,8 +130,10 @@ begin
     'Un jeton expiré ne rend rien — et rien ne le distingue d''un inconnu.');
   perform tests.assert(public.shared_document(v_revoque) is null,
     'Un jeton révoqué ne rend rien non plus.');
-  perform tests.assert(public.shared_document('court') is null,
-    'Une chaîne trop courte est écartée sans même chercher.');
+  /* Une chaîne trop courte rend `null` — mais un jeton INCONNU aussi : cette
+   * assertion ne discriminait donc rien, et le garde-fou de longueur qu'elle
+   * prétendait couvrir survivait à sa suppression. Elle est retirée ; le
+   * garde-fou reste, comme économie d'un calcul d'empreinte. */
 end
 $$;
 rollback;
@@ -346,6 +354,341 @@ begin
       where grantee = ''anon'' and table_schema = ''public''
         and table_name in (''shared_links'', ''shared_link_accesses'')',
     0, 'Un visiteur anonyme n''a aucun privilège sur les tables de partage.');
+end
+$$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+--  9. LA MÊME SENTINELLE SUR UNE ATTESTATION
+-- ---------------------------------------------------------------------------
+--  Le contrôle du contrat public n'exerçait QUE la branche facture. La branche
+--  attestation — sept passe-plats d'instantané — n'était observée par rien :
+--  y ajouter la note interne ne faisait échouer aucun des dix fichiers.
+--
+--  L'en-tête de la migration affirmait « ajouter une colonne quelque part ne
+--  peut plus élargir le partage sans que le contrôle échoue ». C'était vrai
+--  pour les factures et faux pour les attestations.
+--
+--  LE CONTRÔLE EST UN JEU DE CLÉS EXACT, pas une liste d'interdits. Une
+--  sentinelle par chaîne ne voit que ce qu'on a pensé à interdire ; un jeu de
+--  clés exact voit TOUT ajout, y compris celui qu'on n'a pas imaginé. Ce qui
+--  suit échoue donc aussi bien sur une fuite que sur un enrichissement
+--  légitime — et c'est voulu : le contrat public se modifie sciemment.
+begin;
+select tests.authenticate_as(:alpha::uuid);
+do $$
+declare
+  v_att uuid;
+  v_rdv uuid;
+  v_doc uuid;
+  v_pay uuid;
+  v_jeton text := 'jeton-attestation-sentinelle-0123456789';
+  v_public jsonb;
+begin
+  /* Une attestation de PAIEMENT, avec un règlement et une séance : c'est la
+   * variante la plus chargée, donc celle où toutes les branches de projection
+   * sont vivantes à la fois. */
+  /* Le dossier fictif de Zéphyr n'a pas d'adresse. Sans elle, le contrôle de
+   * réduction du patient ne prouverait rien — il n'y aurait rien à perdre.
+   * On lui en donne une, et le contrôle suivant vérifie qu'elle est bien
+   * entrée dans l'instantané avant d'affirmer qu'elle n'en ressort pas. */
+  update public.patients
+     set address_line1 = '4 impasse des Toupies', postal_code = '00000',
+         city = 'Villefictive'
+   where id = 'a6000000-0000-4000-8000-000000000001';
+
+  insert into public.billing_documents (practice_id, kind, patient_id, payer_is_patient)
+  values ('a1111111-1111-4111-8111-111111111111', 'facture',
+          'a6000000-0000-4000-8000-000000000001', true) returning id into v_doc;
+  insert into public.billing_lines
+    (practice_id, document_id, position, label, unit_price_cents, amount_cents)
+  values ('a1111111-1111-4111-8111-111111111111', v_doc, 1, 'Séance', 9000, 9000);
+  perform public.issue_billing_document(v_doc);
+  insert into public.payments (practice_id, received_on, amount_cents, method)
+  values ('a1111111-1111-4111-8111-111111111111', current_date, 9000, 'cheque')
+  returning id into v_pay;
+  insert into public.payment_allocations
+    (practice_id, payment_id, document_id, amount_cents)
+  values ('a1111111-1111-4111-8111-111111111111', v_pay, v_doc, 9000);
+
+  insert into public.attestations
+    (practice_id, kind, patient_id, internal_note)
+  values ('a1111111-1111-4111-8111-111111111111', 'paiement',
+          'a6000000-0000-4000-8000-000000000001', 'NOTEINTERNESENTINELLE')
+  returning id into v_att;
+  insert into public.attestation_payments
+    (attestation_id, payment_id, practice_id, amount_cents)
+  values (v_att, v_pay, 'a1111111-1111-4111-8111-111111111111', 9000);
+  select appointment_id into v_rdv from public.realised_sessions
+   where patient_id = 'a6000000-0000-4000-8000-000000000001' limit 1;
+  insert into public.attestation_sessions (attestation_id, appointment_id, practice_id)
+  values (v_att, v_rdv, 'a1111111-1111-4111-8111-111111111111');
+  perform public.issue_attestation(v_att);
+
+  insert into public.shared_links
+    (practice_id, subject_type, subject_id, token_hash, token_hint, expires_at)
+  values ('a1111111-1111-4111-8111-111111111111', 'attestation', v_att,
+          encode(sha256(convert_to(v_jeton, 'UTF8')), 'hex'), 'cdef',
+          now() + interval '30 days');
+
+  reset role;
+  v_public := public.shared_document(v_jeton);
+  perform tests.assert(v_public is not null, 'L''attestation doit être servie.');
+
+  -- Le jeu de clés servi, au caractère près.
+  perform tests.assert_equals(
+    (select string_agg(k, ',' order by k) from jsonb_object_keys(v_public) k),
+    'destinataire,detail_nature,emetteur,emise_le,etat,factures,kind,mention,'
+    || 'motif_annulation,nature,numero,patient,payeurs,periode_debut,periode_fin,'
+    || 'reglements,seances,total_centimes',
+    'Le contrat public d''une attestation est un jeu de clés arrêté.');
+
+  /* LE PATIENT SE RÉDUIT À SON NOM ET SA NAISSANCE. L'instantané, lui, porte
+   * bien son adresse, son code postal et sa ville : c'est ce que le passe-plat
+   * transportait. Une attestation part chez un employeur ou une mutuelle —
+   * c'est ce tiers-là qui détient le lien. */
+  perform tests.assert_equals(
+    (select string_agg(k, ',' order by k)
+       from jsonb_object_keys(v_public -> 'patient') k),
+    'ne_le,nom',
+    'Sur le chemin public, le patient n''est qu''un nom et une date de naissance.');
+  perform tests.assert(
+    (select a.snapshot -> 'patient' ->> 'adresse' from public.attestations a
+      where a.id = v_att) is not null,
+    'Sans adresse dans l''instantané, le contrôle précédent ne prouverait rien.');
+
+  /* LE MOYEN DE PAIEMENT NE SORT PAS. Que la famille ait réglé par chèque, en
+   * espèces ou par virement ne regarde pas le destinataire de l'attestation. */
+  perform tests.assert_equals(
+    (select string_agg(k, ',' order by k)
+       from jsonb_array_elements(v_public -> 'reglements') r,
+            jsonb_object_keys(r) k),
+    'date,montant_centimes',
+    'Un règlement servi ne porte qu''une date et un montant.');
+  perform tests.assert(
+    (select a.snapshot -> 'reglements' -> 0 ->> 'moyen' from public.attestations a
+      where a.id = v_att) = 'cheque',
+    'Sans moyen de paiement dans l''instantané, le contrôle précédent serait vide.');
+
+  -- Et ce qui doit sortir, sort.
+  perform tests.assert(v_public::text like '%Zéphyr%',
+    'Le nom du patient doit être servi : sans lui l''attestation n''atteste personne.');
+  perform tests.assert(v_public::text not like '%NOTEINTERNESENTINELLE%',
+    'La note interne d''une attestation ne doit jamais sortir.');
+end
+$$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+--  10. Un document sans émetteur ne se partage pas
+-- ---------------------------------------------------------------------------
+--  Les pièces reprises de la v1 n'ont pas d'instantané d'émetteur. Partagée
+--  telle quelle, une de ces factures donnerait une page intitulée « FACTURE »,
+--  numérotée, datée, avec un montant — et AUCUN nom de cabinet.
+--
+--  Le scénario 3 ne le voyait pas : sa fixture FABRIQUE un instantané portant
+--  à la fois `origine: reprise_v1` et une clé `cabinet` — une forme qui
+--  n'existe nulle part en production. Il validait sa propre mise en scène.
+begin;
+select tests.authenticate_as(:alpha::uuid);
+do $$
+declare
+  v_doc uuid;
+begin
+  insert into public.billing_documents (practice_id, kind, patient_id, payer_is_patient)
+  values ('a1111111-1111-4111-8111-111111111111', 'facture',
+          'a6000000-0000-4000-8000-000000000001', true)
+  returning id into v_doc;
+  insert into public.billing_lines
+    (practice_id, document_id, position, label, unit_price_cents, amount_cents)
+  values ('a1111111-1111-4111-8111-111111111111', v_doc, 1, 'Séance', 4500, 4500);
+
+  -- L'instantané EXACT d'une pièce reprise : ni cabinet, ni entité, ni
+  -- identifiants, ni payeur. C'est la forme réelle produite par 0011.
+  update public.billing_documents
+     set status = 'emis', series = 'TEST', number = 'REPRISE-1',
+         issued_on = current_date,
+         snapshot = jsonb_build_object(
+           'origine', 'reprise_v1',
+           'emis_le', current_date,
+           'patient', jsonb_build_object('nom', 'Marceline Cabriole'),
+           'numero_v1', 'F2026-001',
+           'estimations_v1', jsonb_build_object('urssaf_centimes', 0))
+   where id = v_doc;
+
+  perform tests.assert_fails(
+    format('insert into public.shared_links
+              (practice_id, subject_type, subject_id, token_hash, token_hint, expires_at)
+            values (%L, ''billing_document'', %L, repeat(''d'', 64), ''abcd'', now() + interval ''30 days'')',
+           'a1111111-1111-4111-8111-111111111111', v_doc),
+    'Une pièce sans identité de cabinet ne doit pas pouvoir être partagée.');
+end
+$$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+--  11. Une révocation ne se défait pas, un compteur ne recule pas
+-- ---------------------------------------------------------------------------
+--  La clé anonyme est publique et un titulaire de session écrit directement
+--  dans l'API : sans ces gardes, il pouvait ressusciter un lien retiré,
+--  repousser son expiration et remettre le compteur à zéro. Le dispositif
+--  existe pour constater qu'un document de santé a circulé ; la seule personne
+--  qu'il pourrait mettre en cause ne doit pas pouvoir le défaire.
+begin;
+select tests.authenticate_as(:alpha::uuid);
+do $$
+declare
+  v_doc uuid;
+  v_lien uuid;
+begin
+  v_doc := pg_temp.facture_partagee('a1111111-1111-4111-8111-111111111111',
+                                    'a6000000-0000-4000-8000-000000000001',
+                                    'jeton-revocation-definitive-0123456789');
+  select id into v_lien from public.shared_links where subject_id = v_doc;
+
+  update public.shared_links set access_count = 5 where id = v_lien;
+  perform tests.assert_fails(
+    format('update public.shared_links set access_count = 0 where id = %L', v_lien),
+    'Le compte des consultations ne doit pas pouvoir reculer.');
+
+  update public.shared_links set revoked_at = now() where id = v_lien;
+  perform tests.assert_fails(
+    format('update public.shared_links set revoked_at = null where id = %L', v_lien),
+    'Une révocation ne doit pas pouvoir être défaite.');
+  perform tests.assert_fails(
+    format('update public.shared_links set expires_at = now() + interval ''300 days''
+             where id = %L', v_lien),
+    'Un lien révoqué ne doit pas pouvoir être prolongé.');
+
+  /* ET IL NE S'EFFACE PAS. Effacer la ligne effacerait la preuve, et rendrait
+   * les consultations déjà journalisées orphelines. Le privilège `delete` a
+   * été retiré : le refus vient du moteur, pas d'une politique qu'une
+   * prochaine migration pourrait relâcher sans y penser. */
+  perform tests.assert_fails(
+    format('delete from public.shared_links where id = %L', v_lien),
+    'Un lien ne doit pas pouvoir être supprimé : il porte le compte rendu des consultations.');
+end
+$$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+--  12. La validité est bornée EN BASE, pas seulement dans l'application
+-- ---------------------------------------------------------------------------
+begin;
+select tests.authenticate_as(:alpha::uuid);
+do $$
+declare
+  v_doc uuid;
+begin
+  insert into public.billing_documents (practice_id, kind, patient_id, payer_is_patient)
+  values ('a1111111-1111-4111-8111-111111111111', 'facture',
+          'a6000000-0000-4000-8000-000000000001', true) returning id into v_doc;
+  insert into public.billing_lines
+    (practice_id, document_id, position, label, unit_price_cents, amount_cents)
+  values ('a1111111-1111-4111-8111-111111111111', v_doc, 1, 'Séance', 4500, 4500);
+  update public.billing_documents
+     set status = 'emis', series = 'T', number = 'T-BORNE', issued_on = current_date,
+         snapshot = jsonb_build_object('cabinet', jsonb_build_object('nom', 'Cabinet de test'))
+   where id = v_doc;
+
+  perform tests.assert_fails(
+    format('insert into public.shared_links
+              (practice_id, subject_type, subject_id, token_hash, token_hint, expires_at)
+            values (%L, ''billing_document'', %L, repeat(''e'', 64), ''abcd'',
+                    now() + interval ''10 years'')',
+           'a1111111-1111-4111-8111-111111111111', v_doc),
+    'Un lien de dix ans n''est plus un lien de partage : la base doit le refuser.');
+
+  perform tests.assert_fails(
+    format('insert into public.shared_links
+              (practice_id, subject_type, subject_id, token_hash, token_hint, expires_at)
+            values (%L, ''billing_document'', %L, repeat(''f'', 64), ''abcd'',
+                    now() - interval ''1 day'')',
+           'a1111111-1111-4111-8111-111111111111', v_doc),
+    'Un lien déjà expiré à sa création n''a pas de sens.');
+
+  -- L'EMPREINTE FAIT 64 CARACTÈRES. C'est le seul garde-fou qui empêcherait
+  -- qu'un jeton en clair — 43 caractères — soit stocké là par mégarde, et
+  -- aucun contrôle ne le tenait.
+  perform tests.assert_fails(
+    format('insert into public.shared_links
+              (practice_id, subject_type, subject_id, token_hash, token_hint, expires_at)
+            values (%L, ''billing_document'', %L,
+                    ''jeton-en-clair-de-43-caracteres-0123456789x'', ''abcd'',
+                    now() + interval ''30 days'')',
+           'a1111111-1111-4111-8111-111111111111', v_doc),
+    'Seule une empreinte de 64 caractères entre dans `token_hash`.');
+
+  perform tests.assert_fails(
+    format('insert into public.shared_links
+              (practice_id, subject_type, subject_id, token_hash, token_hint, expires_at)
+            values (%L, ''billing_document'', %L, repeat(''0'', 64),
+                    ''un-indice-beaucoup-trop-long'', now() + interval ''30 days'')',
+           'a1111111-1111-4111-8111-111111111111', v_doc),
+    'L''indice reste court : il ne doit pas pouvoir porter le jeton.');
+end
+$$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+--  13. Le frein existe, et le journal reste cloisonné
+-- ---------------------------------------------------------------------------
+begin;
+select tests.authenticate_as(:alpha::uuid);
+do $$
+declare
+  v_doc uuid;
+  v_lien uuid;
+  i integer;
+  v_jeton text := 'jeton-du-frein-fictif-0123456789abcdefg';
+begin
+  v_doc := pg_temp.facture_partagee('a1111111-1111-4111-8111-111111111111',
+                                    'a6000000-0000-4000-8000-000000000001', v_jeton);
+  select id into v_lien from public.shared_links where subject_id = v_doc;
+
+  /* 120 consultations dans l'heure, PAR LE VRAI CHEMIN. Le journal n'est
+   * accessible en écriture à personne — pas même au cabinet : seule la
+   * fonction publique y écrit. Fabriquer les lignes à la main aurait exigé de
+   * relâcher ce privilège, c'est-à-dire de défaire ce qu'on vérifie. */
+  reset role;
+  for i in 1..120 loop
+    perform public.shared_document(v_jeton);
+  end loop;
+  perform tests.assert_equals(
+    (select access_count from public.shared_links where id = v_lien), 120,
+    'Chaque consultation servie est comptée.');
+
+  perform tests.assert_fails(
+    format('select public.shared_document(%L)', v_jeton),
+    'Au-delà du seuil, le service est refusé le temps que ça se calme.');
+
+  -- Des consultations ANCIENNES ne comptent pas : la fenêtre glisse.
+  update public.shared_link_accesses
+     set accessed_at = now() - interval '2 hours' where link_id = v_lien;
+  perform tests.assert(public.shared_document(v_jeton) is not null,
+    'Passé l''heure, le lien redevient consultable : ce n''est pas un blocage définitif.');
+end
+$$;
+rollback;
+
+begin;
+do $$
+declare
+  v_doc uuid;
+begin
+  -- Le journal d'un autre cabinet n'est pas lisible.
+  perform tests.authenticate_as('b0000000-0000-4000-8000-000000000001'::uuid);
+  select id into v_doc from public.patients
+   where practice_id = 'b1111111-1111-4111-8111-111111111111' limit 1;
+  v_doc := pg_temp.facture_partagee('b1111111-1111-4111-8111-111111111111', v_doc,
+                                    'jeton-journal-cloisonne-0123456789abc');
+  reset role;
+  perform public.shared_document('jeton-journal-cloisonne-0123456789abc');
+
+  perform tests.authenticate_as('a0000000-0000-4000-8000-000000000001'::uuid);
+  perform tests.assert_rows(
+    'select 1 from public.shared_link_accesses', 0,
+    'Le journal de consultation d''un autre cabinet ne doit pas être lisible.');
 end
 $$;
 rollback;

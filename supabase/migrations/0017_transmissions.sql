@@ -92,7 +92,25 @@ create table public.shared_links (
   last_accessed_at timestamptz,
 
   created_at timestamptz not null default now(),
-  created_by uuid references auth.users(id) on delete set null
+  created_by uuid references auth.users(id) on delete set null,
+
+  /* LA VALIDITÉ EST BORNÉE EN BASE, PAS SEULEMENT DANS L'APPLICATION.
+   *
+   * L'interface propose 7, 30 ou 90 jours. Mais la clé anonyme est publique :
+   * qui possède une session peut écrire directement dans l'API et poser
+   * l'échéance qu'il veut. Un lien à dix ans, c'est un document de santé
+   * accessible sans compte pendant dix ans, à une adresse que personne ne
+   * surveille plus.
+   *
+   * [HYPOTHÈSE — produit, réversible] Le plafond de 400 jours n'est la
+   * transposition d'AUCUNE obligation légale : c'est un défaut prudent, choisi
+   * pour couvrir un exercice comptable complet et sa marge de relance, et
+   * modifiable par une migration. [VALIDATION HUMAINE — DPO] La durée de
+   * conservation des liens et de leur journal reste à trancher, comme les
+   * autres durées du produit. */
+  constraint shared_links_validite_ck check (
+    expires_at > created_at
+    and expires_at <= created_at + interval '400 days')
 );
 create index idx_shared_links_practice on public.shared_links (practice_id, created_at desc);
 create index idx_shared_links_subject on public.shared_links (subject_type, subject_id);
@@ -108,12 +126,17 @@ set search_path = public, pg_temp
 as $$
 declare
   v_statut text;
+  v_emetteur text;
 begin
   if new.subject_type = 'billing_document' then
-    select status into v_statut from public.billing_documents
+    select status, snapshot -> 'cabinet' ->> 'nom'
+      into v_statut, v_emetteur
+      from public.billing_documents
      where id = new.subject_id and practice_id = new.practice_id;
   else
-    select status into v_statut from public.attestations
+    select status, snapshot -> 'cabinet' ->> 'nom'
+      into v_statut, v_emetteur
+      from public.attestations
      where id = new.subject_id and practice_id = new.practice_id;
   end if;
 
@@ -124,6 +147,28 @@ begin
   if v_statut = 'brouillon' then
     raise exception
       'Un brouillon ne se partage pas : il n''a ni numéro ni date, et son destinataire le prendrait pour un document définitif.'
+      using errcode = 'check_violation';
+  end if;
+
+  /* UN DOCUMENT SANS ÉMETTEUR NE SE PARTAGE PAS.
+   *
+   * Les pièces reprises de la version précédente n'ont pas d'instantané
+   * d'émetteur : la reprise a conservé leur numéro, leur date et leur montant,
+   * mais la v1 ne portait ni entité juridique ni identifiants professionnels
+   * rattachés à la pièce. Partagée telle quelle, une de ces factures donnerait
+   * au destinataire une page intitulée « FACTURE », numérotée, datée, avec un
+   * montant — et AUCUN nom de cabinet, aucune adresse, aucun identifiant.
+   *
+   * On ne complète pas l'instantané après coup : ce serait affirmer que
+   * l'identité d'aujourd'hui était celle du jour de l'émission. On refuse, et
+   * on dit quoi faire.
+   *
+   * Trouvé par la relecture de sécurité, qui a constaté que le contrôle
+   * correspondant fabriquait un instantané complet — il validait sa propre
+   * mise en scène au lieu d'une pièce réelle. */
+  if v_emetteur is null or btrim(v_emetteur) = '' then
+    raise exception
+      'Ce document ne porte pas l''identité du cabinet : partagé, il arriverait sans nom, sans adresse et sans identifiant professionnel. Établissez une facture de remplacement, qui figera ces mentions.'
       using errcode = 'check_violation';
   end if;
 
@@ -142,8 +187,28 @@ create trigger shared_links_coherence
   before insert or update on public.shared_links
   for each row execute function app.guard_shared_link();
 
--- L'empreinte ne se réécrit pas : changer le jeton d'un lien déjà transmis
--- reviendrait à en fabriquer un autre sous le même compte rendu d'accès.
+/* CE QU'UN LIEN NE PEUT PLUS DEVENIR.
+ *
+ * La clé anonyme est publique, et un titulaire de session écrit directement
+ * dans l'API sans passer par l'application. Tout ce qui n'est pas interdit ici
+ * l'est donc seulement par politesse de l'interface.
+ *
+ * Trois choses sont figées, et la troisième est la moins évidente :
+ *
+ *  · L'EMPREINTE ET LE DOCUMENT. Changer le jeton d'un lien déjà transmis
+ *    reviendrait à en fabriquer un autre sous le même compte rendu d'accès ;
+ *    changer le document ferait pointer un lien déjà envoyé vers une autre
+ *    pièce, à l'insu de celui qui l'a reçu.
+ *
+ *  · LA RÉVOCATION NE SE DÉFAIT PAS. Un lien retiré a été retiré pour une
+ *    raison — le plus souvent parce qu'il est parti au mauvais destinataire.
+ *    Le ressusciter rouvrirait ce qu'on venait de fermer.
+ *
+ *  · LE COMPTE DES CONSULTATIONS NE RECULE PAS. Ce compteur existe pour
+ *    constater qu'un document de santé a circulé, et la seule personne qu'il
+ *    pourrait mettre en cause est précisément celle qui a la main sur la
+ *    ligne. Un journal qu'on peut remettre à zéro n'est pas un journal.
+ */
 create or replace function app.guard_shared_link_immuable()
 returns trigger
 language plpgsql
@@ -159,6 +224,25 @@ begin
       'Un lien ne change ni de jeton ni de document. Révoquez-le et créez-en un autre.'
       using errcode = 'check_violation';
   end if;
+
+  if old.revoked_at is not null then
+    if new.revoked_at is null then
+      raise exception
+        'Une révocation ne se défait pas. Si ce document doit être transmis de nouveau, créez un nouveau lien : le destinataire saura ainsi qu''il en a reçu un second.'
+        using errcode = 'check_violation';
+    end if;
+    if new.expires_at is distinct from old.expires_at then
+      raise exception 'Un lien révoqué ne se prolonge pas.'
+        using errcode = 'check_violation';
+    end if;
+  end if;
+
+  if new.access_count < old.access_count then
+    raise exception
+      'Le compte des consultations ne recule pas : il constate qu''un document a circulé.'
+      using errcode = 'check_violation';
+  end if;
+
   return new;
 end;
 $$;
@@ -194,9 +278,18 @@ alter table public.shared_link_accesses  force row level security;
 
 create policy shared_links_select on public.shared_links
   for select to authenticated using (app.is_member(practice_id));
-create policy shared_links_write on public.shared_links
-  for all to authenticated
+create policy shared_links_insert on public.shared_links
+  for insert to authenticated with check (app.can_write(practice_id));
+create policy shared_links_update on public.shared_links
+  for update to authenticated
   using (app.can_write(practice_id)) with check (app.can_write(practice_id));
+
+/* AUCUNE POLITIQUE DE SUPPRESSION, ET AUCUN PRIVILÈGE `delete`.
+ *
+ * Un lien ne s'efface pas : il porte le compte rendu de ce qui a été consulté.
+ * La première version de ce fichier écrivait « effacer la ligne effacerait la
+ * preuve qu'un document a circulé » — et accordait `delete` juste en dessous.
+ * Le commentaire était juste, le privilège le contredisait. */
 
 -- Le journal se lit, il ne s'écrit que par la fonction publique. Un journal
 -- modifiable depuis l'application ne prouverait rien.
@@ -205,7 +298,7 @@ create policy shared_link_accesses_select on public.shared_link_accesses
 
 revoke all on public.shared_links         from anon, authenticated;
 revoke all on public.shared_link_accesses from anon, authenticated;
-grant select, insert, update, delete on public.shared_links to authenticated;
+grant select, insert, update on public.shared_links to authenticated;
 grant select on public.shared_link_accesses to authenticated;
 
 -- ============================================================================
@@ -238,6 +331,7 @@ declare
   v_hash text;
   l record;
   v_recents integer;
+  v_ecrites integer;
   v_contenu jsonb;
 begin
   if p_token is null or length(btrim(p_token)) < 16 then
@@ -269,8 +363,25 @@ begin
       using errcode = 'too_many_connections';
   end if;
 
+  /* LE JOURNAL S'ÉCRIT, OU RIEN N'EST SERVI.
+   *
+   * `shared_link_accesses` est en RLS forcée et n'a AUCUNE politique
+   * d'écriture : l'insertion ne passe que parce que le propriétaire de cette
+   * fonction contourne la RLS. C'est vrai sur l'hébergeur d'aujourd'hui — et
+   * c'est un attribut de rôle que rien dans ce dépôt ne fixe.
+   *
+   * S'il venait à changer, l'insertion serait FILTRÉE sans erreur : des
+   * documents de santé seraient servis sans laisser de trace, et le compte
+   * rendu affirmerait « jamais consulté ». On préfère refuser de servir. */
   insert into public.shared_link_accesses (link_id, practice_id)
   values (l.id, l.practice_id);
+  get diagnostics v_ecrites = row_count;
+  if v_ecrites = 0 then
+    raise exception
+      'La consultation n''a pas pu être enregistrée : le document n''est pas servi.'
+      using errcode = 'internal_error';
+  end if;
+
   update public.shared_links
      set access_count = access_count + 1, last_accessed_at = now()
    where id = l.id;
@@ -327,7 +438,11 @@ begin
            and public.document_balance_cents_interne(d.id) = 0)
     ) into v_contenu
     from public.billing_documents d
-    where d.id = l.subject_id;
+    -- Profondeur : la lecture ne s'en remet pas au seul contrôle d'écriture.
+    -- Une ligne de plus, et elle devient autoportante.
+    where d.id = l.subject_id
+      and d.practice_id = l.practice_id
+      and d.status <> 'brouillon';
   else
     select jsonb_build_object(
       'nature', 'attestation',
@@ -348,14 +463,35 @@ begin
         'identifiants', a.snapshot -> 'identifiants',
         'praticien', a.snapshot -> 'praticien'),
       'destinataire', a.snapshot -> 'destinataire',
-      'patient', a.snapshot -> 'patient',
+
+      /* LE PATIENT EST PROJETÉ, COMME DANS LA BRANCHE FACTURE. Le passe-plat
+       * rendait aussi son ADRESSE POSTALE, que la page n'affiche pas mais que
+       * la charge transporte. Une attestation part chez un employeur, une
+       * mutuelle, une MDPH : c'est eux qui détiennent le lien. Le nom et la
+       * date de naissance suffisent à lever une homonymie. */
+      'patient', jsonb_build_object(
+        'nom', a.snapshot -> 'patient' ->> 'nom',
+        'ne_le', a.snapshot -> 'patient' ->> 'ne_le'),
+
       'seances', a.snapshot -> 'seances',
-      'reglements', a.snapshot -> 'reglements',
+
+      /* Le MOYEN de paiement ne sort pas : le document imprimé ne le porte pas
+       * davantage, et prouver qu'une somme a été reçue n'exige pas de dire par
+       * quel canal. La branche facture s'interdisait déjà le détail des
+       * règlements ; celle-ci le laissait passer. */
+      'reglements', (select jsonb_agg(jsonb_build_object(
+          'date', r ->> 'date', 'montant_centimes', r -> 'montant_centimes'))
+        from jsonb_array_elements(
+          case when jsonb_typeof(a.snapshot -> 'reglements') = 'array'
+               then a.snapshot -> 'reglements' else '[]'::jsonb end) r),
+
       'factures', a.snapshot -> 'factures',
       'payeurs', a.snapshot -> 'payeurs'
     ) into v_contenu
     from public.attestations a
-    where a.id = l.subject_id;
+    where a.id = l.subject_id
+      and a.practice_id = l.practice_id
+      and a.status <> 'brouillon';
   end if;
 
   return v_contenu;

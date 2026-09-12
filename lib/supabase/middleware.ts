@@ -1,20 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { estCheminPublic, estConsultationPublique, estSousChemin } from "./chemins";
 
-// /document/<jeton> : consultation par un destinataire qui n'a pas de compte.
-// /mot-de-passe/...  : on y arrive justement parce qu'on ne peut plus se
-//                      connecter. Les écrans eux-mêmes exigent ce qu'il faut :
-//                      /nouveau redirige sans la session créée par le lien.
-const PUBLIC_PATHS = ["/login", "/auth", "/document", "/mot-de-passe"];
-
-/**
- * Le chemin de consultation par jeton.
- *
- * LE JETON EST DANS L'URL, et c'est inévitable : le destinataire n'a pas de
- * compte, le lien EST la clé. Tout ce qui suit vise donc à l'empêcher de
- * fuiter ailleurs que dans la barre d'adresse de qui l'a reçu.
- */
-const CHEMIN_PUBLIC_JETON = "/document";
+// La liste des chemins ouverts sans session, et la règle qui décide si un
+// chemin en relève, vivent dans `./chemins` : elles s'y vérifient sans avoir à
+// fabriquer une requête. Voir le défaut qu'elles corrigent, expliqué là-bas.
 
 /**
  * En-têtes posés sur la consultation par jeton.
@@ -75,11 +65,11 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-  const isPublic = PUBLIC_PATHS.some((p) => path.startsWith(p));
+  const isPublic = estCheminPublic(path);
 
   // La consultation par jeton sort ici, avec ses en-têtes : elle n'a besoin
   // d'aucune session, et la suite du traitement ne la concerne pas.
-  if (path.startsWith(CHEMIN_PUBLIC_JETON)) {
+  if (estConsultationPublique(path)) {
     return enTetesDocumentPublic(supabaseResponse);
   }
 
@@ -106,8 +96,13 @@ export async function updateSession(request: NextRequest) {
     return isMutating ? supabaseResponse : redirectTo("/login");
   }
 
-  // Déjà connecté + page de login -> accueil
-  if (user && path.startsWith("/login")) {
+  /* Déjà connecté + page de login -> accueil.
+   *
+   * SEULEMENT `/login`. Ni `/auth`, qui est l'aboutissement de la connexion,
+   * ni `/mot-de-passe/nouveau`, qu'on atteint précisément AVEC la session
+   * ouverte par le lien de réinitialisation : y rediriger renverrait la
+   * personne à l'accueil sans lui laisser changer son mot de passe. */
+  if (user && estSousChemin(path, "/login")) {
     return isMutating ? supabaseResponse : redirectTo("/");
   }
 

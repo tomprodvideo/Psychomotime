@@ -1,17 +1,18 @@
 import { headers } from "next/headers";
+import { origineAutorisee } from "./origine";
 
 /**
- * Origine publique du site, déduite de la requête en cours.
+ * Origine publique du site, pour les liens absolus envoyés par e-mail.
  *
- * Sert à construire les liens absolus envoyés par e-mail — réinitialisation de
- * mot de passe, mise à disposition d'une facture. On la déduit de la requête
- * plutôt que de la figer dans une variable d'environnement : le même code sert
- * ainsi le développement local, les prévisualisations et la production, sans
- * qu'un lien ne parte jamais vers le mauvais environnement.
+ * La règle — et la raison pour laquelle elle ne fait plus confiance à
+ * l'en-tête `x-forwarded-host` — vit dans `./origine`, où elle se vérifie
+ * sans dépendre de `next/headers`.
  */
 export async function siteOrigin(): Promise<string> {
   const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
-  const proto = h.get("x-forwarded-proto") ?? "https";
-  return `${proto}://${host}`;
+  return origineAutorisee(
+    h.get("x-forwarded-host") ?? h.get("host"),
+    h.get("x-forwarded-proto"),
+    process.env,
+  );
 }
