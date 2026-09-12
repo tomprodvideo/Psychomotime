@@ -459,3 +459,63 @@ begin
 end
 $$;
 rollback;
+
+-- ---------------------------------------------------------------------------
+--  10. AUCUN CONTENU CLINIQUE NE SORT SUR UNE ATTESTATION
+-- ---------------------------------------------------------------------------
+--  Ce document part chez un employeur, une mutuelle, une administration. Le
+--  motif de la demande, une observation, une hypothèse n'ont rien à y faire.
+--
+--  Le contrôle est par SENTINELLE : on écrit des mots reconnaissables dans le
+--  dossier clinique du patient, puis on exige qu'aucun ne se retrouve dans
+--  l'instantané. Une liste de clés autorisées ne suffirait pas — elle ne verrait
+--  pas un motif recopié à l'intérieur d'un champ permis.
+begin;
+select tests.authenticate_as(:alpha::uuid);
+do $$
+declare
+  v_cab uuid := 'a1111111-1111-4111-8111-111111111111';
+  v_pat uuid := 'a6000000-0000-4000-8000-000000000001';
+  v_att uuid;
+  v_rdv uuid;
+  v_texte text;
+  v_cles text;
+begin
+  -- Des sentinelles dans le dossier clinique.
+  insert into public.care_pathways (practice_id, patient_id, label, referral_reason)
+  values (v_cab, v_pat, 'Parcours sentinelle', 'MOTIFSENTINELLE gêne à l''écrit');
+  insert into public.patient_notes (practice_id, patient_id, body, author_member_id)
+  values (v_cab, v_pat, 'OBSERVATIONSENTINELLE tonus axial',
+          (select id from public.practice_members
+            where practice_id = v_cab and user_id = app.current_user_id() limit 1));
+
+  insert into public.attestations
+    (practice_id, kind, patient_id, note, internal_note)
+  values (v_cab, 'presence', v_pat,
+          'Mention visible ordinaire.', 'NOTEINTERNESENTINELLE à ne pas sortir')
+  returning id into v_att;
+  select appointment_id into v_rdv from public.realised_sessions
+   where patient_id = v_pat limit 1;
+  insert into public.attestation_sessions (attestation_id, appointment_id, practice_id)
+  values (v_att, v_rdv, v_cab);
+  perform public.issue_attestation(v_att);
+
+  select snapshot::text into v_texte from public.attestations where id = v_att;
+
+  perform tests.assert(v_texte not like '%MOTIFSENTINELLE%',
+    'Le motif de la demande ne doit pas figurer sur une attestation.');
+  perform tests.assert(v_texte not like '%OBSERVATIONSENTINELLE%',
+    'Aucune note clinique ne doit figurer sur une attestation.');
+  perform tests.assert(v_texte not like '%NOTEINTERNESENTINELLE%',
+    'La note interne ne doit jamais être imprimée.');
+
+  -- Et la liste des clés est close : un champ ajouté à l'instantané devra
+  -- passer par ici, donc par une décision.
+  select string_agg(k, ',' order by k) into v_cles
+    from jsonb_object_keys((select snapshot from public.attestations where id = v_att)) k;
+  perform tests.assert_equals(v_cles,
+    'cabinet,destinataire,emis_le,entite_juridique,factures,identifiants,patient,praticien,reglements,seances',
+    'L''instantané d''une attestation a une liste de clés CLOSE. En ajouter une est une décision, pas un détail.');
+end
+$$;
+rollback;
