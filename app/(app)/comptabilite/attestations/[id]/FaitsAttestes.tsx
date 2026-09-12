@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { CalendarCheck, Info, Wallet } from "lucide-react";
@@ -56,8 +57,11 @@ export default function FaitsAttestes({
         {seances.length === 0 ? (
           <p className="px-5 py-4 text-sm text-slate-500">
             Aucune séance honorée sur cette période. Une séance n&apos;apparaît
-            ici qu&apos;une fois son issue renseignée dans l&apos;agenda : c&apos;est
-            ce qui rend l&apos;attestation vérifiable.
+            ici qu&apos;une fois son issue renseignée dans{" "}
+            <Link href="/agenda" className="underline hover:text-brand-700">
+              l&apos;agenda
+            </Link>{" "}
+            : c&apos;est ce qui rend l&apos;attestation vérifiable.
           </p>
         ) : (
           <ul className="list-none p-0 m-0 divide-y divide-slate-50">

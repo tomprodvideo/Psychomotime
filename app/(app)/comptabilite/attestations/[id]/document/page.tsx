@@ -5,7 +5,7 @@ import { formatCents } from "@/lib/money";
 import { frDate } from "@/lib/format";
 import { getCurrentPractice } from "@/lib/dossier/practice";
 import { getAttestation } from "@/lib/attestations/queries";
-import { libelleActe } from "@/lib/attestations/types";
+import { formulePresence, libelleActe } from "@/lib/attestations/types";
 import type { AttestationSnapshot } from "@/lib/attestations/types";
 import BoutonImprimer from "../../../[id]/document/BoutonImprimer";
 
@@ -64,6 +64,13 @@ export default async function DocumentAttestationPage({
   const factures = (s.factures ?? []).filter((f) => f?.numero);
   const signataire = s.praticien;
   const patient = s.patient;
+  const payeurs = (s.payeurs ?? []).filter((p) => p && p.trim() !== "");
+
+  /* La formule dépend de CE QUI EST ATTESTÉ. Un entretien parental n'atteste
+   * pas la présence de l'enfant : la phrase cesse alors d'affirmer une
+   * présence physique, et la nature de chaque acte s'imprime. */
+  const formule = formulePresence(seances.map((x) => x.nature ?? "seance"));
+  const detail = a.detail_nature || formule.forcerNature;
 
   return (
     <div className="p-4 sm:p-8 max-w-3xl mx-auto">
@@ -151,18 +158,34 @@ export default async function DocumentAttestationPage({
             <strong className="font-medium">
               {signataire?.nom?.trim() || "—"}
             </strong>
-            {signataire?.titre && `, ${signataire.titre}`}, atteste que :
+            {signataire?.titre && `, ${signataire.titre}`}, atteste{" "}
+            {a.kind === "paiement" ? "avoir reçu :" : "que :"}
           </p>
 
-          <p className="pl-4">
-            <strong className="font-medium">{patient?.nom?.trim() || "—"}</strong>
-            {patient?.ne_le && `, né(e) le ${frDate(patient.ne_le)}`}
-          </p>
+          {a.kind === "presence" ? (
+            <p className="pl-4">
+              <strong className="font-medium">
+                {patient?.nom?.trim() || "—"}
+              </strong>
+              {patient?.ne_le && `, né(e) le ${frDate(patient.ne_le)}`}
+            </p>
+          ) : (
+            /* QUI A PAYÉ. Écrire qu'un enfant « a réglé la somme de… » était
+               faux, et privait la mutuelle du nom de son assuré. Plusieurs
+               payeurs sont possibles : on les nomme tous plutôt que d'en
+               choisir un. */
+            <p className="pl-4">
+              de{" "}
+              <strong className="font-medium">
+                {payeurs.length > 0 ? payeurs.join(", ") : "—"}
+              </strong>
+            </p>
+          )}
 
           {a.kind === "presence" ? (
             <>
               <p>
-                a été reçu(e) en séance de psychomotricité
+                {formule.phrase}
                 {a.period_start && ` du ${frDate(a.period_start)}`}
                 {a.period_end && ` au ${frDate(a.period_end)}`}, aux dates
                 suivantes :
@@ -171,7 +194,7 @@ export default async function DocumentAttestationPage({
                 {seances.map((x, i) => (
                   <li key={`${x.date}-${i}`} className="text-slate-700">
                     {x.date ? frDate(x.date) : "—"}
-                    {a.detail_nature && x.nature && (
+                    {detail && x.nature && (
                       <span className="text-slate-500">
                         {" — "}
                         {libelleActe(x.nature, true)}
@@ -188,12 +211,16 @@ export default async function DocumentAttestationPage({
           ) : (
             <>
               <p>
-                a réglé la somme de{" "}
+                la somme de{" "}
                 <strong className="font-medium">
                   {formatCents(a.total_cents)}
                 </strong>{" "}
-                au titre de séances de psychomotricité
-                {a.period_start && ` du ${frDate(a.period_start)}`}
+                au titre des séances de psychomotricité de{" "}
+                <strong className="font-medium">
+                  {patient?.nom?.trim() || "—"}
+                </strong>
+                {patient?.ne_le && `, né(e) le ${frDate(patient.ne_le)}`}
+                {a.period_start && `, du ${frDate(a.period_start)}`}
                 {a.period_end && ` au ${frDate(a.period_end)}`}.
               </p>
               {reglements.length > 0 && (
@@ -226,17 +253,37 @@ export default async function DocumentAttestationPage({
           </p>
         </section>
 
-        <footer className="mt-12 text-sm text-right">
+        {/* UNE ATTESTATION SE SIGNE À LA MAIN. Sans place réservée, la
+            signature atterrit sur le nom imprimé. Le bloc ne se coupe pas
+            entre deux pages : une formule de clôture seule en bas de page,
+            signature page suivante, ne ressemble à rien. */}
+        <footer
+          className="mt-12 text-sm text-right"
+          style={{ breakInside: "avoid" }}
+        >
           {a.issued_on && (
-            <p className="text-slate-600">Le {frDate(a.issued_on)}</p>
+            <p className="text-slate-600">
+              Fait à {emetteur?.ville?.trim() || "…"}, le {frDate(a.issued_on)}
+            </p>
           )}
-          <p className="text-slate-800 font-medium mt-6">
+          <p className="text-xs uppercase tracking-wide text-slate-400 mt-8">
+            Signature et cachet
+          </p>
+          <div className="h-24 border-b border-slate-200 mt-1" aria-hidden="true" />
+          <p className="text-slate-800 font-medium mt-1">
             {signataire?.nom?.trim() || ""}
           </p>
           {signataire?.titre && (
             <p className="text-slate-600 text-xs">{signataire.titre}</p>
           )}
         </footer>
+
+        {/* Une attestation déborde souvent sur une seconde page — une année
+            scolaire fait une trentaine de dates. Sans ce rappel, la page 2
+            n'identifie ni le document ni la personne. */}
+        <p className="hidden print:block text-xs text-slate-400 mt-6">
+          {a.number} — {patient?.nom?.trim()}
+        </p>
       </article>
 
       <p className="text-xs text-slate-400 mt-4 no-print">

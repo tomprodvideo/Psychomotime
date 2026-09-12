@@ -10,6 +10,12 @@ interface Option {
   nom: string;
 }
 
+interface OptionLiee extends Option {
+  role: string;
+  /** Lien dont la validité est passée : proposé, mais signalé. */
+  revolu: boolean;
+}
+
 /**
  * L'en-tête d'un brouillon d'attestation.
  *
@@ -19,10 +25,12 @@ interface Option {
  */
 export default function EnteteAttestation({
   attestation,
-  contacts,
+  contactsDuDossier,
+  autresContacts,
 }: {
   attestation: Attestation;
-  contacts: Option[];
+  contactsDuDossier: OptionLiee[];
+  autresContacts: Option[];
 }) {
   const [enCours, demarrer] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
@@ -96,19 +104,41 @@ export default function EnteteAttestation({
           Remettre à un tiers
         </label>
         {tiers && (
-          <select
-            name="recipient_contact_id"
-            aria-label="Destinataire de l'attestation"
-            defaultValue={attestation.recipient_contact_id ?? ""}
-            className={styleChamp}
-          >
-            <option value="">Choisir un contact…</option>
-            {contacts.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nom}
-              </option>
-            ))}
-          </select>
+          <>
+            <select
+              name="recipient_contact_id"
+              aria-label="Destinataire de l'attestation"
+              defaultValue={attestation.recipient_contact_id ?? ""}
+              className={styleChamp}
+            >
+              <option value="">Choisir un destinataire…</option>
+              {contactsDuDossier.length > 0 && (
+                <optgroup label="Entourage de ce dossier">
+                  {contactsDuDossier.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nom} — {c.role}
+                      {c.revolu ? " (lien révolu)" : ""}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {autresContacts.length > 0 && (
+                <optgroup label="Autres contacts du cabinet">
+                  {autresContacts.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nom}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
+            <p className="text-xs text-slate-400 mt-1">
+              L&apos;entourage du dossier est proposé en premier, avec son rôle.
+              Un contact pris ailleurs dans le cabinet n&apos;a aucun lien établi
+              avec cette personne : ce document la nomme, elle et ses dates de
+              venue.
+            </p>
+          </>
         )}
       </fieldset>
 
@@ -121,12 +151,14 @@ export default function EnteteAttestation({
             className="rounded border-slate-300 mt-0.5"
           />
           <span>
-            Détailler la nature de chaque acte
+            Préciser le type de chaque rendez-vous
             <span className="block text-xs text-slate-500">
               Sans cette option, tout est présenté comme « séance de
-              psychomotricité ». Le détail — bilan, entretien, restitution — en
+              psychomotricité ». Préciser — bilan, entretien, restitution — en
               dit davantage au destinataire : c&apos;est parfois utile, parfois
-              une information de trop.
+              une information de trop. Un entretien ou une restitution force
+              cette précision, car le document ne peut pas affirmer la présence
+              du patient à un rendez-vous où il n&apos;était peut-être pas.
             </span>
           </span>
         </label>

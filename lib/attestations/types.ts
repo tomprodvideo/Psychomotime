@@ -85,6 +85,12 @@ export interface AttestationSnapshot {
   seances?: { date?: string; nature?: string }[] | null;
   reglements?: { date?: string; moyen?: string; montant_centimes?: number }[] | null;
   factures?: { numero?: string | null; emise_le?: string | null }[] | null;
+  /**
+   * Qui a réglé. Lu sur les factures d'imputation, où le payeur est déjà porté.
+   * Plusieurs sont possibles — une famille et une plateforme, par exemple : on
+   * les nomme tous plutôt que d'en choisir un.
+   */
+  payeurs?: string[] | null;
 }
 
 /* ==========================================================================
@@ -172,4 +178,55 @@ export function attestationTitre(
  */
 export function attestationVaut(a: Pick<Attestation, "status">): boolean {
   return a.status === "emis";
+}
+
+/* ==========================================================================
+ *  Ce que le document peut affirmer
+ * ========================================================================== */
+
+/** Natures d'acte où la présence du PATIENT est certaine. */
+const PRESENCE_DU_PATIENT = ["seance", "bilan"];
+
+export interface FormulePresence {
+  /** Phrase d'introduction de la liste des dates. */
+  phrase: string;
+  /**
+   * La nature de chaque acte doit-elle être imprimée, même si le praticien
+   * n'a pas demandé le détail ?
+   */
+  forcerNature: boolean;
+}
+
+/**
+ * Choisit la formule du document selon ce qui est réellement attesté.
+ *
+ * LE DÉFAUT « LE MOINS DISANT » CÈDE DEVANT LA VÉRITÉ. Le modèle enregistre la
+ * nature d'un rendez-vous, pas QUI y était présent. Or `entretien` couvre
+ * l'anamnèse et l'entretien parental, et `restitution` la remise d'un compte
+ * rendu : l'enfant n'y est pas toujours.
+ *
+ * Imprimer « a été reçu(e) en séance de psychomotricité » pour une date où
+ * seuls les parents sont venus transformerait une présence des parents en
+ * présence attestée de l'enfant. Quand l'ensemble contient autre chose qu'une
+ * séance ou un bilan, la formule cesse donc d'affirmer une présence physique,
+ * et la nature de chaque acte est imprimée — même si le praticien avait
+ * demandé de n'en rien dire, parce que taire ici reviendrait à affirmer faux.
+ *
+ * [HYPOTHÈSE] Ce comportement est un défaut prudent et réversible. Le vrai
+ * correctif est un champ « qui était présent » sur le rendez-vous.
+ * [VALIDATION HUMAINE — psychomotricienne en exercice] : atteste-t-on un
+ * entretien parental, et sous quelle formule ?
+ */
+export function formulePresence(natures: string[]): FormulePresence {
+  const toutesCertaines = natures.every((n) => PRESENCE_DU_PATIENT.includes(n));
+  if (toutesCertaines) {
+    return {
+      phrase: "a été reçu(e) en séance de psychomotricité",
+      forcerNature: false,
+    };
+  }
+  return {
+    phrase: "a bénéficié des temps de psychomotricité suivants",
+    forcerNature: true,
+  };
 }

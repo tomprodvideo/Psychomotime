@@ -514,8 +514,139 @@ begin
   select string_agg(k, ',' order by k) into v_cles
     from jsonb_object_keys((select snapshot from public.attestations where id = v_att)) k;
   perform tests.assert_equals(v_cles,
-    'cabinet,destinataire,emis_le,entite_juridique,factures,identifiants,patient,praticien,reglements,seances',
+    'cabinet,destinataire,emis_le,entite_juridique,factures,identifiants,patient,payeurs,praticien,reglements,seances',
     'L''instantané d''une attestation a une liste de clés CLOSE. En ajouter une est une décision, pas un détail.');
+end
+$$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+--  11. L'attestation de paiement nomme QUI A PAYÉ
+-- ---------------------------------------------------------------------------
+--  Le document affirmait qu'un enfant « a réglé la somme de… ». C'était le seul
+--  endroit du module où il énonçait un fait faux — et celui qui empêchait une
+--  mutuelle de rembourser le parent assuré, qu'il ne nommait nulle part.
+begin;
+select tests.authenticate_as(:alpha::uuid);
+do $$
+declare
+  v_cab uuid := 'a1111111-1111-4111-8111-111111111111';
+  v_pat uuid := 'a6000000-0000-4000-8000-000000000001';
+  v_contact uuid;
+  v_doc uuid; v_pay uuid; v_att uuid;
+  v_payeurs jsonb;
+begin
+  -- La facture est adressée à un TIERS — le cas courant pour un mineur.
+  select id into v_contact from public.contacts where practice_id = v_cab limit 1;
+
+  insert into public.billing_documents
+    (practice_id, kind, patient_id, payer_contact_id, payer_is_patient)
+  values (v_cab, 'facture', v_pat, v_contact, false) returning id into v_doc;
+  insert into public.billing_lines
+    (practice_id, document_id, position, label, unit_price_cents, amount_cents)
+  values (v_cab, v_doc, 1, 'Séance', 9000, 9000);
+  perform public.issue_billing_document(v_doc);
+
+  insert into public.payments (practice_id, received_on, amount_cents, method)
+  values (v_cab, current_date, 9000, 'virement') returning id into v_pay;
+  insert into public.payment_allocations
+    (practice_id, payment_id, document_id, amount_cents)
+  values (v_cab, v_pay, v_doc, 9000);
+
+  insert into public.attestations (practice_id, kind, patient_id)
+  values (v_cab, 'paiement', v_pat) returning id into v_att;
+  insert into public.attestation_payments
+    (attestation_id, payment_id, practice_id, amount_cents)
+  values (v_att, v_pay, v_cab, 9000);
+  perform public.issue_attestation(v_att);
+
+  select snapshot -> 'payeurs' into v_payeurs
+    from public.attestations where id = v_att;
+
+  perform tests.assert(v_payeurs is not null and jsonb_array_length(v_payeurs) = 1,
+    'L''instantané doit nommer le payeur : sans lui, le document fait payer l''enfant.');
+  perform tests.assert(
+    v_payeurs -> 0 #>> '{}' <> (select btrim(coalesce(p.first_name, '') || ' ' || coalesce(p.last_name, ''))
+                                  from public.patients p where p.id = v_pat),
+    'Le payeur ne doit pas être le patient quand la facture est adressée à un tiers.');
+end
+$$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+--  12. Une signature ne précède pas ce qu'elle atteste, et ne se date pas du futur
+-- ---------------------------------------------------------------------------
+begin;
+select tests.authenticate_as(:alpha::uuid);
+do $$
+declare
+  v_cab uuid := 'a1111111-1111-4111-8111-111111111111';
+  v_att uuid; v_rdv uuid; v_jour date;
+begin
+  insert into public.attestations (practice_id, kind, patient_id)
+  values (v_cab, 'presence', 'a6000000-0000-4000-8000-000000000001')
+  returning id into v_att;
+  select appointment_id, session_date into v_rdv, v_jour
+    from public.realised_sessions
+   where patient_id = 'a6000000-0000-4000-8000-000000000001'
+   order by session_date desc limit 1;
+  insert into public.attestation_sessions (attestation_id, appointment_id, practice_id)
+  values (v_att, v_rdv, v_cab);
+
+  perform tests.assert_fails(
+    format('select public.issue_attestation(%L, %L)', v_att, current_date + 1),
+    'Une attestation ne se signe pas à une date future.');
+  perform tests.assert_fails(
+    format('select public.issue_attestation(%L, %L)', v_att, v_jour - 1),
+    'Une attestation ne peut pas être établie avant ce qu''elle atteste.');
+
+  -- Au jour du dernier fait, c'est bon.
+  perform tests.assert(
+    public.issue_attestation(v_att, v_jour) like 'AT%',
+    'Signer le jour du dernier fait attesté doit être accepté.');
+end
+$$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+--  13. Un fait rattaché hors période annoncée bloque la signature
+-- ---------------------------------------------------------------------------
+--  L'écran filtre les séances PROPOSÉES par la période, pas celles déjà
+--  rattachées. En resserrant la période après avoir coché, on obtenait un
+--  brouillon dont les dates disparaissaient de l'écran et s'imprimaient quand
+--  même — en contradiction avec la période annoncée juste au-dessus.
+begin;
+select tests.authenticate_as(:alpha::uuid);
+do $$
+declare
+  v_cab uuid := 'a1111111-1111-4111-8111-111111111111';
+  v_att uuid; v_rdv uuid; v_jour date;
+begin
+  select appointment_id, session_date into v_rdv, v_jour
+    from public.realised_sessions
+   where patient_id = 'a6000000-0000-4000-8000-000000000001'
+   order by session_date desc limit 1;
+
+  -- Période annoncée qui EXCLUT la séance rattachée.
+  insert into public.attestations
+    (practice_id, kind, patient_id, period_start, period_end)
+  values (v_cab, 'presence', 'a6000000-0000-4000-8000-000000000001',
+          v_jour + 10, v_jour + 20)
+  returning id into v_att;
+  insert into public.attestation_sessions (attestation_id, appointment_id, practice_id)
+  values (v_att, v_rdv, v_cab);
+
+  perform tests.assert_fails(
+    format('select public.issue_attestation(%L)', v_att),
+    'Une séance hors de la période annoncée doit empêcher la signature.');
+
+  -- Période élargie : la signature passe.
+  update public.attestations
+     set period_start = v_jour - 30, period_end = v_jour
+   where id = v_att;
+  perform tests.assert(
+    public.issue_attestation(v_att, v_jour) like 'AT%',
+    'Une fois la période cohérente, la signature doit être acceptée.');
 end
 $$;
 rollback;

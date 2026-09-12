@@ -5,8 +5,8 @@ import { formatCents } from "@/lib/money";
 import { frDate } from "@/lib/format";
 import { Card } from "@/components/ui";
 import { getCurrentPractice } from "@/lib/dossier/practice";
-import { listContacts } from "@/lib/dossier/queries";
-import { contactName } from "@/lib/dossier/types";
+import { listContacts, listPatientContacts } from "@/lib/dossier/queries";
+import { ROLE_LABELS, contactName } from "@/lib/dossier/types";
 import {
   getAttestation,
   listReglementsAttestables,
@@ -48,7 +48,12 @@ export default async function AttestationPage({
   const modifiable = attestationModifiable(a) && practice.canWrite;
   const aujourdhui = new Date().toISOString().slice(0, 10);
 
-  const [contacts, seances, reglements] = await Promise.all([
+  const [liens, contacts, seances, reglements] = await Promise.all([
+    /* LE DESTINATAIRE SE CHOISIT D'ABORD PARMI L'ENTOURAGE DU DOSSIER, avec
+     * son rôle. Proposer indistinctement tous les contacts du cabinet rendait
+     * possible d'adresser à la famille d'un autre patient un document qui
+     * nomme celui-ci, sa date de naissance et ses dates de venue. */
+    modifiable ? listPatientContacts(practice, a.patient_id) : Promise.resolve([]),
     modifiable ? listContacts(practice) : Promise.resolve([]),
     modifiable && a.kind === "presence"
       ? listSeancesAttestables(practice, a.patient_id, {
@@ -138,7 +143,19 @@ export default async function AttestationPage({
             </h2>
             <EnteteAttestation
               attestation={a}
-              contacts={contacts.map((c) => ({ id: c.id, nom: contactName(c) }))}
+              contactsDuDossier={liens
+                .filter((l) => l.contact)
+                .map((l) => ({
+                  id: l.contact!.id,
+                  nom: contactName(l.contact!),
+                  role: ROLE_LABELS[l.role] ?? l.role,
+                  revolu: Boolean(
+                    l.valid_to && l.valid_to < new Date().toISOString().slice(0, 10),
+                  ),
+                }))}
+              autresContacts={contacts
+                .filter((c) => !liens.some((l) => l.contact?.id === c.id))
+                .map((c) => ({ id: c.id, nom: contactName(c) }))}
             />
           </Card>
         ) : (

@@ -535,6 +535,7 @@ declare
   v_faits integer;
   v_snapshot jsonb;
   v_membre uuid;
+  v_dernier date;
 begin
   select * into a from public.attestations where id = p_attestation_id;
   if a.id is null then
@@ -579,6 +580,69 @@ begin
   end if;
 
   v_emission := coalesce(p_issued_on, current_date);
+
+  /* ON NE SIGNE PAS DANS LE FUTUR, ni avant le dernier fait attesté.
+   *
+   * Rien ne bornait cette date, et la série se calcule sur son année : on
+   * pouvait signer au 1er janvier une attestation listant des séances de juin,
+   * ou dater de l'an prochain. Une attestation antidatée ne vaut rien pour qui
+   * la reçoit, et une attestation postdatée n'est pas encore un document. */
+  if v_emission > current_date then
+    raise exception 'Une attestation ne se signe pas à une date future.'
+      using errcode = 'check_violation';
+  end if;
+
+  select max(x.jour) into v_dernier from (
+    select (ap.starts_at at time zone 'Europe/Paris')::date as jour
+      from public.attestation_sessions s
+      join public.appointments ap on ap.id = s.appointment_id
+     where s.attestation_id = a.id
+    union all
+    select pay.received_on
+      from public.attestation_payments atp
+      join public.payments pay on pay.id = atp.payment_id
+     where atp.attestation_id = a.id
+  ) x;
+  if v_dernier is not null and v_emission < v_dernier then
+    raise exception
+      'La signature (%) précède le dernier fait attesté (%). Une attestation ne peut pas être établie avant ce qu''elle atteste.',
+      v_emission, v_dernier using errcode = 'check_violation';
+  end if;
+
+  /* LES FAITS RATTACHÉS DOIVENT TENIR DANS LA PÉRIODE ANNONCÉE.
+   *
+   * L'écran de composition filtre les séances proposées par la période, mais
+   * pas celles DÉJÀ rattachées : en resserrant la période après avoir coché,
+   * on obtenait un brouillon dont les dates disparaissaient de l'écran et
+   * s'imprimaient quand même — en contradiction avec la période annoncée juste
+   * au-dessus. On signait un document qu'on n'avait pas relu. */
+  if a.period_start is not null or a.period_end is not null then
+    if exists (
+      select 1 from public.attestation_sessions s
+      join public.appointments ap on ap.id = s.appointment_id
+      where s.attestation_id = a.id
+        and ((a.period_start is not null
+              and (ap.starts_at at time zone 'Europe/Paris')::date < a.period_start)
+          or (a.period_end is not null
+              and (ap.starts_at at time zone 'Europe/Paris')::date > a.period_end))
+    ) then
+      raise exception
+        'Des séances rattachées sortent de la période annoncée. Élargissez la période, ou retirez ces séances.'
+        using errcode = 'check_violation';
+    end if;
+    if exists (
+      select 1 from public.attestation_payments atp
+      join public.payments pay on pay.id = atp.payment_id
+      where atp.attestation_id = a.id
+        and ((a.period_start is not null and pay.received_on < a.period_start)
+          or (a.period_end is not null and pay.received_on > a.period_end))
+    ) then
+      raise exception
+        'Des règlements rattachés sortent de la période annoncée. Élargissez la période, ou retirez ces règlements.'
+        using errcode = 'check_violation';
+    end if;
+  end if;
+
   v_series := 'ATTESTATION-' || to_char(v_emission, 'YYYY');
 
   -- Le praticien signataire : celui qui émet, pas celui qui a saisi.
@@ -665,7 +729,31 @@ begin
       from public.attestation_payments atp
       join public.payment_allocations al on al.payment_id = atp.payment_id
       join public.billing_documents d on d.id = al.document_id
-      where atp.attestation_id = a.id and d.patient_id = a.patient_id)
+      where atp.attestation_id = a.id and d.patient_id = a.patient_id),
+
+    /* QUI A PAYÉ. Sans cette clé, le document affirmait qu'un enfant de dix
+     * ans « a réglé la somme de… » — le seul endroit du module où il énonçait
+     * un fait faux. Une mutuelle qui rembourse un parent assuré a besoin du
+     * nom de cet assuré ; si c'est une plateforme de coordination qui a payé,
+     * écrire que la famille l'a fait est une erreur de fond.
+     *
+     * Le payeur se lit sur les factures d'imputation, où il est déjà porté.
+     * PLUSIEURS payeurs sont possibles : on les rend tous, et le document le
+     * dira plutôt que d'en choisir un. */
+    'payeurs', (select jsonb_agg(distinct nom) from (
+        select coalesce(
+          case when d.payer_is_patient
+               then (select btrim(coalesce(pt.first_name, '') || ' ' || coalesce(pt.last_name, ''))
+                       from public.patients pt where pt.id = d.patient_id)
+               else coalesce(c.organisation_name,
+                    btrim(coalesce(c.first_name, '') || ' ' || coalesce(c.last_name, '')))
+          end, '') as nom
+        from public.attestation_payments atp
+        join public.payment_allocations al on al.payment_id = atp.payment_id
+        join public.billing_documents d on d.id = al.document_id
+        left join public.contacts c on c.id = d.payer_contact_id
+        where atp.attestation_id = a.id and d.patient_id = a.patient_id
+      ) payeurs where nom <> '')
   ) into v_snapshot;
 
   update public.attestations

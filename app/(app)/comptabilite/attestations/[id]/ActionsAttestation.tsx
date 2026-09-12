@@ -74,7 +74,7 @@ export default function ActionsAttestation({
               disabled={enCours || nbFaits === 0}
               title={
                 nbFaits === 0
-                  ? "Sans fait rattaché, l'attestation n'affirmerait rien de vérifiable."
+                  ? "Cochez au moins une séance ou un règlement : sans cela, l'attestation n'affirme rien."
                   : undefined
               }
               className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shadow-sm disabled:opacity-40"
