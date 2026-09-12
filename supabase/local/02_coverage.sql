@@ -36,13 +36,22 @@ as $$
 
   union all
 
-  -- 4. Fonctions SECURITY DEFINER sans search_path épinglé : vecteur
-  --    classique d'élévation de privilège.
-  select format('Fonction %I.%I : SECURITY DEFINER sans search_path épinglé.', n.nspname, p.proname)
+  -- 4. Fonctions sans search_path épinglé.
+  --
+  --    Le contrôle ne visait au départ que les fonctions SECURITY DEFINER, au
+  --    motif qu'une fonction SECURITY INVOKER n'a pas plus de droits que son
+  --    appelant. C'est exact pour les DROITS, et faux pour la RÉSOLUTION DES
+  --    NOMS : un déclencheur s'exécute dans la session de celui qui écrit, et
+  --    les noms non qualifiés s'y résolvent selon le chemin de cette session.
+  --    Une garde dont les noms se résolvent ailleurs que prévu n'est plus une
+  --    garde. Trois fonctions passaient ainsi au travers ; l'analyseur de
+  --    Supabase les a vues, pas le harnais local.
+  select format('Fonction %I.%I : search_path non épinglé%s.', n.nspname, p.proname,
+                case when p.prosecdef then ' (SECURITY DEFINER)' else '' end)
   from pg_proc p
   join pg_namespace n on n.oid = p.pronamespace
   where n.nspname in ('public', 'app')
-    and p.prosecdef
+    and p.prokind = 'f'
     and (p.proconfig is null or not exists (
       select 1 from unnest(p.proconfig) cfg where cfg like 'search\_path=%'
     ))

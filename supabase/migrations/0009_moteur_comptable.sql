@@ -713,18 +713,18 @@ begin
       using errcode = 'check_violation';
   end if;
 
+  -- La date d'émission est un PARAMÈTRE, pas l'horloge. Une facture établie le 2
+  -- octobre pour les séances de septembre porte sa vraie date ; l'appelant la
+  -- fournit, et c'est elle — non `current_date` — qui détermine ensuite la série
+  -- et l'année imprimée. La v1 les faisait diverger : le mois du numéro pouvait
+  -- venir d'une source, le rattachement d'une autre.
+  v_emission := coalesce(p_issued_on, current_date);
+
   -- La série sépare les natures : une facture et un avoir ne partagent pas la
   -- même suite de numéros.
   -- [VALIDATION HUMAINE] Le BOFiP admet les séries distinctes « lorsque les
   -- conditions d'exercice le justifient » (§ 80). La justification de cette
   -- séparation, comme celle de la remise à zéro annuelle, est à faire valider.
-  -- La date d'émission est un PARAMÈTRE, pas l'horloge. Une pièce établie le 2
-  -- pour les séances de septembre s'émet au 2 septembre ; l'appelant la fournit,
-  -- et c'est elle — non `current_date` — qui détermine ensuite la série et
-  -- l'année imprimée. La v1 les faisait diverger : le mois du numéro pouvait
-  -- venir d'une source, le rattachement d'une autre.
-  v_emission := coalesce(p_issued_on, current_date);
-
   v_series := coalesce(
     p_series,
     case d.kind
