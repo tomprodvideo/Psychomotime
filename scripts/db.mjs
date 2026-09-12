@@ -44,6 +44,7 @@ const SEED_DIR = join(ROOT, "supabase", "seed");
 const TESTS_DIR = join(ROOT, "supabase", "tests");
 const V1_DIR = join(ROOT, "supabase", "schema-v1");
 const CUTOVER_DIR = join(ROOT, "supabase", "cutover");
+const PERF_DIR = join(ROOT, "supabase", "perf");
 
 const ESC = "\u001b[";
 const C = {
@@ -306,12 +307,52 @@ switch (cmd) {
     console.log(`\n${C.green}${C.bold}Bascule v1 → cible rejouée et vérifiée.${C.reset}`);
     break;
   }
+  case "budget": {
+    /* LES BUDGETS SE MESURENT SUR UN VOLUME, PAS SUR UNE DÉMONSTRATION.
+     *
+     * Le jeu de démonstration compte cinq dossiers. À cette échelle tout est
+     * rapide, y compris ce qui ne tiendra pas : un balayage complet de table
+     * sur cinq lignes coûte moins qu'un parcours d'index. On fabrique donc une
+     * base jetable, on y verse un cabinet fictif de taille réaliste, et on
+     * mesure À TRAVERS LA RLS — mesurer en propriétaire de la base donnerait
+     * des chiffres flatteurs et faux. */
+    const scratch = process.env.BUDGET_DB_NAME || "psychomotime_budget";
+    console.log(`${C.dim}· base jetable ${scratch}${C.reset}`);
+    adminPsql(`drop database if exists ${scratch} with (force);`);
+    adminPsql(`create database ${scratch};`);
+
+    for (const f of [...sqlFiles(LOCAL_DIR), ...sqlFiles(MIGRATIONS_DIR)]) {
+      const r = psql(scratch, ["-f", f], { quiet: true });
+      if (r.code !== 0) {
+        console.error(`${C.red}✗ ${basename(f)}${C.reset}`);
+        process.stderr.write(r.stderr);
+        process.exit(1);
+      }
+    }
+
+    const volumetrie = join(PERF_DIR, "0001_volumetrie.sql");
+    console.log(`${C.dim}· jeu volumineux${C.reset}`);
+    const v = psql(scratch, ["-f", volumetrie], { quiet: true });
+    if (v.code !== 0) {
+      console.error(`${C.red}✗ volumétrie${C.reset}`);
+      process.stderr.write(v.stderr);
+      process.exit(1);
+    }
+
+    const res = psql(scratch, ["-f", join(PERF_DIR, "0002_budgets.sql")]);
+    if (res.code !== 0) {
+      console.log(`\n${C.red}${C.bold}Budgets de performance dépassés.${C.reset}`);
+      process.exit(1);
+    }
+    console.log(`\n${C.green}${C.bold}Tous les budgets sont tenus.${C.reset}`);
+    break;
+  }
   case "psql":
     spawnSync("psql", baseArgs(DB_NAME), { stdio: "inherit" });
     break;
   default:
     console.log(
-      "Commandes : reset | migrate | seed | test | psql\n" +
+      "Commandes : reset | migrate | seed | test | concurrence | cutover | budget | psql\n" +
         "Voir l'en-tête de scripts/db.mjs pour les variables d'environnement.",
     );
     process.exit(cmd ? 1 : 0);

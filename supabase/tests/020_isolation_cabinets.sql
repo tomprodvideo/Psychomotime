@@ -198,3 +198,106 @@ begin
 end
 $$;
 rollback;
+
+-- ---------------------------------------------------------------------------
+--  UNE APPARTENANCE QUI N'EST PLUS ACTIVE N'OUVRE PLUS RIEN
+-- ---------------------------------------------------------------------------
+--  `practice_members.status` connaît quatre valeurs : invited, active,
+--  suspended, revoked. Toutes les fonctions d'appartenance exigent `active` —
+--  et AUCUN contrôle ne le vérifiait. Remplacer `status = 'active'` par
+--  `status is not null` dans `app.mes_cabinets()` survivait aux dix fichiers.
+--
+--  Ce qui était donc invérifié : qu'un compte dont l'accès a été retiré cesse
+--  réellement de lire les dossiers. C'est le geste qu'on fait le jour où une
+--  collaboration s'arrête — le seul moment où cette règle compte.
+--
+--  Trouvé par mutation, en réécrivant les politiques de lecture au lot 8.
+begin;
+do $$
+declare
+  v_etat text;
+  v_patient uuid;
+  v_piece uuid;
+begin
+  select id into v_patient from public.patients
+   where practice_id = 'a1111111-1111-4111-8111-111111111111' limit 1;
+  select id into v_piece from public.billing_documents
+   where practice_id = 'a1111111-1111-4111-8111-111111111111' limit 1;
+
+  foreach v_etat in array array['invited', 'suspended', 'revoked']
+  loop
+    -- Gamma est rattachée au cabinet Alpha, mais pas activement.
+    delete from public.practice_members
+     where practice_id = 'a1111111-1111-4111-8111-111111111111'
+       and user_id = 'c0000000-0000-4000-8000-000000000001';
+    insert into public.practice_members (practice_id, user_id, role, status)
+    values ('a1111111-1111-4111-8111-111111111111',
+            'c0000000-0000-4000-8000-000000000001', 'practitioner', v_etat);
+
+    perform tests.authenticate_as('c0000000-0000-4000-8000-000000000001'::uuid);
+    perform tests.assert_rows(
+      format('select 1 from public.patients where id = %L', v_patient), 0,
+      format('Une appartenance « %s » ne doit donner accès à aucun dossier.', v_etat));
+    perform tests.assert_rows(
+      'select 1 from public.appointments', 0,
+      format('Une appartenance « %s » ne doit donner accès à aucun rendez-vous.', v_etat));
+    perform tests.assert_rows(
+      'select 1 from public.billing_documents', 0,
+      format('Une appartenance « %s » ne doit donner accès à aucune pièce.', v_etat));
+
+    -- LE CLINIQUE, qui passe par une autre porte que le reste.
+    perform tests.assert_rows(
+      'select 1 from public.patient_notes', 0,
+      format('Une appartenance « %s » ne doit donner accès à aucune note clinique.', v_etat));
+    perform tests.assert_rows(
+      'select 1 from public.care_objectives', 0,
+      format('Une appartenance « %s » ne doit donner accès à aucun objectif.', v_etat));
+
+    /* ET LES FONCTIONS À PRIVILÈGES. Elles s'exécutent AU-DESSUS de la RLS et
+     * vérifient l'appartenance elles-mêmes : une politique correcte ne les
+     * couvre pas. `document_balance_cents` a déjà laissé fuir un solde d'un
+     * autre cabinet une fois — la porte est différente, la règle est la même. */
+    perform tests.assert_fails(
+      format('select public.document_balance_cents(%L)', v_piece),
+      format('Une appartenance « %s » ne doit pas donner le solde d''une pièce.', v_etat));
+    perform tests.assert_fails(
+      format('select public.log_audit_event(%L, ''essai'', ''patient'', %L, null)',
+             'a1111111-1111-4111-8111-111111111111', v_patient),
+      format('Une appartenance « %s » ne doit pas pouvoir écrire au journal.', v_etat));
+
+    /* ET L'ÉCRITURE. Lire et écrire passent par deux chemins distincts —
+     * `app.is_member` d'un côté, `app.has_role` de l'autre — et chacun porte
+     * sa propre exigence d'appartenance active. Ne contrôler que la lecture
+     * laissait un compte retiré capable de créer un dossier, d'en modifier un
+     * et d'en supprimer un. */
+    perform tests.assert_fails(
+      format('insert into public.patients (practice_id, first_name, last_name)
+              values (%L, ''Intrus'', ''Fictif'')',
+             'a1111111-1111-4111-8111-111111111111'),
+      format('Une appartenance « %s » ne doit pas pouvoir créer un dossier.', v_etat));
+    perform tests.assert_affects_nothing(
+      format('update public.patients set first_name = ''Modifié'' where id = %L', v_patient),
+      format('Une appartenance « %s » ne doit pas pouvoir modifier un dossier.', v_etat));
+    perform tests.assert_affects_nothing(
+      format('delete from public.patients where id = %L', v_patient),
+      format('Une appartenance « %s » ne doit pas pouvoir supprimer un dossier.', v_etat));
+    reset role;
+  end loop;
+
+  -- LE CONTRE-CONTRÔLE. Passée à « active », la même personne voit le dossier :
+  -- sans lui, les trois contrôles ci-dessus passeraient tout aussi bien si la
+  -- ligne d'appartenance n'existait pas du tout.
+  update public.practice_members set status = 'active'
+   where practice_id = 'a1111111-1111-4111-8111-111111111111'
+     and user_id = 'c0000000-0000-4000-8000-000000000001';
+  perform tests.authenticate_as('c0000000-0000-4000-8000-000000000001'::uuid);
+  perform tests.assert_rows(
+    format('select 1 from public.patients where id = %L', v_patient), 1,
+    'Une appartenance active, elle, donne bien accès au dossier.');
+  perform tests.assert_affects_rows(
+    format('update public.patients set administrative_notes = ''vu'' where id = %L',
+           v_patient), 1,
+    'Et elle permet bien d''écrire : sans quoi les refus ci-dessus ne prouveraient rien.');
+end
+$$;
+rollback;

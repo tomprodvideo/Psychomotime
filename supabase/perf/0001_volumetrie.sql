@@ -48,6 +48,7 @@ declare
   i            integer;
   j            integer;
   v_seances    integer;
+  v_statut     text;
   v_total      bigint;
 begin
   insert into auth.users (id, email)
@@ -63,7 +64,8 @@ begin
 
   for i in 1..n_dossiers loop
     insert into public.patients
-      (practice_id, first_name, last_name, birth_date, status, created_at)
+      (practice_id, first_name, last_name, birth_date, status,
+       archived_at, archive_reason, created_at)
     values (
       'c1111111-1111-4111-8111-111111111111',
       'Prenomfictif' || i,
@@ -71,59 +73,94 @@ begin
       -- Des naissances étalées, pour que les tris par date ne trient pas une
       -- colonne constante : un index paraîtrait alors parfait à tort.
       make_date(2005 + (i % 18), 1 + (i % 12), 1 + (i % 28)),
+      -- Un dossier archivé porte sa date et son motif : la contrainte du modèle
+      -- l'exige, et c'est elle qui empêche un archivage sans explication.
       case when i % 9 = 0 then 'archive' else 'actif' end,
+      case when i % 9 = 0
+           then now() - make_interval(days => (i * 7) % (n_annees * 365)) end,
+      case when i % 9 = 0 then 'Fin de prise en soin (jeu de volumétrie)' end,
       now() - make_interval(days => (i * 7) % (n_annees * 365)))
     returning id into v_patient;
 
+    -- Un parcours terminé PORTE SA DATE DE FIN : `care_pathways_fin_ck` l'exige,
+    -- et c'est elle qui empêche un dossier clos sans date de clôture.
+    v_statut := case when i % 11 = 0 then 'liste_attente'
+                     when i % 9 = 0 then 'termine' else 'actif' end;
     insert into public.care_pathways
-      (practice_id, patient_id, label, status, waitlisted_on)
+      (practice_id, patient_id, label, status, waitlisted_on, started_on, ended_on)
     values (
       'c1111111-1111-4111-8111-111111111111', v_patient,
       'Parcours ' || i,
-      case when i % 11 = 0 then 'liste_attente'
-           when i % 9 = 0 then 'clos' else 'actif' end,
-      case when i % 11 = 0
-           then (now() - make_interval(days => i % 200))::date end)
+      v_statut,
+      case when v_statut = 'liste_attente'
+           then (now() - make_interval(days => i % 200))::date end,
+      (now() - make_interval(days => (i * 7) % (n_annees * 365)))::date,
+      /* La date de fin suit LE STATUT CALCULÉ, pas une seconde condition :
+       * les deux divergeaient pour i divisible par 9 et par 11 à la fois, et
+       * le modèle refusait — à juste titre — un parcours en liste d'attente
+       * portant une date de clôture. */
+      case when v_statut = 'termine'
+           then (now() - make_interval(days => (i * 3) % 300))::date end)
     returning id into v_parcours;
 
     -- Entre 4 et 24 séances par dossier : la dispersion compte, un nombre
     -- constant rendrait les estimations du planificateur trop faciles.
     v_seances := 4 + (i % 21);
     for j in 1..v_seances loop
-      v_debut := date_trunc('hour', now())
-               - make_interval(days => (i * 3 + j * 7) % (n_annees * 365))
-               + make_interval(hours => 8 + (j % 9));
+      /* L'ÉTALEMENT COUVRE AUSSI AUJOURD'HUI ET LES SEMAINES À VENIR.
+       *
+       * Une première version ne produisait que du passé : les deux mesures de
+       * l'accueil — la journée, et les rendez-vous à renseigner — portaient
+       * alors sur ZÉRO ligne et ne mesuraient rien. Un budget tenu sur un
+       * ensemble vide est un budget qui ne dit rien.
+       *
+       * Un dossier sur sept a donc une séance aujourd'hui, un sur cinq une
+       * séance dans les jours qui viennent. */
+      v_debut := date_trunc('day', now())
+               + make_interval(hours => 8 + (j % 9))
+               + case
+                   when i % 7 = 0 and j = 2 then interval '0 day'
+                   when i % 5 = 0 and j = 3 then make_interval(days => 1 + (i % 6))
+                   else - make_interval(
+                          days => 1 + ((i * 3 + j * 7) % (n_annees * 365)))
+                 end;
+      /* Le vocabulaire des présences est celui du modèle, pas un vocabulaire
+       * inventé pour la mesure : `a_venir`, `honore`, `absent_non_excuse`,
+       * `annule_patient`. Et une absence non excusée PORTE SON MOTIF —
+       * `appointments_motif_ck` l'exige, parce qu'une absence qu'on facturera
+       * peut-être ne se constate pas sans un mot d'explication. */
       insert into public.appointments
         (practice_id, patient_id, pathway_id, kind, starts_at, ends_at,
-         attendance, billable)
+         attendance, attendance_note, billable)
       values (
         'c1111111-1111-4111-8111-111111111111', v_patient, v_parcours,
         case when j = 1 then 'bilan' else 'seance' end,
         v_debut, v_debut + interval '45 minutes',
-        case when v_debut > now() then 'prevu'
-             when j % 13 = 0 then 'absence_non_excusee'
-             when j % 17 = 0 then 'annule_par_patient'
+        case when v_debut > now() then 'a_venir'
+             -- Un rendez-vous passé qu'on n'a pas encore renseigné : c'est le
+             -- blocage silencieux du produit, et l'accueil doit le remonter.
+             when j % 11 = 0 then 'a_venir'
+             when j % 13 = 0 then 'absent_non_excuse'
+             when j % 17 = 0 then 'annule_patient'
              else 'honore' end,
+        case when v_debut <= now() and j % 13 = 0 and j % 11 <> 0
+             then 'Non prévenue (jeu de volumétrie)' end,
         true);
     end loop;
 
     -- Une facture émise tous les trois dossiers, avec ses lignes et son
     -- règlement : de quoi mesurer les listes de la comptabilité.
     if i % 3 = 0 then
+      /* BROUILLON D'ABORD, LIGNES ENSUITE, ÉMISSION EN DERNIER — c'est l'ordre
+       * que le moteur comptable impose, et il a raison : les lignes d'une
+       * pièce émise ne se modifient plus. Un jeu de volumétrie qui contournerait
+       * cette règle produirait des pièces qui n'existent pas dans le produit,
+       * et mesurerait donc autre chose que le produit. */
       insert into public.billing_documents
-        (practice_id, kind, patient_id, pathway_id, payer_is_patient,
-         status, series, number, issued_on, total_cents,
-         snapshot, created_at)
+        (practice_id, kind, patient_id, pathway_id, payer_is_patient, created_at)
       values (
         'c1111111-1111-4111-8111-111111111111', 'facture', v_patient, v_parcours,
-        true, 'emis', 'VOL',
-        'VOL' || lpad(i::text, 6, '0'),
-        (now() - make_interval(days => (i * 5) % (n_annees * 365)))::date,
-        0,
-        jsonb_build_object(
-          'cabinet', jsonb_build_object('nom', 'Cabinet de volumétrie fictive'),
-          'patient', jsonb_build_object('nom', 'Prenomfictif' || i)),
-        now() - make_interval(days => (i * 5) % (n_annees * 365)))
+        true, now() - make_interval(days => (i * 5) % (n_annees * 365)))
       returning id into v_doc;
 
       v_total := 0;
@@ -135,6 +172,15 @@ begin
                 'Séance de psychomotricité', 4500, 1, 4500);
         v_total := v_total + 4500;
       end loop;
+
+      update public.billing_documents
+         set status = 'emis', series = 'VOL',
+             number = 'VOL' || lpad(i::text, 6, '0'),
+             issued_on = (now() - make_interval(days => (i * 5) % (n_annees * 365)))::date,
+             snapshot = jsonb_build_object(
+               'cabinet', jsonb_build_object('nom', 'Cabinet de volumétrie fictive'),
+               'patient', jsonb_build_object('nom', 'Prenomfictif' || i))
+       where id = v_doc;
 
       -- Deux factures sur trois sont réglées : il faut des soldes non nuls
       -- pour que les listes « à régler » aient quelque chose à filtrer.

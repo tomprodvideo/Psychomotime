@@ -110,5 +110,26 @@ begin
 end;
 $$;
 
+-- Le pendant du précédent : vérifie qu'une écriture a bien affecté le nombre
+-- de lignes attendu. Il sert de CONTRE-CONTRÔLE — sans lui, une suite de
+-- « rien n'a été affecté » passerait tout aussi bien si l'écriture était
+-- impossible pour une raison sans rapport avec ce qu'on croit vérifier.
+create or replace function tests.assert_affects_rows(
+  p_statement text, p_attendu bigint, p_message text)
+returns void
+language plpgsql
+as $$
+declare
+  v_count bigint;
+begin
+  execute p_statement;
+  get diagnostics v_count = row_count;
+  if v_count <> p_attendu then
+    raise exception 'ÉCHEC : % — % ligne(s) affectée(s), % attendue(s).',
+      p_message, v_count, p_attendu using errcode = 'assert_failure';
+  end if;
+end;
+$$;
+
 grant usage on schema tests to public;
 grant execute on all functions in schema tests to public;
