@@ -58,8 +58,44 @@ export function repriseEnMain(p: Provenance, courant: string): boolean {
  * faire — il sait qu'un texte a été retouché, pas qu'il a été jugé juste.
  */
 export function mentionProvenance(p: Provenance, courant: string): string {
-  const jour = p.le.slice(0, 10).split("-").reverse().join("/");
+  /* DATE LOCALE, pas UTC. `slice(0, 10)` sur un horodatage ISO rend le jour
+   * UTC : une reformulation faite à 00 h 30 à Paris s'affichait la veille. Sur
+   * une trace qui accompagne un document clinique, une date fausse d'un jour
+   * est une date fausse. */
+  const d = new Date(p.le);
+  const jour = Number.isNaN(d.getTime())
+    ? p.le.slice(0, 10).split("-").reverse().join("/")
+    : `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
   return repriseEnMain(p, courant)
     ? `Reformulé par l'assistant le ${jour}, puis modifié.`
     : `Reformulé par l'assistant le ${jour}. Texte non modifié depuis.`;
+}
+
+/**
+ * Les sections telles que l'assistant les a écrites, sans retouche depuis.
+ *
+ * C'est la liste que la praticienne doit reconnaître avant de finaliser — le
+ * troisième tiers de la règle absolue n° 5, « exiger une validation humaine
+ * avant partage ou inscription définitive », qui n'était pas même amorcé : le
+ * chemin reformuler → enregistrer → finaliser → imprimer se parcourait sans un
+ * seul geste reconnaissant qu'un modèle avait écrit.
+ *
+ * UNE SECTION RETOUCHÉE N'EST PAS LISTÉE. La praticienne y est déjà passée ;
+ * la lui redemander banaliserait la question, et une question qu'on banalise
+ * cesse d'être lue.
+ *
+ * Une section VIDÉE n'est pas listée non plus, et elle l'est SANS CONDITION
+ * SUPPLÉMENTAIRE : un champ vide diffère forcément du texte rendu, donc
+ * `repriseEnMain` le classe déjà comme retouché. J'avais d'abord ajouté un
+ * test explicite du vide ; le retirer ne faisait échouer aucun contrôle,
+ * parce qu'il ne pouvait rien décider. Il est parti — une condition qu'aucun
+ * cas ne distingue est une décoration qui se donne l'air d'un garde-fou.
+ */
+export function sectionsGenereesNonRetouchees(
+  provenances: Provenances,
+  contenu: Record<string, string>,
+): string[] {
+  return Object.entries(provenances)
+    .filter(([cle, p]) => !repriseEnMain(p, contenu[cle] ?? ""))
+    .map(([cle]) => cle);
 }

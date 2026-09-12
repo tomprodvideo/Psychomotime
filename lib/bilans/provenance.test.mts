@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   mentionProvenance,
   repriseEnMain,
+  sectionsGenereesNonRetouchees,
   type Provenance,
 } from "@/lib/bilans/provenance";
 
@@ -52,4 +53,28 @@ test("un espace de plus ne compte pas comme une reprise en main", () => {
   // Sinon la mention basculerait sur un retour à la ligne involontaire.
   assert.equal(repriseEnMain(P, `  ${P.apres}\n`), false);
   assert.equal(repriseEnMain(P, `${P.apres} et davantage`), true);
+});
+
+test("la liste à reconnaître ne retient que le texte intact et non vide", () => {
+  const provenances = {
+    anamnese: { ...P, apres: "Texte A" },
+    conclusion: { ...P, apres: "Texte B" },
+    videe: { ...P, apres: "Texte C" },
+    absente: { ...P, apres: "Texte D" },
+  };
+  const contenu = {
+    anamnese: "Texte A", // intact → à reconnaître
+    conclusion: "Texte B, revu par la praticienne", // retouché → non listé
+    videe: "   ", // vidée → plus rien à relire
+    // `absente` n'a pas de contenu du tout.
+  };
+  assert.deepEqual(
+    sectionsGenereesNonRetouchees(provenances, contenu).sort(),
+    ["anamnese"],
+  );
+});
+
+test("sans reformulation, il n'y a rien à reconnaître", () => {
+  // Sinon la question se poserait sur tous les bilans, et cesserait d'être lue.
+  assert.deepEqual(sectionsGenereesNonRetouchees({}, { anamnese: "écrit à la main" }), []);
 });

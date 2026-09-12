@@ -45,6 +45,7 @@ import { saveBilan, deleteBilan } from "../actions";
 import { reformulateText } from "../ai-actions";
 import {
   mentionProvenance,
+  sectionsGenereesNonRetouchees,
   type Provenances,
 } from "@/lib/bilans/provenance";
 import { useDictation } from "./useDictation";
@@ -224,6 +225,22 @@ export default function BilanEditor({
       delete next[`${sectionId}::${blockId}`];
       return next;
     });
+    /* LA PROVENANCE PART AVEC LE BLOC.
+     *
+     * Sans cela elle devenait ORPHELINE : plus aucun champ pour l'afficher,
+     * plus aucun geste pour la retirer — et elle conserve le texte d'avant ET
+     * le texte généré, réécrits dans le dossier à chaque enregistrement. La
+     * praticienne aurait supprimé un bloc en croyant l'avoir supprimé, et son
+     * contenu aurait survécu, invisible.
+     *
+     * Trouvé par la relecture IA clinique. Un mécanisme de traçabilité qui
+     * garde ce qu'on a effacé n'est plus une traçabilité, c'est une rétention
+     * dont personne n'a décidé. */
+    setProvenances((p) => {
+      const next = { ...p };
+      delete next[`${sectionId}::${blockId}`];
+      return next;
+    });
     markDirty();
   };
 
@@ -295,7 +312,18 @@ export default function BilanEditor({
       [key]: {
         le: new Date().toISOString(),
         modele: res.modele ?? "inconnu",
-        avant: current,
+        /* `avant` NE SE RÉÉCRIT JAMAIS.
+         *
+         * Défaut introduit avec cette trace, et trouvé par la relecture IA
+         * clinique : à la deuxième reformulation d'une même section, `current`
+         * vaut la sortie de la PREMIÈRE. Écrire `avant: current` remplaçait
+         * donc les notes d'origine de la praticienne par du texte de modèle,
+         * définitivement — et « Revenir au texte d'avant » ramenait à une
+         * reformulation, sous une mention qui ne le disait pas.
+         *
+         * Deux clics sur un bouton présenté comme réversible détruisaient la
+         * seule chose que ce mécanisme prétend protéger. */
+        avant: p[key]?.avant ?? current,
         apres: res.text!,
       },
     }));
@@ -395,6 +423,17 @@ export default function BilanEditor({
    *  sauvegarde va donc là où la donnée est DÉJÀ — le serveur — et n'ouvre
    *  aucun nouvel endroit où des notes pourraient rester.
    */
+
+  /** Le libellé lisible d'une clé de section ou de bloc. */
+  function titreDeSection(cle: string): string {
+    const [sectionId, blockId] = cle.split("::");
+    if (blockId) {
+      const bl = (blocks[sectionId] ?? []).find((b) => b.id === blockId);
+      if (bl?.title) return bl.title;
+    }
+    const s = sections.find((x) => x.id === sectionId);
+    return s?.title ?? cle;
+  }
 
   /* La référence est tenue à jour APRÈS le rendu, jamais pendant : écrire une
    * référence en cours de rendu rend le résultat dépendant du moment où React
@@ -998,6 +1037,36 @@ export default function BilanEditor({
             <button
               onClick={() => {
                 const next = status === "finalisé" ? "brouillon" : "finalisé";
+                /* AVANT DE FINALISER, RECONNAÎTRE CE QUI A ÉTÉ ÉCRIT PAR
+                 * L'ASSISTANT ET NON RETOUCHÉ.
+                 *
+                 * C'est le troisième tiers de la règle absolue n° 5 —
+                 * « exiger une validation humaine avant partage ou inscription
+                 * définitive » — et il n'était pas même amorcé : le chemin
+                 * reformuler → enregistrer → finaliser → imprimer se parcourait
+                 * sans un seul geste reconnaissant qu'un modèle avait écrit.
+                 *
+                 * On ne demande PAS de « valider » : le produit n'est pas en
+                 * position de dire qu'un texte est juste. On demande de
+                 * confirmer l'avoir relu, et on nomme les sections concernées —
+                 * sans quoi la question n'aurait aucun contenu. Une section
+                 * retouchée depuis la reformulation n'est pas listée : la
+                 * praticienne y est déjà passée. */
+                if (next === "finalisé") {
+                  const intactes = sectionsGenereesNonRetouchees(
+                    provenances,
+                    content,
+                  ).map(titreDeSection);
+                  if (intactes.length > 0) {
+                    const ok = window.confirm(
+                      "Ces sections sont telles que l'assistant les a écrites, " +
+                        "sans modification de votre part :\n\n" +
+                        intactes.map((t) => `  • ${t}`).join("\n") +
+                        "\n\nConfirmez-vous les avoir relues ?",
+                    );
+                    if (!ok) return;
+                  }
+                }
                 setStatus(next);
                 doSave(next);
               }}
