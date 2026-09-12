@@ -43,6 +43,7 @@ import { formatAgeAt } from "@/lib/age";
 import ConfirmDeleteButton from "@/components/ConfirmDeleteButton";
 import { saveBilan, deleteBilan } from "../actions";
 import { reformulateText } from "../ai-actions";
+import { insererAuCurseur } from "@/lib/bilans/insertion";
 import {
   mentionProvenance,
   sectionsGenereesNonRetouchees,
@@ -190,11 +191,55 @@ export default function BilanEditor({
      * demeure ; la mention dit simplement que le texte a été modifié depuis. */
   };
 
+  /* LE TEXTE S'INSÈRE AU CURSEUR, PLUS EN FIN DE CHAMP.
+   *
+   * L'insertion concaténait toujours à la fin. Un modèle n'était donc
+   * utilisable qu'au tout début d'un paragraphe ou en queue : dès qu'un texte
+   * existait, il fallait insérer puis remonter le fragment à la main. Le
+   * mécanisme censé faire gagner du temps en reprenait une partie aussitôt.
+   *
+   * Vaut aussi pour la dictée, qui écrivait pareillement en fin de champ : on
+   * ne pouvait pas dicter un complément au milieu d'un paragraphe.
+   *
+   * On lit la position depuis l'élément RÉELLEMENT focalisé, et seulement s'il
+   * s'agit bien du champ visé — sinon on retombe sur l'ancien comportement.
+   * Insérer à une position lue sur un autre champ couperait un mot au hasard
+   * dans un texte clinique. */
   const insertInto = (key: string, text: string) => {
+    /* On lit la position depuis l'élément RÉELLEMENT focalisé, et seulement
+     * s'il s'agit bien du champ visé — sinon on ajoute en fin, comme avant.
+     * Insérer à une position lue sur un AUTRE champ couperait un mot au hasard
+     * dans un texte clinique.
+     *
+     * Le découpage lui-même vit dans `lib/bilans/insertion.ts` : cet écran
+     * n'est pas atteignable sans session, et un calcul de position qui se
+     * trompe d'un caractère ne se voit pas. Il s'y vérifie. */
+    const actif = document.activeElement;
+    const zone =
+      actif instanceof HTMLTextAreaElement && actif.dataset.champ === key
+        ? actif
+        : null;
+
     setContent((c) => {
       const prev = c[key] ?? "";
-      const sep = prev.trim() ? "\n" : "";
-      return { ...c, [key]: prev + sep + text };
+      if (!zone) {
+        const sep = prev.trim() ? "\n" : "";
+        return { ...c, [key]: prev + sep + text };
+      }
+      const { texte, curseur } = insererAuCurseur(
+        prev,
+        zone.selectionStart ?? prev.length,
+        zone.selectionEnd ?? zone.selectionStart ?? prev.length,
+        text,
+      );
+      /* Le curseur se replace APRÈS ce qu'on vient d'insérer, pour pouvoir
+       * continuer à écrire dans la foulée. React réécrit la valeur au rendu
+       * suivant : on repositionne ensuite. */
+      queueMicrotask(() => {
+        zone.focus();
+        zone.setSelectionRange(curseur, curseur);
+      });
+      return { ...c, [key]: texte };
     });
     markDirty();
   };
@@ -344,14 +389,10 @@ export default function BilanEditor({
     markDirty();
   }
 
-  const dictation = useDictation((text, id) => {
-    setContent((c) => {
-      const prev = c[id] ?? "";
-      const sep = prev && !/\s$/.test(prev) ? " " : "";
-      return { ...c, [id]: prev + sep + text };
-    });
-    markDirty();
-  });
+  /* La dictée passe par le même chemin que les modèles : elle écrit au
+   * curseur. Elle concaténait elle aussi en fin de champ — on ne pouvait donc
+   * pas dicter un complément au milieu d'un paragraphe déjà écrit. */
+  const dictation = useDictation((text, id) => insertInto(id, text));
 
   /* Une référence, pas la fonction elle-même : `doSave` est recréée à chaque
    * rendu, et l'effet périodique redémarrerait son minuteur à chaque frappe —
@@ -552,6 +593,7 @@ export default function BilanEditor({
           </div>
         </div>
         <textarea
+          data-champ={fieldKey}
           value={content[fieldKey] ?? ""}
           onChange={(e) => update(fieldKey, e.target.value)}
           placeholder={hint}
