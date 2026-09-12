@@ -256,6 +256,53 @@ par le code, et les défauts en place sont prudents et réversibles.
 10. Une attestation réimprimée doit-elle porter « duplicata » ? *(défaut
     actuel : réimpression à l'identique)*
 
+### Accessibilité — ce qui reste ouvert après le premier palier (lot 8)
+
+L'audit WCAG 2.2 AA a été rendu le 2026-09-12. Le palier « une ligne de CSS »
+et les échecs de niveau A les plus nets sont corrigés (commit `46e6530`).
+Restent, par ordre décroissant de valeur :
+
+1. **Le socle de composants.** `components/ui.tsx` fait 108 lignes et ne couvre
+   ni les boutons ni les champs. C'est la CAUSE RACINE : sept constantes de
+   champ divergentes avaient poussé en parallèle, dont quatre sans indicateur de
+   focus utilisable. Corriger les symptômes a pris une journée ; la cause reste.
+2. **Les erreurs ne sont pas reliées au champ fautif.** Zéro occurrence
+   d'`aria-invalid` ou d'`aria-errormessage` dans le dépôt. Sur un formulaire de
+   treize champs, « l'enregistrement a échoué » ne dit pas où. WCAG 3.3.1.
+3. **Les sept dialogues ne piègent pas le focus, ne se ferment pas au clavier,
+   ne restaurent pas le focus.** `aria-modal="true"` promet à la technologie
+   d'assistance que l'arrière-plan est inerte, alors que rien ne le rend inerte.
+4. **Trois points que l'audit a refusé de trancher sans exécuter**, et qui
+   demandent une session au navigateur : l'occultation d'un champ par la barre
+   fixe de l'éditeur de bilan (2.4.11), le débordement horizontal du tableau de
+   la page publique à 320 px (1.4.10), et la géométrie réelle des lignes de
+   facturation (2.5.8).
+
+### Une question clinique, et un travail du lot 3 resté débranché
+
+**La zone d'interprétation d'un score n'est portée que par la COULEUR** du
+chiffre, sur le document remis aux familles (`bilans/[id]/apercu`). Un lecteur
+daltonien, ou n'importe qui devant une photocopie en noir et blanc, voit « 7 »
+sans savoir dans quelle bande il tombe. La bande la plus ambiguë cliniquement —
+« fragilité » — est aussi la moins lisible : 2,42:1 sur blanc.
+
+Écrire la zone en toutes lettres corrigerait d'un même geste l'accessibilité,
+la perte à l'impression monochrome, et la contradiction du § C-2 (la note 7
+appartient à deux bandes selon la légende).
+
+**Je ne l'ai pas fait, et c'est délibéré.** Le vocabulaire en question — « zone
+de fragilité », « zone dite pathologique » — est précisément ce que `Q-202`
+demande de faire trancher par une psychomotricienne en exercice. Inscrire ces
+mots en clair sur un document lu par une famille est une décision clinique, pas
+une correction technique.
+
+**Constat qui s'y ajoute, et qui n'avait pas été relevé :** `lib/scales.ts` —
+la règle de cotation UNIQUE construite au lot 3, avec ses bandes saisies et
+assumées par la praticienne — **n'est appelée nulle part dans l'aperçu de
+bilan**. Celui-ci lit toujours les seuils codés en dur de `lib/constants.ts`.
+Le lot 3 a déplacé la décision hors du code ; le document, lui, n'a pas suivi.
+C'est le préalable technique au point précédent.
+
 ### Deux réglages à faire dans la console Supabase
 
 1. **Protection contre les mots de passe compromis** — désactivée. Elle vérifie

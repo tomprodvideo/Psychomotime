@@ -257,6 +257,32 @@ export default async function BilanApercuPage({
             } as React.CSSProperties
           }
         >
+          {/* UN BROUILLON NE SORT PAS DE L'IMPRIMANTE COMME UN DOCUMENT ABOUTI.
+            *
+            * Le statut existait à l'écran — « ● Finalisé » / « ○ Brouillon » —
+            * et ne figurait NULLE PART sur la page imprimée : un bilan en cours
+            * de rédaction s'imprimait à l'identique d'un bilan achevé,
+            * signature comprise. C'est le § C-1 de la sécurité clinique, ouvert
+            * depuis l'audit d'origine, et le risque est l'attribution : une
+            * famille, une école, un médecin lisent un document de travail comme
+            * s'il était la parole du praticien.
+            *
+            * La comptabilité, elle, REFUSE d'imprimer un brouillon. Ici le
+            * refus serait mauvais : on relit un bilan en le regardant, et
+            * l'imprimer pour l'annoter fait partie du travail. On ne bloque
+            * donc pas — on marque, et on le marque aussi sur le papier. */}
+          {b.status !== "finalisé" && (
+            <div className="mb-6 border-2 border-dashed border-amber-600 bg-amber-50 px-4 py-3 rounded-lg print:bg-white">
+              <p className="text-amber-900 font-semibold tracking-wide uppercase text-xs">
+                Brouillon — document de travail
+              </p>
+              <p className="text-amber-900 text-xs mt-1">
+                Ce bilan n&apos;est pas finalisé. Il peut être incomplet ou
+                modifié, et ne constitue pas le compte rendu remis.
+              </p>
+            </div>
+          )}
+
           {/* En-tête praticien */}
           <header className="mb-6">
             <div className="flex items-start gap-4">
