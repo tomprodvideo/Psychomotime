@@ -115,7 +115,8 @@ export default function PanneauPartage({
           Un lien ouvre le document sans compte ni mot de passe.{" "}
           <strong className="font-medium">Qui l&apos;a peut le lire</strong> :
           transmettez-le comme un secret, et révoquez-le dès qu&apos;il n&apos;a
-          plus lieu d&apos;être.
+          plus lieu d&apos;être. La révocation empêche de le rouvrir — elle
+          n&apos;efface pas ce qui a déjà été lu ou enregistré.
         </p>
       </div>
 

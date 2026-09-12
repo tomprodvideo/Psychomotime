@@ -209,6 +209,24 @@ Aucune erreur console, aucune erreur serveur.
 cabinet indestructible, en refusant le départ du dernier propriétaire même
 lorsque le cabinet lui-même était supprimé. Corrigé par la migration `0008`.
 
+### Points de protection des données ouverts par le lot 7
+
+1. **Durée de conservation du journal des consultations.** `shared_link_accesses`
+   grandit sans fin. Il ne porte que la date et le lien — ni IP, ni empreinte de
+   navigateur — mais une durée doit être fixée. **[DPO]**
+2. **L'envoi par courriel confie l'adresse du destinataire à un prestataire dont
+   les serveurs ne sont pas dans l'EEE.** L'envoi reste donc DÉSACTIVÉ tant
+   qu'aucun service n'est configuré — défaut prudent, pas oubli. Le message
+   lui-même ne porte ni pièce jointe, ni montant, ni nature d'acte, ni nom.
+   Relève de **R-01**. **[DPO]**
+3. **Ce que la révocation ne fait pas.** Elle empêche de rouvrir un lien ; elle
+   n'efface pas ce qui a déjà été lu, enregistré ou imprimé. L'interface le dit
+   désormais explicitement plutôt que de laisser croire à un rappel.
+4. **Le jeton est dans l'URL**, et c'est inévitable : le destinataire n'a pas de
+   compte, le lien EST la clé. Les en-têtes `no-referrer`, `no-store` et
+   `noindex` limitent les fuites qu'on contrôle ; ils ne peuvent rien contre un
+   message transféré.
+
 ### Dix questions pour une psychomotricienne — attestations
 
 Relevées par la relecture métier du lot des attestations. Aucune n'est tranchée

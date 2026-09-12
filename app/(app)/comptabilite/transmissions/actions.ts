@@ -243,7 +243,11 @@ export async function revoquerLien(fd: FormData): Promise<Resultat> {
 
   return {
     ok: true,
+    /* Formulation exacte : la révocation prend effet à la PROCHAINE ouverture.
+     * Une page déjà affichée sur l'écran de quelqu'un y reste — aucun logiciel
+     * ne peut la retirer d'un navigateur. Promettre le contraire serait
+     * rassurer à tort sur un document qui a déjà été lu. */
     message:
-      "Lien révoqué. Il cesse immédiatement de fonctionner, y compris pour qui l'avait déjà ouvert.",
+      "Lien révoqué. Toute nouvelle ouverture affichera qu'il n'est plus valide. Une page déjà affichée chez son destinataire y reste : la révocation empêche de la rouvrir, elle ne l'efface pas.",
   };
 }
