@@ -13,6 +13,7 @@ import type { Charge } from "@/lib/compta/types";
 const totaux: Totaux = {
   pieces: 2,
   emis_cents: 13000,
+  net_cents: 13000,
   encaisse_cents: 9000,
   avoirs_cents: 0,
   reste_du_cents: 4000,
@@ -100,4 +101,36 @@ test("un point-virgule dans un libellé ne casse pas la colonne suivante", () =>
 test("le nom de fichier ne porte ni accent ni espace", () => {
   assert.equal(nomFichierCsv("février 2026"), "comptabilite-fevrier-2026.csv");
   assert.equal(nomFichierCsv("Depuis le début"), "comptabilite-depuis-le-debut.csv");
+});
+
+test("une cellule qui ressemble à une formule ne s'exécute pas chez le tiers", () => {
+  // Excel et LibreOffice évaluent toute cellule commençant par = + - @ ou une
+  // tabulation, guillemets compris. Le fichier part sur une machine qui ne nous
+  // appartient pas : il ne doit rien y déclencher.
+  const csv = construireCsv({
+    libellePeriode: "mars 2026", exporteLe: "25/03/2026",
+    pieces, totaux,
+    charges: [{ ...charges[0]!, label: '=HYPERLINK("http://exemple-fictif.test")' }],
+  });
+  assert.ok(csv.includes("'=HYPERLINK"), "l'apostrophe de tête doit neutraliser la formule");
+  assert.ok(!/;=HYPERLINK/.test(csv), "aucune cellule ne doit commencer par =");
+});
+
+test("un montant négatif reste un nombre, pas une formule", () => {
+  // LE PIÈGE de la protection précédente : « -20,00 » commence par un tiret.
+  // Le préfixer en ferait du TEXTE, et l'avoir cesserait d'entrer dans les
+  // sommes du tableur. Le cas doit donc porter un avoir RÉEL.
+  assert.equal(euroCsv(-2000), "-20,00");
+  const avoir: DocumentListItem = {
+    ...pieces[0]!, id: "3", kind: "avoir", number: "A2026-001",
+    total_cents: 2000, encaisse_cents: 0, solde_cents: 2000,
+  };
+  const csv = construireCsv({
+    libellePeriode: "mars 2026", exporteLe: "25/03/2026",
+    pieces: [...pieces, avoir],
+    totaux: { ...totaux, avoirs_cents: 2000, net_cents: 11000 },
+    charges: [],
+  });
+  assert.ok(csv.includes(";-20,00;"), "le montant de l'avoir sort en négatif");
+  assert.ok(!csv.includes("'-"), "et il n'est jamais préfixé d'une apostrophe");
 });

@@ -315,13 +315,31 @@ export function soldeCentimes(
   return total - affecte - avoirs;
 }
 
-/** Une pièce annulée ne compte plus dans le chiffre d'affaires. */
+/**
+ * Une pièce entre-t-elle au BRUT dans le chiffre d'affaires ?
+ *
+ * LA VERSION PRÉCÉDENTE DE CETTE FONCTION ÉTAIT FAUSSE, et d'une façon qui
+ * n'était pas visible : elle écartait toute facture portant l'état
+ * « annulée par avoir », quel que soit le MONTANT de l'avoir. Une facture de
+ * 180 € corrigée par un avoir de 20 € disparaissait donc entièrement du
+ * chiffre d'affaires — 180 € de moins au lieu de 20 €.
+ *
+ * La règle juste est plus simple : le brut compte toute facture émise, et les
+ * avoirs se déduisent SÉPARÉMENT. Une facture entièrement annulée retombe
+ * ainsi à zéro d'elle-même, sans cas particulier.
+ *
+ * Une seule pièce reste écartée : celle qui a été REMPLACÉE. La facture de
+ * remplacement porte déjà la totalité du montant ; compter les deux facturerait
+ * deux fois la même prestation.
+ */
 export function compteDansLeChiffreDAffaires(
   d: Pick<BillingDocument, "kind" | "status">,
 ): boolean {
   if (d.kind === "devis") return false;
   if (d.kind === "avoir") return false;
-  return d.status === "emis" || d.status === "accepte";
+  if (d.status === "brouillon") return false;
+  if (d.status === "remplace") return false;
+  return true;
 }
 
 /**

@@ -36,8 +36,14 @@ export default async function ChargesPage({
 
       <PageHeader title="Charges du cabinet" subtitle={periode.libelle} />
 
+      {charges.erreur && (
+        <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 mb-5">
+          {charges.erreur}
+        </p>
+      )}
+
       <ChargesClient
-        charges={charges}
+        charges={charges.items}
         recurrences={recurrences}
         modifiable={practice.canWrite}
         aujourdhui={aujourdhui.toISOString().slice(0, 10)}

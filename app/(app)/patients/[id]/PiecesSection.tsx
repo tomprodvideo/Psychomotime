@@ -77,8 +77,13 @@ export default function PiecesSection({
           ) : (
             <ul className="space-y-1.5 list-none p-0 m-0">
               {factures.map((f) => {
-                const solde = f.total_cents - f.encaisse_cents;
+                const solde = f.total_cents - f.encaisse_cents - f.avoirs_cents;
                 const brouillon = f.status === "brouillon";
+                // Une pièce annulée ou remplacée n'appelle plus de règlement :
+                // afficher « 180,00 € à encaisser » à perpétuité sur une
+                // facture annulée serait faux, et inquiétant.
+                const caduque =
+                  f.status === "annule_par_avoir" || f.status === "remplace";
                 return (
                   <li key={f.id} className="text-sm">
                     <Link
@@ -91,7 +96,13 @@ export default function PiecesSection({
                       {f.issued_on ? frDate(f.issued_on) : "Non émise"}
                       {" · "}
                       {formatCents(f.total_cents)}
-                      {!brouillon && f.kind !== "devis" && solde > 0 && (
+                      {caduque && (
+                        <span className="text-slate-400">
+                          {" · "}
+                          {f.status === "remplace" ? "remplacée" : "annulée par avoir"}
+                        </span>
+                      )}
+                      {!brouillon && !caduque && f.kind !== "devis" && solde > 0 && (
                         <span className="text-amber-700">
                           {" · "}
                           {formatCents(solde)} à encaisser

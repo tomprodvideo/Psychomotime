@@ -84,6 +84,28 @@ async function contexteEcriture() {
   return { ok: true as const, practice };
 }
 
+/**
+ * Rend compte d'une écriture, en conservant le message le plus précis.
+ *
+ * `ecritureReussie` distingue DEUX échecs : une erreur rendue par la base, et
+ * ZÉRO LIGNE AFFECTÉE — qui est la façon dont la RLS refuse, sans lever
+ * d'exception. La première version appelait toujours `messageErreur(error)`,
+ * qui retombait sur un générique quand `error` était nul : c'est précisément
+ * dans le cas « identifiant d'un autre cabinet » que le message le plus utile
+ * était perdu.
+ */
+function rendreCompte(
+  resultat: { error: { message?: string; code?: string } | null; data?: unknown },
+  quoi: string,
+): Resultat | null {
+  const verdict = ecritureReussie(resultat, quoi);
+  if (verdict.ok) return null;
+  return {
+    ok: false,
+    error: resultat.error ? messageErreur(resultat.error) : verdict.error,
+  };
+}
+
 function rafraichir(documentId?: string) {
   revalidatePath("/comptabilite");
   if (documentId) revalidatePath(`/comptabilite/${documentId}`);
@@ -182,6 +204,19 @@ export async function enregistrerPiece(fd: FormData): Promise<Resultat> {
   const payeurContact = id(fd, "payer_contact_id");
   const financement = str(fd, "funding_scheme");
 
+  /* « Adresser à un tiers » coché SANS contact choisi produisait une facture au
+   * nom du patient — donc, pour un enfant suivi, une facture au nom du mineur,
+   * alors que l'écran affichait le contraire. L'intention est postée
+   * explicitement, et l'incohérence est refusée au lieu d'être arbitrée. */
+  const veutUnTiers = fd.get("payer_tiers") === "on";
+  if (veutUnTiers && payeurContact === null) {
+    return {
+      ok: false,
+      error:
+        "Vous avez choisi d'adresser cette pièce à un tiers, mais aucun contact n'est sélectionné. Choisissez le destinataire, ou décochez la case.",
+    };
+  }
+
   const supabase = await createClient();
   const resultat = await supabase
     .from("billing_documents")
@@ -202,9 +237,8 @@ export async function enregistrerPiece(fd: FormData): Promise<Resultat> {
     .eq("practice_id", ctx.practice.practiceId)
     .select("id");
 
-  if (!ecritureReussie(resultat, "la pièce").ok) {
-    return { ok: false, error: messageErreur(resultat.error) };
-  }
+  const echec = rendreCompte(resultat, "la pièce");
+  if (echec) return echec;
   rafraichir(documentId);
   return { ok: true, message: "Pièce enregistrée." };
 }
@@ -225,9 +259,8 @@ export async function supprimerBrouillon(fd: FormData): Promise<Resultat> {
     .eq("practice_id", ctx.practice.practiceId)
     .select("id");
 
-  if (!ecritureReussie(resultat, "le brouillon").ok) {
-    return { ok: false, error: messageErreur(resultat.error) };
-  }
+  const echec = rendreCompte(resultat, "le brouillon");
+  if (echec) return echec;
   rafraichir();
   return { ok: true, message: "Brouillon supprimé." };
 }
@@ -377,13 +410,59 @@ export async function creerRectification(fd: FormData): Promise<Resultat> {
 
   const aRecopier = (lignes ?? []) as unknown as Record<string, unknown>[];
   if (aRecopier.length > 0) {
-    await supabase.from("billing_lines").insert(
-      aRecopier.map((l) => ({
-        ...l,
-        practice_id: ctx.practice.practiceId,
-        document_id: nouveau,
-      })),
-    );
+    const { data: creees } = await supabase
+      .from("billing_lines")
+      .insert(
+        aRecopier.map((l) => {
+          const { id: _ancienId, ...reste } = l;
+          void _ancienId;
+          return {
+            ...reste,
+            practice_id: ctx.practice.practiceId,
+            document_id: nouveau,
+          };
+        }),
+      )
+      .select("id, position");
+
+    /* UNE FACTURE DE REMPLACEMENT REPREND LES SÉANCES DE CELLE QU'ELLE REMPLACE.
+     *
+     * Sans cela, les séances restaient accrochées à la pièce remplacée, et
+     * `listSeancesFacturables` les excluait pour toujours : la remplaçante
+     * naissait sans rattachement, le sélecteur de séances était vide, et rien
+     * ne le disait. La future attestation de présence aurait alors suivi une
+     * pièce annulée.
+     *
+     * Un AVOIR, lui, ne reprend rien : il ne facture aucune séance, il en
+     * défait la facturation. */
+    if (kind === "facture_de_remplacement" && creees) {
+      const { data: liens } = await supabase
+        .from("billing_line_appointments")
+        .select("appointment_id, billing_lines!inner(position)")
+        .eq("practice_id", ctx.practice.practiceId)
+        .in("line_id", aRecopier.map((l) => l.id as string));
+
+      const parPosition = new Map(
+        (creees as { id: string; position: number }[]).map((l) => [l.position, l.id]),
+      );
+      const aRattacher = ((liens ?? []) as unknown as {
+        appointment_id: string;
+        billing_lines: { position: number } | null;
+      }[])
+        .map((r) => ({
+          line_id: r.billing_lines
+            ? parPosition.get(r.billing_lines.position)
+            : undefined,
+          appointment_id: r.appointment_id,
+          practice_id: ctx.practice.practiceId,
+        }))
+        .filter((r): r is { line_id: string; appointment_id: string; practice_id: string } =>
+          Boolean(r.line_id));
+
+      if (aRattacher.length > 0) {
+        await supabase.from("billing_line_appointments").insert(aRattacher);
+      }
+    }
   }
 
   rafraichir(cibleId);
@@ -411,9 +490,8 @@ export async function changerEtatDevis(fd: FormData): Promise<Resultat> {
     .eq("kind", "devis")
     .select("id");
 
-  if (!ecritureReussie(resultat, "le devis").ok) {
-    return { ok: false, error: messageErreur(resultat.error) };
-  }
+  const echec = rendreCompte(resultat, "le devis");
+  if (echec) return echec;
   rafraichir(documentId);
   return { ok: true };
 }
@@ -504,10 +582,18 @@ export async function enregistrerLigne(fd: FormData): Promise<Resultat> {
   const supabase = await createClient();
 
   if (ligneId) {
+    // `document_id` est RETIRÉ des champs modifiés et AJOUTÉ au filtre : sans
+    // cela, poster la ligne d'une pièce et l'identifiant d'une autre faisait
+    // basculer la ligne — et les déclencheurs recalculaient les deux totaux.
+    // La garde de cohérence empêchait le passage d'un cabinet à l'autre, pas
+    // le déplacement entre deux brouillons du même cabinet.
+    const { document_id: _ignore, ...champsModifiables } = champs;
+    void _ignore;
     const resultat = await supabase
       .from("billing_lines")
-      .update(champs)
+      .update(champsModifiables)
       .eq("id", ligneId)
+      .eq("document_id", documentId)
       .eq("practice_id", ctx.practice.practiceId)
       .select("id");
     if (!ecritureReussie(resultat, "la ligne").ok) {
@@ -585,9 +671,8 @@ export async function supprimerLigne(fd: FormData): Promise<Resultat> {
     .eq("practice_id", ctx.practice.practiceId)
     .select("id");
 
-  if (!ecritureReussie(resultat, "la ligne").ok) {
-    return { ok: false, error: messageErreur(resultat.error) };
-  }
+  const echec = rendreCompte(resultat, "la ligne");
+  if (echec) return echec;
   rafraichir(documentId ?? undefined);
   return { ok: true };
 }
@@ -689,9 +774,8 @@ export async function retirerAffectation(fd: FormData): Promise<Resultat> {
     .eq("practice_id", ctx.practice.practiceId)
     .select("id");
 
-  if (!ecritureReussie(resultat, "l'imputation").ok) {
-    return { ok: false, error: messageErreur(resultat.error) };
-  }
+  const echec = rendreCompte(resultat, "l'imputation");
+  if (echec) return echec;
   rafraichir(documentId ?? undefined);
   return {
     ok: true,
@@ -728,7 +812,10 @@ export async function enregistrerPrestation(fd: FormData): Promise<Resultat> {
     default_date_render: (RENDERS as string[]).includes(renderBrut)
       ? renderBrut
       : "liste",
-    active: fd.get("active") !== "false",
+    // Une case décochée n'est PAS postée : `fd.get("active")` vaut alors `null`,
+    // et `null !== "false"` valait `true`. Décocher ne désactivait donc rien.
+    // Le formulaire poste désormais la valeur explicitement.
+    active: fd.get("active") === "true",
   };
 
   const supabase = await createClient();
@@ -743,9 +830,8 @@ export async function enregistrerPrestation(fd: FormData): Promise<Resultat> {
         .select("id")
     : await supabase.from("service_catalog_items").insert(champs).select("id");
 
-  if (!ecritureReussie(resultat, "la prestation").ok) {
-    return { ok: false, error: messageErreur(resultat.error) };
-  }
+  const echec = rendreCompte(resultat, "la prestation");
+  if (echec) return echec;
   revalidatePath("/comptabilite/catalogue");
   return { ok: true, message: "Prestation enregistrée." };
 }
@@ -772,9 +858,8 @@ export async function supprimerPrestation(fd: FormData): Promise<Resultat> {
     .eq("practice_id", ctx.practice.practiceId)
     .select("id");
 
-  if (!ecritureReussie(resultat, "la prestation").ok) {
-    return { ok: false, error: messageErreur(resultat.error) };
-  }
+  const echec = rendreCompte(resultat, "la prestation");
+  if (echec) return echec;
   revalidatePath("/comptabilite/catalogue");
   return { ok: true, message: "Prestation supprimée du catalogue." };
 }
@@ -825,9 +910,8 @@ export async function enregistrerCharge(fd: FormData): Promise<Resultat> {
         .select("id")
     : await supabase.from("practice_expenses").insert(champs).select("id");
 
-  if (!ecritureReussie(resultat, "la charge").ok) {
-    return { ok: false, error: messageErreur(resultat.error) };
-  }
+  const echec = rendreCompte(resultat, "la charge");
+  if (echec) return echec;
   revalidatePath("/comptabilite/charges");
   revalidatePath("/comptabilite");
   return { ok: true, message: "Charge enregistrée." };
@@ -848,9 +932,8 @@ export async function supprimerCharge(fd: FormData): Promise<Resultat> {
     .eq("practice_id", ctx.practice.practiceId)
     .select("id");
 
-  if (!ecritureReussie(resultat, "la charge").ok) {
-    return { ok: false, error: messageErreur(resultat.error) };
-  }
+  const echec = rendreCompte(resultat, "la charge");
+  if (echec) return echec;
   revalidatePath("/comptabilite/charges");
   revalidatePath("/comptabilite");
   return { ok: true, message: "Charge supprimée." };
@@ -900,7 +983,10 @@ export async function enregistrerRecurrence(fd: FormData): Promise<Resultat> {
     period: fd.get("period") === "annuel" ? "annuel" : "mensuel",
     starts_on: debut.value,
     ends_on: fin.value,
-    active: fd.get("active") !== "false",
+    // Une case décochée n'est PAS postée : `fd.get("active")` vaut alors `null`,
+    // et `null !== "false"` valait `true`. Décocher ne désactivait donc rien.
+    // Le formulaire poste désormais la valeur explicitement.
+    active: fd.get("active") === "true",
   };
 
   const supabase = await createClient();
@@ -914,9 +1000,8 @@ export async function enregistrerRecurrence(fd: FormData): Promise<Resultat> {
         .select("id")
     : await supabase.from("expense_recurrences").insert(champs).select("id");
 
-  if (!ecritureReussie(resultat, "la charge récurrente").ok) {
-    return { ok: false, error: messageErreur(resultat.error) };
-  }
+  const echec = rendreCompte(resultat, "la charge récurrente");
+  if (echec) return echec;
   revalidatePath("/comptabilite/charges");
   return { ok: true, message: "Charge récurrente enregistrée." };
 }
@@ -936,9 +1021,8 @@ export async function supprimerRecurrence(fd: FormData): Promise<Resultat> {
     .eq("practice_id", ctx.practice.practiceId)
     .select("id");
 
-  if (!ecritureReussie(resultat, "la charge récurrente").ok) {
-    return { ok: false, error: messageErreur(resultat.error) };
-  }
+  const echec = rendreCompte(resultat, "la charge récurrente");
+  if (echec) return echec;
   revalidatePath("/comptabilite/charges");
   return {
     ok: true,

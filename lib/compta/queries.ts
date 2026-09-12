@@ -56,6 +56,17 @@ export interface DocumentListResult {
   totaux: Totaux;
   /** Vrai si le plafond a été atteint : les totaux sont alors incomplets. */
   tronque: boolean;
+  /**
+   * Motif d'échec de la lecture, ou `null`.
+   *
+   * IL FAUT QU'IL EXISTE. La version précédente convertissait une erreur de
+   * lecture en résultat VIDE, indiscernable d'une période réellement sans
+   * pièce : l'écran affichait une comptabilité à zéro et l'export produisait un
+   * fichier bien formé, à 0 €, sans le moindre avertissement — fichier ensuite
+   * transmis à un expert-comptable. C'est le symétrique en lecture du défaut
+   * que `ecritureReussie` corrige en écriture.
+   */
+  erreur: string | null;
 }
 
 type LigneBrute = {
@@ -120,7 +131,13 @@ export async function listDocuments(
 
   if (error) {
     console.error("[compta] lecture des pièces refusée :", error);
-    return { items: [], totaux: totauxVides(), tronque: false };
+    return {
+      items: [],
+      totaux: totauxVides(),
+      tronque: false,
+      erreur:
+        "La lecture des pièces a échoué. Les montants affichés ne sont pas ceux de votre comptabilité.",
+    };
   }
 
   const brutes = (data ?? []) as unknown as LigneBrute[];
@@ -157,7 +174,7 @@ export async function listDocuments(
     };
   });
 
-  return { items, totaux: calculerTotaux(items), tronque };
+  return { items, totaux: calculerTotaux(items), tronque, erreur: null };
 }
 
 async function sommeAffectations(ids: string[]): Promise<Map<string, number>> {
@@ -532,9 +549,13 @@ export async function listSeancesFacturables(
   const seances = (data ?? []) as SeanceFacturable[];
   if (seances.length === 0) return [];
 
+  /* Une séance n'est « déjà facturée » que si la pièce qui la porte VAUT
+   * ENCORE. Une facture annulée par avoir ou remplacée ne facture plus rien :
+   * ses séances doivent redevenir disponibles, sans quoi une erreur corrigée
+   * rendrait les séances définitivement infacturables — en silence. */
   const { data: deja, error: erreurDeja } = await supabase
     .from("billing_line_appointments")
-    .select("appointment_id")
+    .select("appointment_id, billing_lines!inner(billing_documents!inner(status))")
     .in(
       "appointment_id",
       seances.map((s) => s.id),
@@ -547,8 +568,17 @@ export async function listSeancesFacturables(
     return [];
   }
 
+  const CADUQUES = ["annule_par_avoir", "remplace"];
   const facturees = new Set(
-    ((deja ?? []) as { appointment_id: string }[]).map((d) => d.appointment_id),
+    ((deja ?? []) as unknown as {
+      appointment_id: string;
+      billing_lines: { billing_documents: { status: string } | null } | null;
+    }[])
+      .filter((d) => {
+        const statut = d.billing_lines?.billing_documents?.status;
+        return statut !== undefined && !CADUQUES.includes(statut);
+      })
+      .map((d) => d.appointment_id),
   );
   return seances.filter((s) => !facturees.has(s.id));
 }
@@ -578,10 +608,16 @@ export async function listSeancesDeLigne(
  *  Charges
  * ========================================================================== */
 
+export interface ChargesResult {
+  items: Charge[];
+  /** Même règle que pour les pièces : un échec de lecture se dit. */
+  erreur: string | null;
+}
+
 export async function listCharges(
   practice: PracticeContext,
   filtres: { du?: string; au?: string } = {},
-): Promise<Charge[]> {
+): Promise<ChargesResult> {
   const supabase = await createClient();
   let requete = supabase
     .from("practice_expenses")
@@ -597,9 +633,12 @@ export async function listCharges(
 
   if (error) {
     console.error("[compta] lecture des charges refusée :", error);
-    return [];
+    return {
+      items: [],
+      erreur: "La lecture des charges a échoué. Le net affiché est faux.",
+    };
   }
-  return (data ?? []) as Charge[];
+  return { items: (data ?? []) as Charge[], erreur: null };
 }
 
 export async function listRecurrences(

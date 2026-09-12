@@ -60,9 +60,14 @@ export default async function DocumentPage({
 
   const s: DocumentSnapshot = d.snapshot ?? {};
   const emetteur = s.entite_juridique;
-  const destinataire = s.payeur?.nom?.trim()
-    ? s.payeur
-    : (s.patient ?? null);
+  const payeurTiers = Boolean(s.payeur?.nom?.trim());
+  const destinataire = payeurTiers ? s.payeur : (s.patient ?? null);
+  /* QUAND UN TIERS PAIE, LE DOCUMENT DOIT DIRE AU TITRE DE QUI.
+   * Sans cette mention, une facture réglée par une grand-mère, une MDPH ou une
+   * plateforme ne nomme nulle part l'enfant soigné : la famille qui la
+   * transmet à sa mutuelle n'a rien à produire. L'instantané porte déjà le
+   * nom du patient — il suffisait de l'imprimer. */
+  const patientConcerne = payeurTiers ? s.patient?.nom?.trim() : null;
   const identifiants = (s.identifiants ?? []).filter((i) => i?.valeur);
   const exonere = piece.lignes.every(
     (l) => l.vat_treatment === "exoneration_soins",
@@ -140,6 +145,12 @@ export default async function DocumentPage({
                   .join(" ")}
               </p>
             )}
+            {patientConcerne && (
+              <p className="text-slate-700 mt-2">
+                Au titre des séances de{" "}
+                <strong className="font-medium">{patientConcerne}</strong>
+              </p>
+            )}
           </section>
         )}
 
@@ -178,9 +189,15 @@ export default async function DocumentPage({
                   )}
                   {l.service_dates.length > 0 && (
                     <span className="block text-slate-600 mt-0.5">
+                      {/* Les dates sont imprimées dans les deux cas : « 3 date(s) »
+                          n'apprend rien à qui reçoit la facture, alors que les
+                          dates elles-mêmes sont ce qu'une mutuelle demande. Le
+                          réglage ne change que la mise en forme. */}
                       {l.date_render === "par_date"
                         ? l.service_dates.map((x) => frDate(x)).join(", ")
-                        : `${l.service_dates.length} date(s)`}
+                        : `Séance${l.service_dates.length > 1 ? "s" : ""} du ${l.service_dates
+                            .map((x) => frDate(x))
+                            .join(", ")}`}
                     </span>
                   )}
                   {l.note && (

@@ -63,26 +63,6 @@ test("un brouillon est compté comme brouillon, jamais comme facturé", () => {
   assert.equal(t.brouillons, 1);
 });
 
-test("une facture annulée par avoir sort du chiffre d'affaires", () => {
-  // Le défaut inverse — la compter encore — facture deux fois la même
-  // prestation, ce que l'avoir sert précisément à défaire.
-  const t = calculerTotaux([
-    piece({ status: "annule_par_avoir", total_cents: 6000 }),
-    piece({ kind: "avoir", total_cents: 6000 }),
-  ]);
-  assert.equal(t.emis_cents, 0);
-  assert.equal(t.avoirs_cents, 6000);
-});
-
-test("une facture remplacée ne compte plus, la remplaçante oui", () => {
-  const t = calculerTotaux([
-    piece({ status: "remplace", total_cents: 6000 }),
-    piece({ kind: "facture_de_remplacement", total_cents: 7000, encaisse_cents: 7000 }),
-  ]);
-  assert.equal(t.emis_cents, 7000);
-  assert.equal(t.encaisse_cents, 7000);
-});
-
 test("un trop-perçu ne creuse pas un reste dû négatif", () => {
   // La v1 laissait apparaître un « reste dû » négatif, qui se soustrayait du
   // total de la période et en faussait la somme.
@@ -109,4 +89,51 @@ test("un ensemble vide donne des totaux nuls, pas NaN", () => {
   assert.equal(t.emis_cents, 0);
   assert.equal(t.encaisse_cents, 0);
   assert.equal(t.pieces, 0);
+});
+
+/* --------------------------------------------------------------------------
+ *  L'avoir PARTIEL — le défaut que l'audit métier a trouvé
+ * --------------------------------------------------------------------------
+ *  La première version de `compteDansLeChiffreDAffaires` écartait toute facture
+ *  portant l'état « annulée par avoir », quel que soit le MONTANT de l'avoir.
+ *  Une facture de 180 € corrigée de 20 € disparaissait donc entièrement du
+ *  chiffre d'affaires. Le mois perdait 180 € pour une erreur de 20 €.
+ * ------------------------------------------------------------------------ */
+
+test("un avoir partiel ne retire que son montant, pas la facture entière", () => {
+  const t = calculerTotaux([
+    piece({ status: "annule_par_avoir", total_cents: 18000, encaisse_cents: 18000 }),
+    piece({ kind: "avoir", total_cents: 2000 }),
+  ]);
+  assert.equal(t.emis_cents, 18000, "le brut porte la facture entière");
+  assert.equal(t.avoirs_cents, 2000, "l'avoir se déduit séparément");
+  assert.equal(t.net_cents, 16000, "le chiffre d'affaires est le net");
+  assert.equal(t.encaisse_cents, 18000, "l'argent reçu ne disparaît pas");
+});
+
+test("un avoir total ramène le net à zéro, sans cas particulier", () => {
+  const t = calculerTotaux([
+    piece({ status: "annule_par_avoir", total_cents: 6000 }),
+    piece({ kind: "avoir", total_cents: 6000 }),
+  ]);
+  assert.equal(t.emis_cents, 6000);
+  assert.equal(t.net_cents, 0);
+});
+
+test("une facture remplacée reste exclue : la remplaçante porte tout", () => {
+  const t = calculerTotaux([
+    piece({ status: "remplace", total_cents: 6000 }),
+    piece({ kind: "facture_de_remplacement", total_cents: 7000, encaisse_cents: 7000 }),
+  ]);
+  assert.equal(t.emis_cents, 7000, "compter les deux facturerait deux fois");
+  assert.equal(t.net_cents, 7000);
+});
+
+test("le net vaut le brut quand il n'y a aucun avoir", () => {
+  const t = calculerTotaux([
+    piece({ total_cents: 4500 }),
+    piece({ total_cents: 9000 }),
+  ]);
+  assert.equal(t.net_cents, t.emis_cents);
+  assert.equal(t.net_cents, 13500);
 });

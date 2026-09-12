@@ -265,24 +265,7 @@ begin
     'Le brut de la v1 doit se retrouver au centime.');
 
   -- ---------------------------------------------------------- règlements
-  -- Payée intégralement : solde nul.
-  perform tests.assert_equals(public.document_balance_cents(v_doc), 0::bigint,
-    'Une facture v1 entièrement payée doit avoir un solde nul.');
-
-  -- Partiellement payée : la v1 ne montrait qu'un total payé. Le solde apparaît.
-  select id into v_doc from public.billing_documents where number = 'F2026-003';
-  perform tests.assert_equals(public.document_balance_cents(v_doc), 4500::bigint,
-    'Un règlement partiel doit laisser un solde visible.');
-
-  -- Non payée : le solde vaut la facture.
-  select id into v_doc from public.billing_documents where number = 'F2026-006';
-  perform tests.assert_equals(public.document_balance_cents(v_doc), 5500::bigint,
-    'Une facture non réglée doit rester due en entier.');
-
   -- Trop-perçu : l'excédent n'est PAS affecté, il reste visible comme tel.
-  select id into v_doc from public.billing_documents where number = 'F2026-005';
-  perform tests.assert_equals(public.document_balance_cents(v_doc), 0::bigint,
-    'La part affectée ne dépasse jamais le montant de la pièce.');
   select p.amount_cents - coalesce(sum(a.amount_cents), 0) into v_montant
     from public.payments p
     left join public.payment_allocations a on a.payment_id = p.id
@@ -348,6 +331,49 @@ begin
   perform tests.assert_rows(
     'select 1 from public.audit_events where action = ''billing.migrate_v1''', 2,
     'La reprise comptable doit laisser une trace par cabinet.');
+end
+$$;
+
+-- ============================================================================
+--  SOLDES APRÈS REPRISE
+-- ============================================================================
+--  `document_balance_cents` est cloisonnée par cabinet : elle EXIGE une
+--  session, comme l'application. Un contrôle qui l'appellerait sans
+--  s'authentifier vérifierait un chemin que personne n'emprunte.
+do $$
+declare
+  v_doc uuid;
+begin
+  perform tests.authenticate_as('11111111-1111-4111-8111-000000000001'::uuid);
+
+  select id into v_doc from public.billing_documents where number = 'F2026-002';
+  perform tests.assert_equals(public.document_balance_cents(v_doc), 0::bigint,
+    'Une facture v1 entièrement payée doit avoir un solde nul.');
+
+  select id into v_doc from public.billing_documents where number = 'F2026-003';
+  perform tests.assert_equals(public.document_balance_cents(v_doc), 4500::bigint,
+    'Un règlement partiel doit laisser un solde visible.');
+
+  select id into v_doc from public.billing_documents where number = 'F2026-006';
+  perform tests.assert_equals(public.document_balance_cents(v_doc), 5500::bigint,
+    'Une facture non réglée doit rester due en entier.');
+
+  select id into v_doc from public.billing_documents where number = 'F2026-005';
+  perform tests.assert_equals(public.document_balance_cents(v_doc), 0::bigint,
+    'La part affectée ne dépasse jamais le montant de la pièce.');
+
+  -- Et la pièce de l'AUTRE cabinet reste hors d'atteinte, y compris par cette
+  -- fonction qui s'exécute au-dessus de la RLS.
+  select id into v_doc from public.billing_documents d
+   where d.practice_id <> (select m.practice_id from public.practice_members m
+                            where m.user_id = '11111111-1111-4111-8111-000000000001')
+   limit 1;
+  if v_doc is not null then
+    perform tests.assert_fails(
+      format('select public.document_balance_cents(%L)', v_doc),
+      'Le solde d''une pièce d''un autre cabinet ne doit pas être calculable.');
+  end if;
+  reset role;
 end
 $$;
 

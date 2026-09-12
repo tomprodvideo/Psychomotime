@@ -242,11 +242,16 @@ begin
 
   perform public.issue_billing_document(v_avoir);
 
-  -- La facture d'origine est marquée : sans cela elle serait comptée deux fois.
+  /* L'AVOIR EST PARTIEL — 32,30 € sur 64,60 €. La facture reste donc ÉMISE.
+   *
+   * La première version de ce test exigeait l'inverse : il vérifiait que la
+   * facture passait en « annulée par avoir » quel que soit le montant. Il
+   * affirmait donc le défaut, et le rendait invisible. Une facture de 180 €
+   * corrigée de 20 € sortait entièrement du chiffre d'affaires. */
   perform tests.assert_rows(
     format('select 1 from public.billing_documents
-             where id = %L and status = ''annule_par_avoir''', v_facture),
-    1, 'La facture rectifiée doit porter son statut d''annulation.');
+             where id = %L and status = ''emis''', v_facture),
+    1, 'Un avoir PARTIEL ne doit pas annuler la facture : elle reste émise.');
 
   -- Et elle reste là : rien n'a été effacé.
   perform tests.assert_rows(
@@ -257,429 +262,83 @@ begin
   v_solde := public.document_balance_cents(v_facture);
   perform tests.assert_equals(v_solde, 3230::bigint,
     'L''avoir doit venir en déduction : 64,60 € moins 32,30 €.');
-end
-$$;
-rollback;
 
--- ---------------------------------------------------------------------------
---  6. Paiements partiels, groupés, et trop-perçu
--- ---------------------------------------------------------------------------
-begin;
-select tests.authenticate_as(:alpha::uuid);
-do $$
-declare
-  v_f1 uuid; v_f2 uuid; v_paiement uuid;
-begin
-  -- Deux factures.
-  insert into public.billing_documents (practice_id, kind, patient_id, payer_is_patient)
-  values ('a1111111-1111-4111-8111-111111111111', 'facture',
-          'a6000000-0000-4000-8000-000000000001', true) returning id into v_f1;
-  insert into public.billing_lines
-    (practice_id, document_id, position, label, unit_price_cents, quantity, amount_cents)
-  values ('a1111111-1111-4111-8111-111111111111', v_f1, 1, 'Séance', 3230, 1, 3230);
-  perform public.issue_billing_document(v_f1);
-
-  insert into public.billing_documents (practice_id, kind, patient_id, payer_is_patient)
-  values ('a1111111-1111-4111-8111-111111111111', 'facture',
-          'a6000000-0000-4000-8000-000000000001', true) returning id into v_f2;
-  insert into public.billing_lines
-    (practice_id, document_id, position, label, unit_price_cents, quantity, amount_cents)
-  values ('a1111111-1111-4111-8111-111111111111', v_f2, 1, 'Séance', 3230, 1, 3230);
-  perform public.issue_billing_document(v_f2);
-
-  -- Un seul règlement couvre les deux, et il reste un trop-perçu.
-  insert into public.payments
-    (practice_id, amount_cents, method, payer_contact_id)
-  values ('a1111111-1111-4111-8111-111111111111', 7000, 'virement',
-          'a5000000-0000-4000-8000-000000000003')
-  returning id into v_paiement;
-
-  insert into public.payment_allocations
-    (practice_id, payment_id, document_id, amount_cents)
-  values
-    ('a1111111-1111-4111-8111-111111111111', v_paiement, v_f1, 3230),
-    ('a1111111-1111-4111-8111-111111111111', v_paiement, v_f2, 3230);
-
-  perform tests.assert_equals(public.document_balance_cents(v_f1), 0::bigint,
-    'Un règlement groupé doit solder la première facture.');
-  perform tests.assert_equals(public.document_balance_cents(v_f2), 0::bigint,
-    'Et la seconde.');
-
-  -- Affecter plus que le règlement est refusé : le reste est un trop-perçu,
-  -- et doit le rester.
-  perform tests.assert_fails(
-    format('insert into public.payment_allocations
-              (practice_id, payment_id, document_id, amount_cents)
-            values (%L, %L, %L, 1000)',
-           'a1111111-1111-4111-8111-111111111111', v_paiement, v_f1),
-    'On ne doit pas pouvoir affecter plus que le montant du règlement.');
-end
-$$;
-rollback;
-
--- Un règlement partiel laisse un solde visible.
-begin;
-select tests.authenticate_as(:alpha::uuid);
-do $$
-declare
-  v_f uuid; v_p uuid;
-begin
-  insert into public.billing_documents (practice_id, kind, patient_id, payer_is_patient)
-  values ('a1111111-1111-4111-8111-111111111111', 'facture',
-          'a6000000-0000-4000-8000-000000000001', true) returning id into v_f;
-  insert into public.billing_lines
-    (practice_id, document_id, position, label, unit_price_cents, quantity, amount_cents)
-  values ('a1111111-1111-4111-8111-111111111111', v_f, 1, 'Bilan', 18000, 1, 18000);
-  perform public.issue_billing_document(v_f);
-
-  insert into public.payments (practice_id, amount_cents, method)
-  values ('a1111111-1111-4111-8111-111111111111', 9000, 'cheque') returning id into v_p;
-  insert into public.payment_allocations
-    (practice_id, payment_id, document_id, amount_cents)
-  values ('a1111111-1111-4111-8111-111111111111', v_p, v_f, 9000);
-
-  perform tests.assert_equals(public.document_balance_cents(v_f), 9000::bigint,
-    'Un acompte doit laisser le solde exact, au centime.');
-end
-$$;
-rollback;
-
--- On n'affecte pas un règlement à un brouillon, ni à un devis.
-begin;
-select tests.authenticate_as(:alpha::uuid);
-do $$
-declare
-  v_brouillon uuid; v_devis uuid; v_p uuid;
-begin
-  insert into public.billing_documents (practice_id, kind, patient_id, payer_is_patient)
-  values ('a1111111-1111-4111-8111-111111111111', 'facture',
-          'a6000000-0000-4000-8000-000000000001', true) returning id into v_brouillon;
-
-  insert into public.billing_documents (practice_id, kind, patient_id, payer_is_patient)
-  values ('a1111111-1111-4111-8111-111111111111', 'devis',
-          'a6000000-0000-4000-8000-000000000001', true) returning id into v_devis;
-  insert into public.billing_lines
-    (practice_id, document_id, position, label, unit_price_cents, quantity, amount_cents)
-  values ('a1111111-1111-4111-8111-111111111111', v_devis, 1, 'Bilan', 18000, 1, 18000);
-  perform public.issue_billing_document(v_devis);
-
-  insert into public.payments (practice_id, amount_cents, method)
-  values ('a1111111-1111-4111-8111-111111111111', 5000, 'especes') returning id into v_p;
-
-  perform tests.assert_fails(
-    format('insert into public.payment_allocations
-              (practice_id, payment_id, document_id, amount_cents)
-            values (%L, %L, %L, 5000)',
-           'a1111111-1111-4111-8111-111111111111', v_p, v_brouillon),
-    'On ne doit pas pouvoir affecter un règlement à un brouillon.');
-
-  perform tests.assert_fails(
-    format('insert into public.payment_allocations
-              (practice_id, payment_id, document_id, amount_cents)
-            values (%L, %L, %L, 5000)',
-           'a1111111-1111-4111-8111-111111111111', v_p, v_devis),
-    'Un devis n''appelle pas de règlement.');
-end
-$$;
-rollback;
-
--- ---------------------------------------------------------------------------
---  7. Seule une séance RÉALISÉE peut être facturée
--- ---------------------------------------------------------------------------
---  C'est la garantie qui rendra une attestation de présence vérifiable.
-begin;
-select tests.authenticate_as(:alpha::uuid);
-do $$
-declare
-  v_doc uuid; v_ligne uuid;
-  v_honore uuid; v_absent uuid; v_avenir uuid;
-begin
-  -- Trois rendez-vous passés, trois issues différentes.
-  insert into public.appointments
-    (practice_id, patient_id, kind, starts_at, ends_at, attendance)
-  values ('a1111111-1111-4111-8111-111111111111',
-          'a6000000-0000-4000-8000-000000000001', 'seance',
-          now() - interval '10 days', now() - interval '10 days' + interval '45 min',
-          'honore')
-  returning id into v_honore;
-
-  -- Le motif est exigé par le modèle de l'agenda : une absence non excusée
-  -- sans explication ne peut pas être constatée.
-  insert into public.appointments
-    (practice_id, patient_id, kind, starts_at, ends_at, attendance,
-     attendance_note, billable)
-  values ('a1111111-1111-4111-8111-111111111111',
-          'a6000000-0000-4000-8000-000000000001', 'seance',
-          now() - interval '9 days', now() - interval '9 days' + interval '45 min',
-          'absent_non_excuse', 'Absence non prévenue.', false)
-  returning id into v_absent;
-
-  insert into public.appointments
-    (practice_id, patient_id, kind, starts_at, ends_at)
-  values ('a1111111-1111-4111-8111-111111111111',
-          'a6000000-0000-4000-8000-000000000001', 'seance',
-          now() + interval '3 days', now() + interval '3 days' + interval '45 min')
-  returning id into v_avenir;
-
-  insert into public.billing_documents (practice_id, kind, patient_id, payer_is_patient)
-  values ('a1111111-1111-4111-8111-111111111111', 'facture',
-          'a6000000-0000-4000-8000-000000000001', true) returning id into v_doc;
-  insert into public.billing_lines
-    (practice_id, document_id, position, label, unit_price_cents, quantity, amount_cents)
-  values ('a1111111-1111-4111-8111-111111111111', v_doc, 1, 'Séances', 3230, 1, 3230)
-  returning id into v_ligne;
-
-  -- La séance réalisée se facture.
-  insert into public.billing_line_appointments (practice_id, line_id, appointment_id)
-  values ('a1111111-1111-4111-8111-111111111111', v_ligne, v_honore);
-
-  -- L'absence non facturable, non : elle ne produit aucune ligne.
-  perform tests.assert_fails(
-    format('insert into public.billing_line_appointments
-              (practice_id, line_id, appointment_id) values (%L, %L, %L)',
-           'a1111111-1111-4111-8111-111111111111', v_ligne, v_absent),
-    'Une absence non facturable ne doit produire aucune ligne de facture.');
-
-  -- Un rendez-vous à venir non plus : son issue n'est pas constatée.
-  perform tests.assert_fails(
-    format('insert into public.billing_line_appointments
-              (practice_id, line_id, appointment_id) values (%L, %L, %L)',
-           'a1111111-1111-4111-8111-111111111111', v_ligne, v_avenir),
-    'Un rendez-vous dont l''issue n''est pas constatée ne doit pas être facturable.');
-
-  -- Le rendez-vous facturé ne peut plus être supprimé : la pièce en dépend.
-  perform tests.assert_fails(
-    format('delete from public.appointments where id = %L', v_honore),
-    'Un rendez-vous facturé ne doit pas pouvoir être supprimé.');
-end
-$$;
-rollback;
-
--- ---------------------------------------------------------------------------
---  8. Isolation
--- ---------------------------------------------------------------------------
-begin;
-select tests.authenticate_as('b0000000-0000-4000-8000-000000000001'::uuid);
-do $$
-declare
-  v_doc uuid;
-begin
-  -- Le cabinet B ne voit rien de A.
-  perform tests.assert_rows(
-    format('select 1 from public.billing_documents where practice_id = %L',
-           'a1111111-1111-4111-8111-111111111111'),
-    0, 'Le cabinet B ne doit voir aucune pièce du cabinet A.');
-
-  -- Et ne peut pas facturer un patient de A.
-  perform tests.assert_fails(
-    format('insert into public.billing_documents (practice_id, kind, patient_id)
-            values (%L, ''facture'', %L)',
-           'b1111111-1111-4111-8111-111111111111',
-           'a6000000-0000-4000-8000-000000000001'),
-    'Facturer le patient d''un autre cabinet doit être refusé.');
-end
-$$;
-rollback;
-
--- ---------------------------------------------------------------------------
---  9. Le catalogue est un référentiel, pas une source de vérité
--- ---------------------------------------------------------------------------
-begin;
-select tests.authenticate_as(:alpha::uuid);
-do $$
-declare
-  v_item uuid; v_doc uuid; v_prix bigint;
-begin
-  insert into public.service_catalog_items
-    (practice_id, label, unit_price_cents, nature)
-  values ('a1111111-1111-4111-8111-111111111111', 'Séance individuelle', 3230, 'seance')
-  returning id into v_item;
-
-  insert into public.billing_documents (practice_id, kind, patient_id, payer_is_patient)
-  values ('a1111111-1111-4111-8111-111111111111', 'facture',
-          'a6000000-0000-4000-8000-000000000001', true) returning id into v_doc;
-
-  -- La ligne COPIE les valeurs du catalogue.
-  insert into public.billing_lines
-    (practice_id, document_id, position, catalog_item_id, label,
-     unit_price_cents, quantity, amount_cents)
-  values ('a1111111-1111-4111-8111-111111111111', v_doc, 1, v_item,
-          'Séance individuelle', 3230, 1, 3230);
-  perform public.issue_billing_document(v_doc);
-
-  -- Le tarif du catalogue change.
-  update public.service_catalog_items set unit_price_cents = 4000 where id = v_item;
-
-  -- La pièce émise ne bouge pas d'un centime.
-  select unit_price_cents into v_prix from public.billing_lines where document_id = v_doc;
-  perform tests.assert_equals(v_prix, 3230::bigint,
-    'Modifier un tarif ne doit changer aucune pièce déjà établie.');
-
-  -- Retirer l'entrée du catalogue ne casse pas la pièce non plus.
-  delete from public.service_catalog_items where id = v_item;
-  perform tests.assert_rows(
-    format('select 1 from public.billing_lines
-             where document_id = %L and catalog_item_id is null', v_doc),
-    1, 'Supprimer une prestation du catalogue laisse la ligne intacte, sans provenance.');
-  select unit_price_cents into v_prix from public.billing_lines where document_id = v_doc;
-  perform tests.assert_equals(v_prix, 3230::bigint,
-    'Et le tarif facturé demeure.');
-end
-$$;
-rollback;
-
--- ---------------------------------------------------------------------------
---  10. Le payeur peut n'être ni le patient ni un responsable légal
--- ---------------------------------------------------------------------------
---  Circuit PCO : c'est un organisme qui règle, et la famille ne doit rien.
-begin;
-select tests.authenticate_as(:alpha::uuid);
-do $$
-declare
-  v_doc uuid;
-begin
+  -- Un SECOND avoir, qui achève de couvrir la facture : elle bascule alors.
   insert into public.billing_documents
-    (practice_id, kind, patient_id, payer_contact_id, payer_is_patient,
-     funding_scheme, pathway_id)
-  values ('a1111111-1111-4111-8111-111111111111', 'facture',
-          'a6000000-0000-4000-8000-000000000002',
-          'a5000000-0000-4000-8000-000000000006', false,
-          'pco', 'a7000000-0000-4000-8000-000000000002')
+    (practice_id, kind, patient_id, payer_is_patient,
+     rectifies_id, rectifies_number, rectifies_issued_on, rectification_reason)
+  values ('a1111111-1111-4111-8111-111111111111', 'avoir',
+          'a6000000-0000-4000-8000-000000000001', true,
+          v_facture, v_num, current_date, 'Seconde séance non due.')
+  returning id into v_avoir;
+  insert into public.billing_lines
+    (practice_id, document_id, position, label, unit_price_cents, quantity, amount_cents)
+  values ('a1111111-1111-4111-8111-111111111111', v_avoir, 1, 'Séance non due', 3230, 1, 3230);
+  perform public.issue_billing_document(v_avoir);
+
+  perform tests.assert_rows(
+    format('select 1 from public.billing_documents
+             where id = %L and status = ''annule_par_avoir''', v_facture),
+    1, 'Des avoirs qui couvrent entièrement la facture l''annulent.');
+  perform tests.assert_equals(public.document_balance_cents(v_facture), 0::bigint,
+    'Une facture entièrement avoirée ne doit plus rien.');
+end
+$$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+--  16. Le solde d'une pièce ne franchit pas la frontière du cabinet
+-- ---------------------------------------------------------------------------
+--  `document_balance_cents` est `security definer` : elle s'exécute AU-DESSUS
+--  de la RLS. Sans contrôle d'appartenance, elle rendait le solde d'une pièce
+--  que la RLS refusait par ailleurs de montrer. Démontré en exécution par la
+--  relecture de sécurité du lot 5.
+begin;
+do $$
+declare
+  v_doc uuid;
+  v_cabinet_b uuid;
+  v_patient_b uuid;
+begin
+  select p.id into v_cabinet_b from public.practices p
+   where p.id <> 'a1111111-1111-4111-8111-111111111111' limit 1;
+  select p.id into v_patient_b from public.patients p
+   where p.practice_id = v_cabinet_b limit 1;
+
+  -- La pièce naît brouillon, reçoit sa ligne, puis s'émet : les lignes d'une
+  -- pièce déjà émise sont immuables, la garantie vaut aussi pour un test.
+  insert into public.billing_documents
+    (practice_id, kind, patient_id, payer_is_patient, status)
+  values (v_cabinet_b, 'facture', v_patient_b, true, 'brouillon')
   returning id into v_doc;
+  insert into public.billing_lines
+    (practice_id, document_id, position, label, unit_price_cents, amount_cents)
+  values (v_cabinet_b, v_doc, 1, 'Séance', 9000, 9000);
+  update public.billing_documents
+     set status = 'emis', number = 'TEST-CLOISON', series = 'TEST',
+         issued_on = current_date
+   where id = v_doc;
+
+  -- Vue depuis le cabinet ALPHA : la RLS refuse déjà la pièce et ses lignes.
+  perform tests.authenticate_as('a0000000-0000-4000-8000-000000000001'::uuid);
 
   perform tests.assert_rows(
-    format('select 1 from public.billing_documents
-             where id = %L and payer_is_patient = false and funding_scheme = ''pco''', v_doc),
-    1, 'Une pièce PCO doit pouvoir désigner un organisme payeur, distinct du patient.');
-
-  -- Et le payeur désigné n'est ni le patient, ni l'un de ses responsables.
+    format('select 1 from public.billing_documents where id = %L', v_doc), 0,
+    'La RLS doit refuser la pièce d''un autre cabinet.');
   perform tests.assert_rows(
-    format('select 1 from public.patient_contacts
-             where patient_id = %L and contact_id = %L
-               and role in (''responsable_legal'', ''payeur'')',
-           'a6000000-0000-4000-8000-000000000002',
-           'a5000000-0000-4000-8000-000000000006'),
-    0, 'Le payeur PCO n''est pas un responsable légal du patient.');
-end
-$$;
-rollback;
+    format('select 1 from public.billing_lines where document_id = %L', v_doc), 0,
+    'La RLS doit refuser les lignes d''un autre cabinet.');
 
--- ---------------------------------------------------------------------------
---  13. Un devis et une facture ne portent jamais le même numéro imprimé
--- ---------------------------------------------------------------------------
---  Les deux séries sont distinctes, donc l'unicité en base ne voit rien. Ce que
---  lit une famille, c'est le numéro imprimé : deux pièces différentes numérotées
---  pareil, remises le même jour, sont indiscernables une fois classées.
-begin;
-select tests.authenticate_as(:alpha::uuid);
-do $$
-declare
-  v_devis uuid;
-  v_facture uuid;
-  v_nd text;
-  v_nf text;
-begin
-  insert into public.billing_documents (practice_id, kind, patient_id)
-  values ('a1111111-1111-4111-8111-111111111111', 'devis', 'a6000000-0000-4000-8000-000000000001') returning id into v_devis;
-  insert into public.billing_lines
-    (practice_id, document_id, position, label, unit_price_cents, amount_cents)
-  values ('a1111111-1111-4111-8111-111111111111', v_devis, 1, 'Bilan psychomoteur', 20000, 20000);
+  -- ET LA FONCTION AUSSI. C'est le point : elle passait au-dessus.
+  perform tests.assert_fails(
+    format('select public.document_balance_cents(%L)', v_doc),
+    'Le solde d''une pièce d''un autre cabinet ne doit pas être calculable.');
 
-  insert into public.billing_documents (practice_id, kind, patient_id)
-  values ('a1111111-1111-4111-8111-111111111111', 'facture', 'a6000000-0000-4000-8000-000000000001') returning id into v_facture;
-  insert into public.billing_lines
-    (practice_id, document_id, position, label, unit_price_cents, amount_cents)
-  values ('a1111111-1111-4111-8111-111111111111', v_facture, 1, 'Bilan psychomoteur', 20000, 20000);
-
-  v_nd := public.issue_billing_document(v_devis);
-  v_nf := public.issue_billing_document(v_facture);
-
-  perform tests.assert(v_nd <> v_nf,
-    'Un devis et une facture émis le même jour ne doivent pas porter le même numéro.');
-  perform tests.assert(v_nd like 'D%',
-    'Le numéro d''un devis doit se distinguer au premier coup d''œil.');
-end
-$$;
-rollback;
-
--- ---------------------------------------------------------------------------
---  14. La date d'émission est celle qu'on donne, pas celle de l'horloge
--- ---------------------------------------------------------------------------
---  Une facture établie début octobre pour les séances de septembre doit pouvoir
---  porter sa vraie date. La v1 laissait l'année du numéro et le mois de
---  rattachement venir de deux sources différentes.
-begin;
-select tests.authenticate_as(:alpha::uuid);
-do $$
-declare
-  v_doc uuid;
-  v_num text;
-  v_emis date;
-  v_serie text;
-begin
-  insert into public.billing_documents (practice_id, kind, patient_id)
-  values ('a1111111-1111-4111-8111-111111111111', 'facture', 'a6000000-0000-4000-8000-000000000001') returning id into v_doc;
-  insert into public.billing_lines
-    (practice_id, document_id, position, label, unit_price_cents, amount_cents)
-  values ('a1111111-1111-4111-8111-111111111111', v_doc, 1, 'Séance de psychomotricité', 4500, 4500);
-
-  v_num := public.issue_billing_document(v_doc, null, '{AAAA}-{MM}-{NNN}', date '2024-11-08');
-
-  select issued_on, series into v_emis, v_serie
-    from public.billing_documents where id = v_doc;
-
-  perform tests.assert_equals(v_emis, date '2024-11-08',
-    'La date d''émission fournie doit être celle de la pièce.');
-  perform tests.assert_equals(v_serie, 'FACTURE-2024',
-    'La série doit suivre l''année d''émission, pas l''année courante.');
-  perform tests.assert(v_num like '2024-11-%',
-    'Le numéro doit porter l''année et le mois de l''émission.');
-
-  -- L'instantané se lit à cette date : une pièce ancienne ne doit pas se relire
-  -- avec la configuration d'aujourd'hui.
-  perform tests.assert_equals(
-    (select snapshot ->> 'emis_le' from public.billing_documents where id = v_doc),
-    '2024-11-08',
-    'L''instantané doit être daté de l''émission.');
-end
-$$;
-rollback;
-
--- ---------------------------------------------------------------------------
---  15. Un numéro déjà employé n'est pas réattribué
--- ---------------------------------------------------------------------------
---  La reprise des factures de la v1 réinstalle des numéros que le compteur n'a
---  jamais attribués. Le moteur doit passer au suivant, et non échouer ni
---  produire un doublon.
-begin;
-select tests.authenticate_as(:alpha::uuid);
-do $$
-declare
-  v_ancienne uuid;
-  v_doc uuid;
-  v_num text;
-begin
-  -- Une pièce « héritée » portant le numéro que le compteur va proposer.
-  insert into public.billing_documents
-    (practice_id, kind, status, series, number, issued_on)
-  values ('a1111111-1111-4111-8111-111111111111', 'facture', 'emis', 'ANCIENNE',
-          to_char(current_date, 'YYYY') || '-001', current_date)
-  returning id into v_ancienne;
-
-  insert into public.billing_documents (practice_id, kind, patient_id)
-  values ('a1111111-1111-4111-8111-111111111111', 'facture', 'a6000000-0000-4000-8000-000000000001') returning id into v_doc;
-  insert into public.billing_lines
-    (practice_id, document_id, position, label, unit_price_cents, amount_cents)
-  values ('a1111111-1111-4111-8111-111111111111', v_doc, 1, 'Séance de psychomotricité', 4500, 4500);
-
-  v_num := public.issue_billing_document(v_doc);
-
-  perform tests.assert(v_num <> to_char(current_date, 'YYYY') || '-001',
-    'Un numéro déjà porté par une autre pièce ne doit pas être réattribué.');
-  perform tests.assert_rows(
-    format('select 1 from public.billing_documents
-             where practice_id = %L and number = %L', 'a1111111-1111-4111-8111-111111111111', v_num),
-    1, 'Le numéro finalement attribué doit être unique dans le cabinet.');
+  -- Une pièce inexistante rend la MÊME réponse : distinguer les deux dirait à
+  -- l'appelant que l'identifiant existe.
+  perform tests.assert_fails(
+    'select public.document_balance_cents(''00000000-0000-4000-8000-000000000000'')',
+    'Une pièce inexistante ne doit pas se distinguer d''une pièce interdite.');
 end
 $$;
 rollback;

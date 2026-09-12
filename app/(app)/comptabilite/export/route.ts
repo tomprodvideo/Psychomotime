@@ -52,12 +52,20 @@ export async function GET(requete: Request) {
     listCharges(practice, { du: periode.du, au: periode.au }),
   ]);
 
+  // UN EXPORT FAUX EST PIRE QU'UN EXPORT ABSENT. S'il manque une lecture, on ne
+  // produit AUCUN fichier : ce fichier part chez un tiers, et rien ne dirait à
+  // celui qui l'ouvre que ses montants sont incomplets.
+  const echec = pieces.erreur ?? charges.erreur;
+  if (echec) {
+    return NextResponse.json({ error: echec }, { status: 503 });
+  }
+
   const csv = construireCsv({
     libellePeriode: periode.libelle,
     exporteLe: maintenant.toLocaleDateString("fr-FR"),
     pieces: pieces.items,
     totaux: pieces.totaux,
-    charges,
+    charges: charges.items,
     tronque: pieces.tronque,
   });
 

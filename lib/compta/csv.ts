@@ -32,8 +32,36 @@ export function euroCsv(centimes: number): string {
   return centsToEuros(centimes).toFixed(2).replace(".", ",");
 }
 
+/**
+ * Caractères par lesquels un tableur reconnaît une FORMULE.
+ *
+ * Excel et LibreOffice évaluent toute cellule commençant par l'un d'eux, y
+ * compris entre guillemets. Un libellé de charge saisi `=HYPERLINK(...)`
+ * s'exécuterait donc sur le poste de l'expert-comptable — hors du périmètre de
+ * sécurité du logiciel, sur une machine qui ne nous appartient pas.
+ *
+ * Dans le modèle d'acteurs actuel, seul un membre du cabinet écrit ces champs :
+ * ce n'est pas une faille démontrée contre le cabinet lui-même. C'est une
+ * défense qui doit exister AVANT qu'un second rôle écrive dans le cabinet — et
+ * ces rôles existent déjà.
+ */
+const DEBUT_DE_FORMULE = /^[=+\-@\t\r]/;
+
+/**
+ * Un nombre écrit à la française : « -20,00 », « 383,33 », « 12 ».
+ *
+ * LE PIÈGE DE CETTE PROTECTION : un montant négatif commence par un tiret.
+ * Le préfixer d'une apostrophe en ferait du TEXTE, et les sommes du tableur
+ * cesseraient de tomber juste — un avoir n'entrerait plus dans aucun total.
+ * Le correctif contre les formules ne doit donc jamais toucher un nombre.
+ */
+const NOMBRE = /^-?\d+(,\d+)?$/;
+
 function echapper(v: Cellule): string {
-  const s = String(v ?? "");
+  let s = String(v ?? "");
+  // L'apostrophe de tête est la convention reconnue : le tableur affiche le
+  // texte tel quel et ne l'évalue pas.
+  if (DEBUT_DE_FORMULE.test(s) && !NOMBRE.test(s)) s = "'" + s;
   return /[";\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
@@ -68,8 +96,9 @@ export function construireCsv(e: ExportCompta): string {
 
   lignes.push(ligne(["RÉCAPITULATIF", "Montant (€)"]));
   lignes.push(ligne(["Pièces émises", e.totaux.pieces - e.totaux.brouillons]));
-  lignes.push(ligne(["Facturé", euroCsv(e.totaux.emis_cents)]));
+  lignes.push(ligne(["Facturé (brut)", euroCsv(e.totaux.emis_cents)]));
   lignes.push(ligne(["Avoirs", euroCsv(e.totaux.avoirs_cents)]));
+  lignes.push(ligne(["Facturé net des avoirs", euroCsv(e.totaux.net_cents)]));
   lignes.push(ligne(["Encaissé", euroCsv(e.totaux.encaisse_cents)]));
   lignes.push(ligne(["Reste dû", euroCsv(e.totaux.reste_du_cents)]));
   const charges = e.charges.reduce((s, c) => s + c.amount_cents, 0);

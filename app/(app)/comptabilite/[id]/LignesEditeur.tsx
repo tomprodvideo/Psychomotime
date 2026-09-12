@@ -198,6 +198,7 @@ function FormulaireLigne({
   const [prix, setPrix] = useState("");
   const [pricing, setPricing] = useState<ServicePricing>("unitaire");
   const [quantite, setQuantite] = useState(1);
+  const [intro, setIntro] = useState("");
   const [choisies, setChoisies] = useState<string[]>([]);
 
   const apercu = useMemo(() => {
@@ -215,6 +216,9 @@ function FormulaireLigne({
     setLibelle(item.label);
     setPrix(centsToEuros(item.unit_price_cents).toFixed(2).replace(".", ","));
     setPricing(item.pricing);
+    // La phrase d'introduction et le style d'impression étaient saisis dans le
+    // catalogue, enregistrés en base… et jamais repris ici. Champs morts.
+    setIntro(item.default_intro ?? "");
   }
 
   function basculerSeance(id: string, date: string) {
@@ -361,7 +365,10 @@ function FormulaireLigne({
           </legend>
           <p className="text-xs text-slate-400 mb-2">
             Seules apparaissent les séances honorées, marquées facturables, et
-            pas encore portées sur une facture.
+            pas encore portées sur une facture en vigueur.{" "}
+            <strong className="font-medium text-slate-500">
+              La quantité suit les séances que vous cochez.
+            </strong>
           </p>
           <ul className="grid sm:grid-cols-3 gap-1.5 list-none p-0 m-0 max-h-40 overflow-y-auto">
             {seances.map((s) => (
@@ -388,6 +395,8 @@ function FormulaireLigne({
         <input
           id="intro"
           name="intro"
+          value={intro}
+          onChange={(e) => setIntro(e.target.value)}
           className={styleChamp}
           placeholder="Séances réalisées aux dates suivantes :"
         />

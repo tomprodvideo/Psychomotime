@@ -55,7 +55,7 @@ export default async function ComptabilitePage({
   ]);
 
   const totaux = pieces.totaux;
-  const chargesResume = resumeCharges(charges);
+  const chargesResume = resumeCharges(charges.items);
   const net = totaux.encaisse_cents - chargesResume.total_cents;
 
   const anneeCourante = aujourdhui.getFullYear();
@@ -107,6 +107,26 @@ export default async function ComptabilitePage({
           </a>
         </div>
       </div>
+
+      {(pieces.erreur || charges.erreur) && (
+        <div
+          role="alert"
+          className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 mb-5"
+        >
+          <AlertTriangle
+            className="h-5 w-5 shrink-0 text-rose-500 mt-0.5"
+            aria-hidden="true"
+          />
+          <p className="text-sm text-rose-900">
+            {pieces.erreur ?? charges.erreur}{" "}
+            <strong>
+              Ne recopiez aucun des montants ci-dessous : ils ne sont pas ceux de
+              votre comptabilité.
+            </strong>{" "}
+            Rechargez la page ; si le problème persiste, reconnectez-vous.
+          </p>
+        </div>
+      )}
 
       {pieces.tronque && (
         <div
@@ -251,6 +271,12 @@ function LignePiece({ d }: { d: DocumentListItem }) {
         ) : d.solde_cents > 0 ? (
           <span className="text-amber-600 font-medium">
             {formatCents(d.solde_cents)}
+          </span>
+        ) : d.solde_cents < 0 ? (
+          // Un solde négatif est un TROP-PERÇU. L'afficher « Soldée » le
+          // rendait invisible ici, alors que la pièce, elle, l'annonce.
+          <span className="text-rose-600" title="Encaissé au-delà du montant dû">
+            + {formatCents(-d.solde_cents)}
           </span>
         ) : (
           <span className="text-emerald-600">Soldée</span>

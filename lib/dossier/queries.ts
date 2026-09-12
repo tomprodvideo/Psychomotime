@@ -693,6 +693,8 @@ export interface PieceFacture {
   total_cents: number;
   /** Somme imputée sur la pièce, en centimes. */
   encaisse_cents: number;
+  /** Avoirs émis venant en déduction de cette pièce. */
+  avoirs_cents: number;
 }
 
 /**
@@ -772,7 +774,27 @@ export async function listPatientPieces(
     issued_on: f.issued_on,
     total_cents: f.total_cents,
     encaisse_cents: f.payment_allocations.reduce((s, a) => s + a.amount_cents, 0),
+    avoirs_cents: 0,
   }));
+
+  // Les avoirs qui rectifient ces pièces. Sans eux, une facture corrigée
+  // continuerait d'afficher « à encaisser » un montant qui n'est plus dû.
+  const ids = factures.map((f) => f.id);
+  if (ids.length > 0) {
+    const { data: avoirs } = await supabase
+      .from("billing_documents")
+      .select("rectifies_id, total_cents")
+      .eq("kind", "avoir")
+      .neq("status", "brouillon")
+      .in("rectifies_id", ids);
+    for (const a of (avoirs ?? []) as {
+      rectifies_id: string;
+      total_cents: number;
+    }[]) {
+      const cible = factures.find((f) => f.id === a.rectifies_id);
+      if (cible) cible.avoirs_cents += a.total_cents;
+    }
+  }
 
   return { bilans, factures };
 }

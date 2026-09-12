@@ -102,6 +102,7 @@ export default function EnteteForm({
         <label className="flex items-center gap-2 text-sm text-slate-700 mb-3">
           <input
             type="checkbox"
+            name="payer_tiers"
             checked={payeurTiers}
             onChange={(e) => setPayeurTiers(e.target.checked)}
             className="rounded border-slate-300"

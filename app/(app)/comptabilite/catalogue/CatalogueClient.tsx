@@ -287,6 +287,10 @@ function Formulaire({
         </div>
       </div>
 
+      {/* La valeur « false » est postée en premier ; la case, quand elle est
+          cochée, poste « true » par-dessus. Sans ce champ caché, décocher
+          n'envoyait RIEN et la prestation restait proposée. */}
+      <input type="hidden" name="active" value="false" />
       <label className="flex items-center gap-2 text-sm text-slate-700">
         <input
           type="checkbox"
