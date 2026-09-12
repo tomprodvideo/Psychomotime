@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -290,6 +290,11 @@ export default function BilanEditor({
     markDirty();
   });
 
+  /* Une référence, pas la fonction elle-même : `doSave` est recréée à chaque
+   * rendu, et l'effet périodique redémarrerait son minuteur à chaque frappe —
+   * l'enregistrement n'arriverait donc jamais. */
+  const doSaveRef = useRef<(() => void) | null>(null);
+
   const doSave = (newStatus?: string) =>
     start(async () => {
       const fd = new FormData();
@@ -335,6 +340,57 @@ export default function BilanEditor({
       setSavedAt(true);
       setTimeout(() => setSavedAt(false), 2500);
     });
+
+  /* ==========================================================================
+   *  NE PAS PERDRE UNE PASSATION SAISIE EN SÉANCE
+   * ==========================================================================
+   *  Le défaut, documenté § C-7 de la sécurité clinique et jusqu'ici ouvert :
+   *  tout l'état de cet éditeur vivait dans la mémoire du navigateur et n'était
+   *  écrit qu'au clic sur « Enregistrer ». Aucune sauvegarde périodique, aucun
+   *  garde-fou à la fermeture de l'onglet. Une passation prise pendant la
+   *  séance — le moment où l'on tape vite, où l'on est interrompu, où l'enfant
+   *  attend — pouvait disparaître entièrement.
+   *
+   *  DEUX FILETS, ET AUCUN NE STOCKE AILLEURS.
+   *
+   *  On aurait pu écrire un brouillon dans le navigateur. On ne le fait PAS :
+   *  ce serait déposer des notes cliniques dans le stockage local d'un poste
+   *  parfois partagé, qui survit à la déconnexion et que rien n'efface. La
+   *  sauvegarde va donc là où la donnée est DÉJÀ — le serveur — et n'ouvre
+   *  aucun nouvel endroit où des notes pourraient rester.
+   */
+
+  /* La référence est tenue à jour APRÈS le rendu, jamais pendant : écrire une
+   * référence en cours de rendu rend le résultat dépendant du moment où React
+   * choisit de le produire. */
+  useEffect(() => {
+    doSaveRef.current = () => doSave();
+  });
+
+  /* 1. Enregistrement périodique, tant qu'il y a des modifications en attente.
+   *    Trente secondes : assez rare pour ne pas peser, assez fréquent pour que
+   *    ce qu'on perd tienne dans ce qu'on se rappelle avoir écrit. */
+  useEffect(() => {
+    if (!dirty || pending) return;
+    /* SEULEMENT UN BROUILLON. Un bilan finalisé se modifie déjà sans laisser de
+     * trace — c'est le § C-4, ouvert — et l'enregistrer TOUT SEUL aggraverait
+     * franchement les choses : le document remis changerait sans que personne
+     * n'ait cliqué. Pour celui-là, l'avertissement à la fermeture reste, et
+     * l'enregistrement demande un geste. */
+    if (status !== "brouillon") return;
+    const t = setTimeout(() => doSaveRef.current?.(), 30_000);
+    return () => clearTimeout(t);
+  }, [dirty, pending, status]);
+
+  /* 2. Un avertissement à la fermeture, quand il reste des modifications.
+   *    C'est le dernier rempart, et le seul qui couvre la fermeture brutale de
+   *    l'onglet — le navigateur n'attendra aucune requête à ce moment-là. */
+  useEffect(() => {
+    if (!dirty) return;
+    const avertir = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", avertir);
+    return () => window.removeEventListener("beforeunload", avertir);
+  }, [dirty]);
 
   const group = MABC_GROUPS.find((g) => g.group === mabcGroup) ?? null;
 
