@@ -478,3 +478,164 @@ begin
 end
 $$;
 rollback;
+
+-- ---------------------------------------------------------------------------
+--  UNE NOTE DE SÉANCE SE RANGE SOUS LA SÉANCE QU'ELLE RACONTE
+-- ---------------------------------------------------------------------------
+--  `patient_notes.appointment_id` existait depuis le lot 2, avec son index, et
+--  rien ne l'écrivait — donc rien ne vérifiait que le rendez-vous désigné
+--  concerne bien ce dossier et ce cabinet. La clé étrangère dit que le
+--  rendez-vous EXISTE ; elle ne dit rien de plus.
+--
+--  Rattacher une note au rendez-vous d'un autre patient n'égare pas le contenu
+--  clinique — il reste dans le bon dossier — mais il fait apparaître la note
+--  dans l'historique de séances de l'autre. C'est le premier risque de la
+--  sécurité clinique : l'attribution au mauvais dossier.
+begin;
+select tests.authenticate_as(:alpha::uuid);
+do $$
+declare
+  v_rdv_zephyr uuid;
+  v_rdv_autre uuid;
+  v_rdv_sans_patient uuid;
+  v_note uuid;
+begin
+  select id into v_rdv_zephyr from public.appointments
+   where patient_id = 'a6000000-0000-4000-8000-000000000001' limit 1;
+  select id into v_rdv_autre from public.appointments
+   where practice_id = 'a1111111-1111-4111-8111-111111111111'
+     and patient_id is not null
+     and patient_id <> 'a6000000-0000-4000-8000-000000000001' limit 1;
+
+  -- Le cas normal : la note se range sous la séance de son propre dossier.
+  insert into public.patient_notes
+    (practice_id, patient_id, appointment_id, body, written_on)
+  values ('a1111111-1111-4111-8111-111111111111',
+          'a6000000-0000-4000-8000-000000000001', v_rdv_zephyr,
+          'Travail sur l''équilibre unipodal.', current_date)
+  returning id into v_note;
+  perform tests.assert_equals(
+    (select appointment_id from public.patient_notes where id = v_note),
+    v_rdv_zephyr,
+    'Une note de séance porte bien la séance qu''elle raconte.');
+
+  -- LE RENDEZ-VOUS D'UN AUTRE DOSSIER.
+  perform tests.assert_fails(
+    format('insert into public.patient_notes
+              (practice_id, patient_id, appointment_id, body, written_on)
+            values (%L, %L, %L, ''Note égarée.'', current_date)',
+           'a1111111-1111-4111-8111-111111111111',
+           'a6000000-0000-4000-8000-000000000001', v_rdv_autre),
+    'Une note ne se range pas sous le rendez-vous d''un autre dossier.');
+
+  -- ET LE DÉPLACEMENT APRÈS COUP, qui contournerait une garde posée à la
+  -- seule insertion.
+  perform tests.assert_fails(
+    format('update public.patient_notes set appointment_id = %L where id = %L',
+           v_rdv_autre, v_note),
+    'Une note déjà écrite ne se déplace pas sous la séance d''un autre dossier.');
+
+  /* UN RENDEZ-VOUS SANS PATIENT — réunion, créneau administratif — n'est pas
+   * une séance : il ne porte pas de note clinique. */
+  insert into public.appointments
+    (practice_id, kind, title, starts_at, ends_at)
+  values ('a1111111-1111-4111-8111-111111111111', 'reunion',
+          'Réunion d''équipe', now() - interval '2 days',
+          now() - interval '2 days' + interval '1 hour')
+  returning id into v_rdv_sans_patient;
+  perform tests.assert_fails(
+    format('insert into public.patient_notes
+              (practice_id, patient_id, appointment_id, body, written_on)
+            values (%L, %L, %L, ''Note sur une réunion.'', current_date)',
+           'a1111111-1111-4111-8111-111111111111',
+           'a6000000-0000-4000-8000-000000000001', v_rdv_sans_patient),
+    'Un créneau sans dossier ne porte pas de note clinique.');
+
+  -- Une note SANS rendez-vous reste parfaitement légitime : toutes les notes
+  -- du dossier ne se rattachent pas à une séance.
+  insert into public.patient_notes
+    (practice_id, patient_id, body, written_on)
+  values ('a1111111-1111-4111-8111-111111111111',
+          'a6000000-0000-4000-8000-000000000001',
+          'Appel de la mère entre deux séances.', current_date);
+end
+$$;
+rollback;
+
+-- Le rendez-vous d'un AUTRE CABINET est refusé comme un rendez-vous
+-- inexistant : distinguer apprendrait qu'un identifiant existe, et pour qui.
+begin;
+do $$
+declare
+  v_rdv_b uuid;
+begin
+  perform tests.authenticate_as('b0000000-0000-4000-8000-000000000001'::uuid);
+  select id into v_rdv_b from public.appointments
+   where practice_id = 'b1111111-1111-4111-8111-111111111111'
+     and patient_id is not null limit 1;
+  reset role;
+
+  perform tests.authenticate_as('a0000000-0000-4000-8000-000000000001'::uuid);
+  perform tests.assert_fails(
+    format('insert into public.patient_notes
+              (practice_id, patient_id, appointment_id, body, written_on)
+            values (%L, %L, %L, ''Note.'', current_date)',
+           'a1111111-1111-4111-8111-111111111111',
+           'a6000000-0000-4000-8000-000000000001', v_rdv_b),
+    'Le rendez-vous d''un autre cabinet est refusé.');
+end
+$$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+--  UNE NOTE NE NOMME PAS LE DOSSIER D'UN AUTRE CABINET
+-- ---------------------------------------------------------------------------
+--  Trouvé en cherchant à falsifier la garde précédente : `patient_notes` ne
+--  vérifiait pas que son patient appartient à son cabinet. Démontré en
+--  exécution — un praticien du cabinet A écrivait une note clinique nommant un
+--  dossier du cabinet B. Rien ne fuit vers B ; mais un contenu clinique se
+--  retrouve attaché à l'identifiant d'un dossier qui n'est pas le sien, et
+--  toute lecture qui joint par `patient_id` le fera ressortir au mauvais
+--  endroit.
+--
+--  `patient_notes` était la seule table de sa famille sans cette garde.
+begin;
+do $$
+declare
+  v_patient_b uuid;
+  v_parcours_b uuid;
+begin
+  perform tests.authenticate_as('b0000000-0000-4000-8000-000000000001'::uuid);
+  select id into v_patient_b from public.patients
+   where practice_id = 'b1111111-1111-4111-8111-111111111111' limit 1;
+  select id into v_parcours_b from public.care_pathways
+   where practice_id = 'b1111111-1111-4111-8111-111111111111' limit 1;
+  reset role;
+
+  perform tests.authenticate_as('a0000000-0000-4000-8000-000000000001'::uuid);
+  perform tests.assert_fails(
+    format('insert into public.patient_notes
+              (practice_id, patient_id, body, written_on)
+            values (%L, %L, ''Note sur le dossier d''''un autre cabinet.'', current_date)',
+           'a1111111-1111-4111-8111-111111111111', v_patient_b),
+    'Une note ne doit pas pouvoir nommer le dossier d''un autre cabinet.');
+
+  perform tests.assert_fails(
+    format('insert into public.patient_notes
+              (practice_id, patient_id, pathway_id, body, written_on)
+            values (%L, %L, %L, ''Note.'', current_date)',
+           'a1111111-1111-4111-8111-111111111111',
+           'a6000000-0000-4000-8000-000000000001', v_parcours_b),
+    'Une note ne doit pas désigner le parcours d''un autre cabinet.');
+
+  -- LE CONTRE-CONTRÔLE : le dossier du bon cabinet, lui, passe.
+  perform tests.assert_affects_rows(
+    format('insert into public.patient_notes
+              (practice_id, patient_id, body, written_on)
+            values (%L, %L, ''Note légitime.'', current_date)',
+           'a1111111-1111-4111-8111-111111111111',
+           'a6000000-0000-4000-8000-000000000001'), 1,
+    'Une note sur son propre dossier s''écrit : sans quoi les refus ci-dessus ne prouveraient rien.');
+end
+$$;
+rollback;

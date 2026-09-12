@@ -472,6 +472,15 @@ export async function saveNote(formData: FormData): Promise<Guarded<true>> {
       practice_id: ctx.practice.practiceId,
       patient_id: patientId,
       pathway_id: str(formData, "pathway_id"),
+      /* LA SÉANCE QUE CETTE NOTE RACONTE, quand elle en raconte une. La
+       * colonne existait depuis le lot 2, avec son index, et rien ne
+       * l'écrivait : on ne pouvait donc pas répondre à « qu'est-ce qu'on a
+       * travaillé sur les douze dernières séances », qui est le geste
+       * préparatoire de la synthèse comme du renouvellement.
+       *
+       * La cohérence — même cabinet, même dossier — est vérifiée EN BASE
+       * (migration 0021), pas ici : l'isolation ne dépend pas de l'écran. */
+      appointment_id: str(formData, "appointment_id"),
       body,
       written_on: ecriteLe.value ?? new Date().toISOString().slice(0, 10),
       author_member_id: ctx.practice.memberId,

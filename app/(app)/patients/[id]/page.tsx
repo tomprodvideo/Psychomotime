@@ -244,6 +244,12 @@ export default async function FichePatientPage({
             patientId={patient.id}
             notes={notes}
             parcours={parcours}
+            /* Les séances passées, pour qu'une note puisse dire LAQUELLE elle
+               raconte. On ne propose que le passé : une note de séance sur un
+               créneau qui n'a pas eu lieu n'a rien à raconter. */
+            seances={rendezVous.filter(
+              (r) => new Date(r.starts_at) <= maintenant,
+            )}
             canWrite={practice.canWrite}
           />
         ) : (

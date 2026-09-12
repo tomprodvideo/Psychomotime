@@ -208,6 +208,12 @@ export interface PatientNote {
   practice_id: string;
   patient_id: string;
   pathway_id: string | null;
+  /**
+   * La séance que cette note raconte, s'il y en a une. Toutes les notes n'en
+   * racontent pas : un appel entre deux rendez-vous est une note du dossier.
+   * La cohérence — même cabinet, même dossier — est tenue en base (0021).
+   */
+  appointment_id: string | null;
   body: string;
   written_on: string;
   author_member_id: string | null;

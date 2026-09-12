@@ -4,8 +4,13 @@ import { useState, useTransition } from "react";
 import { Dialogue } from "@/components/Dialogue";
 import { Plus, NotebookPen, ShieldAlert } from "lucide-react";
 import { frDate } from "@/lib/format";
+import { ATTENDANCE_LABELS } from "@/lib/dossier/types";
 import { saveNote } from "../actions";
-import type { CarePathway, PatientNote } from "@/lib/dossier/types";
+import type {
+  Appointment,
+  CarePathway,
+  PatientNote,
+} from "@/lib/dossier/types";
 
 /**
  * Notes cliniques.
@@ -24,14 +29,20 @@ export default function NotesSection({
   patientId,
   notes,
   parcours,
+  seances,
   canWrite,
 }: {
   patientId: string;
   notes: PatientNote[];
   parcours: CarePathway[];
+  /** Les séances passées du dossier, pour rattacher une note à l'une d'elles. */
+  seances: Appointment[];
   canWrite: boolean;
 }) {
   const [ouvert, setOuvert] = useState(false);
+  /* Un index, pas une recherche par note : sans lui, afficher la séance de
+   * chaque note coûterait un parcours de la liste par note. */
+  const seanceParId = new Map(seances.map((r) => [r.id, r]));
 
   return (
     <section
@@ -77,7 +88,17 @@ export default function NotesSection({
               }`}
             >
               <div className="flex items-center justify-between gap-2 mb-1">
-                <p className="text-xs text-slate-500">{frDate(n.written_on)}</p>
+                <p className="text-xs text-slate-500">
+                  {frDate(n.written_on)}
+                  {n.appointment_id && seanceParId.get(n.appointment_id) && (
+                    <span className="text-brand-700">
+                      {" · séance du "}
+                      {frDate(
+                        seanceParId.get(n.appointment_id)!.starts_at.slice(0, 10),
+                      )}
+                    </span>
+                  )}
+                </p>
                 {n.third_party_information && (
                   <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-800">
                     <ShieldAlert className="h-3.5 w-3.5" aria-hidden="true" />
@@ -100,6 +121,7 @@ export default function NotesSection({
         <DialogueNote
           patientId={patientId}
           parcours={parcours}
+          seances={seances}
           onClose={() => setOuvert(false)}
         />
       )}
@@ -113,10 +135,12 @@ const CHAMP =
 function DialogueNote({
   patientId,
   parcours,
+  seances,
   onClose,
 }: {
   patientId: string;
   parcours: CarePathway[];
+  seances: Appointment[];
   onClose: () => void;
 }) {
   const [pending, start] = useTransition();
@@ -190,6 +214,30 @@ function DialogueNote({
               </div>
             )}
           </div>
+
+          {seances.length > 0 && (
+            <div>
+              <label htmlFor="appointment_id" className="block text-sm text-slate-700 mb-1">
+                Séance racontée (facultatif)
+              </label>
+              <select id="appointment_id" name="appointment_id" className={CHAMP}>
+                <option value="">Aucune séance en particulier</option>
+                {seances.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {frDate(r.starts_at.slice(0, 10))} ·{" "}
+                    {ATTENDANCE_LABELS[r.attendance] ?? r.attendance}
+                  </option>
+                ))}
+              </select>
+              {/* Toutes les notes ne racontent pas une séance : un appel de la
+                  mère entre deux rendez-vous est une note du dossier, pas une
+                  note de séance. Le rattachement reste facultatif. */}
+              <p className="text-xs text-slate-500 mt-1">
+                Rattacher la note à une séance permet de relire ce qui a été
+                travaillé, séance par séance.
+              </p>
+            </div>
+          )}
 
           <div className="rounded-lg bg-amber-50 ring-1 ring-amber-200 p-3">
             <label className="flex items-start gap-2 text-sm text-amber-900">
