@@ -847,7 +847,10 @@ create policy "referentiel lisible" on public.referentiel
 
 ### 11.6 Deux règles d'usage dans le code
 
-1. **Toute lecture passe par une date d'effet explicite.** `referentielValeur('micro_bnc.seuil_recettes', facture.date_emission)` — jamais `new Date()` implicite. Le module `lib/period.ts` montre déjà la bonne discipline (`resolvePeriod` reçoit ses dates), et `lib/invoiceDocument.ts` injecte son horloge (`options.now`) : c'est le modèle à généraliser.
+1. **Toute lecture passe par une date d'effet explicite.** `referentielValeur('micro_bnc.seuil_recettes', facture.date_emission)` — jamais `new Date()` implicite. *(2026-09-12 : `lib/period.ts` et `lib/invoiceDocument.ts` n'existent plus — le
+premier était mort, le second est parti avec la chaîne de partage de la v1. La
+discipline qu'ils illustraient reste la bonne, et se lit désormais dans
+`lib/age.ts`, dont la signature EXIGE la date de référence.)*
 2. **Un `statut = 'a_instruire'` ne produit pas de chiffre.** Il produit un **état d'interface** : « paramètre non validé — calcul indisponible ». Jamais un zéro, jamais une valeur par défaut. Même règle que l'absence de donnée clinique.
 
 ---
@@ -984,7 +987,7 @@ Constats de lecture du code au 2026-09-11. Ils n'ont **aucune valeur réglementa
 | **C-9** | **Aucune mention de l'article L. 441-9** n'est produite ; une facture à une institution est donc incomplète | `lib/invoiceDocument.ts` | **Moyenne** | § 3.3 |
 | **C-10** | **Rétrocession et loyer sont exclusifs**, et la rétrocession est calculée sur le **facturé** et non sur l'**encaissé** | `lib/types.ts` `ChargeMode` ; `lib/calc.ts` | **Moyenne** | § 10.3 |
 | **C-11** | **La nature déclarative de la rétrocession est perdue** : rien ne distingue, à l'export, une diminution de recettes d'une charge | `comptabilite/csv.ts` | **Moyenne** | § 10.2 |
-| **C-12** | **La période comptable privilégie le mois de facturation sur la date d'encaissement**, alors que le régime BNC de droit commun est un régime d'encaissement | `lib/period.ts` `resolvePeriod` ; `invoicePeriod` | **Moyenne** | § 1.3 |
+| **C-12** | **La période comptable privilégie le mois de facturation sur la date d'encaissement**, alors que le régime BNC de droit commun est un régime d'encaissement | `lib/compta/queries.ts` — `listDocuments` filtre sur `issued_on`, `listPayments` sur `received_on` : les deux vues existent, aucune n'est désignée comme LA période comptable. *(Constat revérifié le 2026-09-12 : il visait `lib/period.ts`, module mort depuis supprimé — la question, elle, porte bien sur du code vivant.)* | **Moyenne** | § 1.3 |
 | **C-13** | **Les agrégats mélangent facturé et encaissé** : `net` est calculé sur `revenue_gross`, tandis que `brutPaye` suit `revenue_gross_paid` | `comptabilite/summary.ts` | **Moyenne** | § 1.3 |
 | **C-14** | **Une ligne au forfait peut être émise sans date de réalisation** (item 10° de l'art. 242 nonies A) | `lib/invoiceLines.ts` `validateInvoiceLines` | **À instruire** | § 3.1 |
 | **C-15** | **La date d'émission a un repli en cascade** qui fait bouger la date imprimée d'une impression à l'autre sur les anciennes factures | `lib/invoiceDocument.ts` | **Moyenne** | § 3.1 item 6° |
