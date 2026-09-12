@@ -18,6 +18,7 @@ import {
   listPatientContacts,
 } from "@/lib/dossier/queries";
 import { patientName } from "@/lib/dossier/types";
+import { listAttestations } from "@/lib/attestations/queries";
 import PatientFormDialog from "../PatientFormDialog";
 import ArchiveControls from "./ArchiveControls";
 import EntourageSection from "./EntourageSection";
@@ -26,6 +27,7 @@ import NotesSection from "./NotesSection";
 import ConsentementsSection from "./ConsentementsSection";
 import SeancesSection from "./SeancesSection";
 import PiecesSection from "./PiecesSection";
+import AttestationsSection from "./AttestationsSection";
 
 export default async function FichePatientPage({
   params,
@@ -52,6 +54,7 @@ export default async function FichePatientPage({
     rendezVous,
     comptes,
     pieces,
+    attestations,
   ] = await Promise.all([
     listPatientContacts(practice, patient.id),
     listPathways(practice, patient.id),
@@ -62,6 +65,7 @@ export default async function FichePatientPage({
     listPatientAppointments(practice, patient.id),
     countPatientSessions(practice, patient.id, maintenant),
     listPatientPieces(patient.id),
+    listAttestations(practice, { patientId: patient.id }),
   ]);
 
   const objectifs = await listObjectives(
@@ -245,6 +249,12 @@ export default async function FichePatientPage({
         )}
 
         <PiecesSection bilans={pieces.bilans} factures={pieces.factures} />
+
+        <AttestationsSection
+          patientId={patient.id}
+          attestations={attestations.items}
+          canWrite={practice.canWrite}
+        />
 
         <ConsentementsSection
           patientId={patient.id}

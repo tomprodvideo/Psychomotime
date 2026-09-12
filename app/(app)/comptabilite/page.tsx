@@ -5,6 +5,7 @@ import {
   BookOpen,
   Download,
   Receipt,
+  ShieldCheck,
   TrendingDown,
   Wallet,
 } from "lucide-react";
@@ -83,6 +84,13 @@ export default async function ComptabilitePage({
           >
             <Wallet className="h-4 w-4" aria-hidden="true" />
             Règlements
+          </Link>
+          <Link
+            href="/comptabilite/attestations"
+            className="inline-flex items-center gap-1.5 text-slate-600 hover:text-brand-700"
+          >
+            <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+            Attestations
           </Link>
           <Link
             href="/comptabilite/charges"

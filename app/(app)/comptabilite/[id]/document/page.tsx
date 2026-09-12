@@ -73,6 +73,19 @@ export default async function DocumentPage({
     (l) => l.vat_treatment === "exoneration_soins",
   );
 
+  /* LA MENTION « ACQUITTÉE » EST CE QU'UNE FAMILLE DEMANDE LE PLUS SOUVENT
+   * pour un remboursement. Ce n'est pas une attestation de paiement — elle ne
+   * porte ni la période ni le détail des règlements — mais c'est un fait que
+   * le document peut énoncer : cette facture-ci a été réglée, à cette date.
+   *
+   * Elle ne s'affiche QUE si le solde est nul ET qu'un règlement a été imputé.
+   * Une facture à zéro euro n'est pas une facture acquittée. */
+  const encaisse = piece.reglements.reduce((s, r) => s + r.amount_cents, 0);
+  const acquitteeLe =
+    d.kind !== "devis" && piece.solde_cents === 0 && encaisse > 0
+      ? piece.reglements[piece.reglements.length - 1]?.received_on
+      : null;
+
   return (
     <div className="p-4 sm:p-8 max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-5 no-print">
@@ -233,6 +246,12 @@ export default async function DocumentPage({
         {d.note && (
           <p className="text-sm text-slate-700 whitespace-pre-wrap mb-6">
             {d.note}
+          </p>
+        )}
+
+        {acquitteeLe && (
+          <p className="text-sm font-medium text-slate-800 mb-4">
+            Facture acquittée le {frDate(acquitteeLe)}.
           </p>
         )}
 
