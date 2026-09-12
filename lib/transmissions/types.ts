@@ -85,6 +85,8 @@ export interface PiecePublique {
   numero: string | null;
   emise_le: string | null;
   echeance: string | null;
+  /** Validité d'un devis. Imprimée sur le papier, elle manquait au lien. */
+  valable_jusqu_au: string | null;
   periode_debut: string | null;
   periode_fin: string | null;
   total_centimes: number;
@@ -141,7 +143,18 @@ export function raisonCaducite(d: DocumentPublic): string {
     case "remplace":
       return "Cette facture a été remplacée par une autre.";
     case "annule":
-      return "Cette attestation a été annulée.";
+      /* LE MOTIF EST DIT, comme sur l'imprimé.
+       *
+       * Deux relectures ont pointé la même donnée : elle sortait du contrat
+       * public sans jamais être affichée. L'une proposait de la retirer,
+       * l'autre de l'afficher. Les deux corrigent le défaut ; celle-ci le
+       * corrige mieux — qui reçoit une attestation annulée a besoin de savoir
+       * pourquoi, la praticienne écrit ce motif en sachant qu'il figure sur le
+       * document remis, et deux versions d'une même pièce numérotée qui
+       * divergent sont un défaut en soi. */
+      return d.nature === "attestation" && d.motif_annulation?.trim()
+        ? `Cette attestation a été annulée : ${d.motif_annulation.trim()}`
+        : "Cette attestation a été annulée.";
     default:
       return "";
   }

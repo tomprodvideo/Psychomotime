@@ -858,7 +858,8 @@ begin
     (select string_agg(k, ',' order by k) from jsonb_object_keys(v_p) k),
     'acquittee_le,destinataire,echeance,emetteur,emise_le,etat,kind,lignes,'
     || 'mention,nature,numero,patient,periode_debut,periode_fin,'
-    || 'rectification_motif,rectifie_emise_le,rectifie_numero,total_centimes',
+    || 'rectification_motif,rectifie_emise_le,rectifie_numero,total_centimes,'
+    || 'valable_jusqu_au',
     'Le contrat public d''une facture est un jeu de clés arrêté.');
 
   perform tests.assert_equals(
@@ -976,6 +977,57 @@ begin
   perform tests.assert_fails(
     format('delete from public.shared_link_accesses where link_id = %L', v_lien),
     'Le cabinet ne doit pas pouvoir effacer une consultation.');
+end
+$$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+--  19. UN DEVIS PARTAGÉ PORTE SA VALIDITÉ
+-- ---------------------------------------------------------------------------
+--  `valid_until` est la seule date qui rend un devis opposable, et l'imprimé
+--  la porte — « Valable jusqu'au … ». Elle ne figurait pas au contrat public :
+--  un devis transmis par lien arrivait sans elle, alors que le même devis
+--  imprimé l'affichait. Deux versions d'une même pièce numérotée.
+begin;
+select tests.authenticate_as(:alpha::uuid);
+do $$
+declare
+  v_doc uuid;
+  v_jeton text := 'jeton-du-devis-partage-0123456789abc';
+  v_p jsonb;
+  v_echeance date := current_date + 45;
+begin
+  insert into public.billing_documents
+    (practice_id, kind, patient_id, payer_is_patient, valid_until)
+  values ('a1111111-1111-4111-8111-111111111111', 'devis',
+          'a6000000-0000-4000-8000-000000000001', true, v_echeance)
+  returning id into v_doc;
+  insert into public.billing_lines
+    (practice_id, document_id, position, label, unit_price_cents, amount_cents)
+  values ('a1111111-1111-4111-8111-111111111111', v_doc, 1, 'Bilan', 25000, 25000);
+  perform public.issue_billing_document(v_doc);
+
+  insert into public.shared_links
+    (practice_id, subject_type, subject_id, token_hash, token_hint, expires_at)
+  values ('a1111111-1111-4111-8111-111111111111', 'billing_document', v_doc,
+          encode(sha256(convert_to(v_jeton, 'UTF8')), 'hex'), 'devi',
+          now() + interval '30 days');
+
+  reset role;
+  v_p := public.shared_document(v_jeton);
+  perform tests.assert_equals(v_p ->> 'kind', 'devis',
+    'Un devis se partage : le titre de la page en dépend.');
+  perform tests.assert_equals(
+    (v_p ->> 'valable_jusqu_au')::date, v_echeance,
+    'Un devis transmis porte la date jusqu''à laquelle il engage.');
+
+  -- Le contre-contrôle : une facture, elle, n'a pas de validité — la
+  -- contrainte du modèle l'interdit — et la clé reste donc nulle.
+  perform tests.assert(
+    (select valid_until from public.billing_documents
+      where kind = 'facture' and practice_id = 'a1111111-1111-4111-8111-111111111111'
+      limit 1) is null,
+    'Seul un devis porte une validité : sans cela, le contrôle ci-dessus ne distinguerait rien.');
 end
 $$;
 rollback;

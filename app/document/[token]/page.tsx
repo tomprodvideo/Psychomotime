@@ -113,6 +113,9 @@ function EnTete({
   titre: string;
 }) {
   const e = d.emetteur;
+  const echeance = d.nature === "billing_document" ? d.echeance : null;
+  const valableJusquAu =
+    d.nature === "billing_document" ? d.valable_jusqu_au : null;
   const identifiants = liste<{ type?: string; valeur?: string }>(e.identifiants)
     .filter((i) => i?.valeur);
   return (
@@ -138,6 +141,17 @@ function EnTete({
         </h1>
         {d.numero && <p className="text-slate-700 mt-1">{d.numero}</p>}
         {d.emise_le && <p className="text-slate-500">{frDate(d.emise_le)}</p>}
+        {/* Échéance et validité étaient servies et jamais affichées : la
+            version papier les porte, celle-ci les taisait. Un devis arrivait
+            ainsi sans la seule date qui le rend opposable. */}
+        {echeance && (
+          <p className="text-slate-500 mt-1">Échéance : {frDate(echeance)}</p>
+        )}
+        {valableJusquAu && (
+          <p className="text-slate-500 mt-1">
+            Valable jusqu&apos;au {frDate(valableJusquAu)}
+          </p>
+        )}
       </div>
     </header>
   );
@@ -224,9 +238,19 @@ function Piece({ d }: { d: Extract<DocumentPublic, { nature: "billing_document" 
               <td className="py-3 pr-4">
                 <span className="text-slate-800">{l.libelle}</span>
                 {l.intro && <span className="block text-slate-500 mt-0.5">{l.intro}</span>}
+                {/* La praticienne choisit la mise en forme des dates de
+                    séance ; le réglage était servi et ignoré ici, si bien que
+                    la version reçue par lien ne présentait pas ses dates comme
+                    la version imprimée. */}
                 {liste<string>(l.dates).length > 0 && (
                   <span className="block text-slate-600 mt-0.5">
-                    {liste<string>(l.dates).map((x) => frDate(x)).join(", ")}
+                    {l.rendu_dates === "par_date"
+                      ? liste<string>(l.dates).map((x) => frDate(x)).join(", ")
+                      : `Séance${liste<string>(l.dates).length > 1 ? "s" : ""} du ${liste<string>(
+                          l.dates,
+                        )
+                          .map((x) => frDate(x))
+                          .join(", ")}`}
                   </span>
                 )}
                 {l.note && (
