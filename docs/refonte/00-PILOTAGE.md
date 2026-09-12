@@ -49,6 +49,11 @@ Voir `docs/refonte/adr/` pour le détail. Résumé :
 | D-10 | Séparation stricte **composition déterministe** (assemble des faits) / **assistance IA** (propose, ne décide jamais) | non |
 | D-11 | **Portabilité du schéma** : `app.current_user_id()` est le seul point de contact avec Supabase. Aucune politique, aucune autre fonction n'appelle `auth.*`. Vérifié par test de couverture. | non |
 | D-12 | L'accès payant a **une seule définition**, énoncée deux fois : `app.subscription_is_active` en base, `lib/subscription.ts` côté serveur. En cas de divergence, **la base fait foi**. | non |
+| D-13 | **Devis et avoirs portent un préfixe de numérotation** (`D`, `A`). Sans lui, le gabarit par défaut donnait le même numéro imprimé à un devis et à une facture — chacun dans sa série, donc sans que l'unicité en base s'en aperçoive, sur deux documents remis côte à côte à la même famille. Le gabarit reste un paramètre du cabinet. | oui |
+| D-14 | **Une fonction à privilèges connaît le locataire.** Toute fonction `security definer` exposée vérifie l'appartenance au cabinet, au même titre que les déclencheurs de cohérence. Une pièce interdite et une pièce inexistante rendent la MÊME réponse. Né d'une fuite réelle : `document_balance_cents` rendait le solde d'une pièce que la RLS refusait de montrer. | non |
+| D-15 | **La consultation de sa propre comptabilité n'exige pas un abonnement actif.** L'écran et l'export restent accessibles ; seules les écritures sont conditionnées. Couper l'accès d'un cabinet à ses propres données — comptables ou de santé — serait disproportionné. | oui |
+| D-16 | **Un avoir ne réduit la facture qu'à hauteur de son montant.** Le brut compte toute facture émise, les avoirs se déduisent séparément, et une facture n'est marquée annulée que lorsque les avoirs la couvrent entièrement. [VALIDATION HUMAINE — expert-comptable] : le traitement comptable d'un avoir partiel reste à confirmer. | oui |
+| D-17 | **Supprimer son compte supprime le cabinet dont on est le seul membre.** Un cabinet partagé n'est pas détruit : seule l'appartenance est retirée. Le dernier propriétaire d'un cabinet partagé est refusé, avec le motif — détruire les données d'autrui ou laisser un cabinet sans administrateur seraient l'un et l'autre pires. | non |
 
 ## 4. Agents mobilisés
 
