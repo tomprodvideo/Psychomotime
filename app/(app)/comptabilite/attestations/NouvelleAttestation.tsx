@@ -9,6 +9,7 @@ import {
   type AttestationKind,
 } from "@/lib/attestations/types";
 import { creerAttestation } from "./actions";
+import { CHAMP } from "@/components/Champ";
 
 interface OptionPatient {
   id: string;
@@ -111,7 +112,7 @@ export default function NouvelleAttestation({
             id="patient-attestation"
             value={patient}
             onChange={(e) => setPatient(e.target.value)}
-            className="w-full rounded-lg border border-slate-500 px-3 py-2 text-sm bg-white"
+            className={CHAMP}
           >
             <option value="">Choisir…</option>
             {patients.map((p) => (

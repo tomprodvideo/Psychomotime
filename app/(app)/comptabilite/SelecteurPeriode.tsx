@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { MOIS, type ModePeriode } from "./periode";
+import { CHAMP_AUTO } from "@/components/Champ";
 
 /**
  * Choix de la période.
@@ -67,7 +68,7 @@ export default function SelecteurPeriode({
           aria-label="Mois"
           value={mois}
           onChange={(e) => aller({ mois: e.target.value })}
-          className="rounded-lg border border-slate-500 px-3 py-2 text-sm bg-white"
+          className={CHAMP_AUTO}
         >
           {MOIS.map((m, i) => (
             <option key={m} value={i + 1}>
@@ -82,7 +83,7 @@ export default function SelecteurPeriode({
           aria-label="Année"
           value={annee}
           onChange={(e) => aller({ annee: e.target.value })}
-          className="rounded-lg border border-slate-500 px-3 py-2 text-sm bg-white"
+          className={CHAMP_AUTO}
         >
           {anneesDisponibles.map((a) => (
             <option key={a} value={a}>
@@ -102,7 +103,7 @@ export default function SelecteurPeriode({
             type="date"
             value={du ?? ""}
             onChange={(e) => aller({ du: e.target.value })}
-            className="rounded-lg border border-slate-500 px-3 py-2 text-sm bg-white"
+            className={CHAMP_AUTO}
           />
           <span className="text-slate-500 text-sm">au</span>
           <label className="sr-only" htmlFor="periode-au">
@@ -113,7 +114,7 @@ export default function SelecteurPeriode({
             type="date"
             value={au ?? ""}
             onChange={(e) => aller({ au: e.target.value })}
-            className="rounded-lg border border-slate-500 px-3 py-2 text-sm bg-white"
+            className={CHAMP_AUTO}
           />
         </div>
       )}

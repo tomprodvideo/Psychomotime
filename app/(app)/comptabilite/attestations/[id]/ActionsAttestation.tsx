@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Ban, PenLine, Trash2 } from "lucide-react";
 import type { Attestation } from "@/lib/attestations/types";
+import { CHAMP, CHAMP_AUTO } from "@/components/Champ";
 import {
   annulerAttestation,
   emettreAttestation,
@@ -119,7 +120,7 @@ export default function ActionsAttestation({
                 type="date"
                 value={dateEmission}
                 onChange={(e) => setDateEmission(e.target.value)}
-                className="rounded-lg border border-slate-500 px-3 py-2 text-sm bg-white"
+                className={CHAMP_AUTO}
               />
             </div>
             <button
@@ -203,7 +204,7 @@ export default function ActionsAttestation({
               value={motif}
               onChange={(e) => setMotif(e.target.value)}
               placeholder="Erreur de période attestée"
-              className="w-full rounded-lg border border-slate-500 px-3 py-2 text-sm bg-white"
+              className={CHAMP}
             />
           </div>
           <div className="flex items-center gap-2 mt-3">

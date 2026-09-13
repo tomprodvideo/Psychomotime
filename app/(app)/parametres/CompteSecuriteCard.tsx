@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { KeyRound, Mail, ShieldCheck } from "lucide-react";
 import { changerEmail, changerMotDePasse, type CompteState } from "./actions";
 import { MIN_PASSWORD_LENGTH } from "@/lib/auth/password";
+import { CHAMP } from "@/components/Champ";
 
 /**
  * Sécurité du compte : changer son mot de passe, changer son adresse.
@@ -211,7 +212,7 @@ function Champ({
         onChange={(e) => onChange(e.target.value)}
         autoComplete={autoComplete}
         aria-describedby={aideId}
-        className="w-full max-w-sm rounded-lg border border-slate-500 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100 transition"
+        className={`${CHAMP} max-w-sm`}
       />
       {aide && (
         <p id={aideId} className="text-xs text-slate-500 mt-1 max-w-sm">

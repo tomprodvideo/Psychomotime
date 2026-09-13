@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Building2 } from "lucide-react";
 import { createPractice } from "./actions";
+import { CHAMP_AUTO } from "@/components/Champ";
 
 /**
  * Création du cabinet, pour un compte qui n'en a pas encore.
@@ -45,7 +46,7 @@ export default function CreatePracticeCard() {
           required
           maxLength={200}
           placeholder="Cabinet de psychomotricité"
-          className="flex-1 rounded-lg border border-slate-500 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100 transition"
+          className={`${CHAMP_AUTO} flex-1`}
         />
         <button
           type="submit"

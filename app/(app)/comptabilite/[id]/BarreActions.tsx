@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { CheckCircle2, FileMinus, FileSignature, Send, Trash2 } from "lucide-react";
 import type { BillingDocument } from "@/lib/compta/types";
+import { CHAMP, CHAMP_AUTO } from "@/components/Champ";
 import {
   changerEtatDevis,
   creerRectification,
@@ -163,7 +164,7 @@ export default function BarreActions({
                 type="date"
                 value={dateEmission}
                 onChange={(e) => setDateEmission(e.target.value)}
-                className="rounded-lg border border-slate-500 px-3 py-2 text-sm bg-white"
+                className={CHAMP_AUTO}
               />
             </div>
             <button
@@ -254,7 +255,7 @@ export default function BarreActions({
               value={motif}
               onChange={(e) => setMotif(e.target.value)}
               placeholder="Erreur de tarif sur la séance du 12 mars"
-              className="w-full rounded-lg border border-slate-500 px-3 py-2 text-sm bg-white"
+              className={CHAMP}
             />
           </div>
           <div className="flex items-center gap-2 mt-3">

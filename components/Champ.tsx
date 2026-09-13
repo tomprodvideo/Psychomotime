@@ -56,10 +56,28 @@ import type { ReactElement } from "react";
  * qu'un ornement qui s'y ajoute ; aucun composant ne doit contourner cette
  * règle par un `outline` explicite.
  */
-export const CHAMP =
-  "w-full rounded-lg border border-slate-500 bg-slate-50 px-3 py-2 text-sm " +
+/**
+ * Le style de champ, SANS largeur.
+ *
+ * POURQUOI LA LARGEUR EST SORTIE. `CHAMP` portait `w-full`, et rien d'autre
+ * n'existait. Un champ qui ne devait PAS occuper toute la ligne — un sélecteur
+ * de période dans une barre d'outils, un nom de cabinet dans une rangée — ne
+ * pouvait donc pas employer la constante : il recopiait ses neuf classes pour
+ * en changer une. Onze styles de champ en ligne vivaient dans six fichiers pour
+ * cette seule raison.
+ *
+ * Les deux constantes restent la voie normale. `CHAMP_AUTO` n'est là que
+ * lorsque la largeur appartient au contexte.
+ */
+const BASE =
+  "rounded-lg border border-slate-500 bg-slate-50 px-3 py-2 text-sm " +
   "outline-none transition focus:border-brand-400 focus:bg-white " +
   "focus:ring-2 focus:ring-brand-100";
+
+export const CHAMP = `w-full ${BASE}`;
+
+/** Le même, la largeur laissée à l'appelant. */
+export const CHAMP_AUTO = BASE;
 
 /**
  * Le même, en état invalide.
@@ -113,12 +131,16 @@ export function Champ({
             id,
             "aria-invalid": erreur ? true : undefined,
             "aria-describedby": decrit,
-            className:
-              typeof classeDonnee === "string" && classeDonnee.length > 0
-                ? classeDonnee
-                : erreur
-                  ? CHAMP_INVALIDE
-                  : CHAMP,
+            /* LA CLASSE DE L'APPELANT S'AJOUTE, elle ne remplace plus.
+               L'ancienne règle abandonnait tout le style de champ dès qu'un
+               appelant voulait ajouter une largeur — il devait donc recopier
+               les neuf classes. Contrôlé avant de changer : sur les 54 appels
+               de `Champ` du produit, AUCUN ne passait de `className`. Cette
+               branche n'avait jamais servi, et sa règle était précisément ce
+               qui poussait à ne pas s'en servir. */
+            className: [erreur ? CHAMP_INVALIDE : CHAMP, classeDonnee]
+              .filter((c) => typeof c === "string" && c.length > 0)
+              .join(" "),
           })
         : children}
 
