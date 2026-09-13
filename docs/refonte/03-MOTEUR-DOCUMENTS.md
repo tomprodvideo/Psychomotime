@@ -27,16 +27,17 @@ Par ordre de ce qu'ils coûtent, pas d'ordre chronologique.
 | # | Document | Destinataire | Ce qu'il y a déjà en base |
 |---|---|---|---|
 | 1 | ~~**Note de séance**~~ **fait le 2026-09-13** | personne, usage propre | Branchée depuis la fiche du dossier ET depuis l'agenda. Garde de cohérence en base (`0021`) : même cabinet, même dossier, même séance. L'agenda dit quelles séances portent déjà une note. |
-| 2 | **Courrier de liaison** | un professionnel nommé | `contacts`, et `patient_consents` trace déjà `transmission_prescripteur` |
+| 2 | ~~**Courrier de liaison**~~ **fait le 2026-09-13** | un professionnel nommé | Écrit depuis le dossier, remis, imprimable, annulable avec motif. Destinataire obligatoire, en deux groupes séparés. Instantané figé à la remise. L'état du consentement est DIT, pas exigé. Ne reprend rien d'un bilan. |
 | 3 | **Synthèse de suivi** | prescripteur, famille, structure | `appointments.attendance`, `care_objectives.status`, `reviewed_on` |
 | 4 | **Écrit de fin de prise en soin** | prescripteur, famille, relais | `care_pathways.ended_on`, `end_reason` |
 | 5 | **Écrit pour un tiers non soignant** (école, MDPH) | enseignant, MDPH | — |
 | 6 | **Notice d'information** | la personne, à l'entrée | `patient_consents` trace `information_recue` |
 | 7 | **Projet d'accompagnement imprimable** | famille, patient | `care_objectives` au complet |
 
-**Deux incohérences internes, vérifiées** : le produit trace un consentement au
-partage professionnel et la remise d'une notice d'information — et **ne sait
-produire ni l'un ni l'autre**.
+**Deux incohérences internes, vérifiées** : le produit traçait un consentement
+au partage professionnel et la remise d'une notice d'information — et **ne
+savait produire ni l'un ni l'autre**. La première est levée depuis le
+2026-09-13 : le courrier de liaison existe. La seconde reste ouverte.
 
 **Correction d'une erreur de la relecture métier** : elle annonçait que
 `patient_notes` n'avait pas d'`appointment_id`. C'est faux — la colonne a été
