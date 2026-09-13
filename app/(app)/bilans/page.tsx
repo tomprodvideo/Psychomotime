@@ -30,12 +30,12 @@ export default async function BilansPage() {
    * Le type se lit par son chemin dans le jsonb, sans rapatrier le reste. */
   const { data } = await supabase
     .from("bilans")
-    .select("id, patient_name, title, bilan_date, status, type:content->>__type__")
+    .select("id, patient_id, patient_name, title, bilan_date, status, type:content->>__type__")
     .order("updated_at", { ascending: false });
 
   const bilans = (data ?? []) as unknown as (Pick<
     Bilan,
-    "id" | "patient_name" | "title" | "bilan_date" | "status"
+    "id" | "patient_id" | "patient_name" | "title" | "bilan_date" | "status"
   > & { type: string | null })[];
 
   // Un groupe par type de bilan : psychomoteur et sensoriel ne sont jamais mêlés.
@@ -129,6 +129,16 @@ export default async function BilansPage() {
                       <p className="font-medium text-slate-800 group-hover:text-brand-700">
                         {b.patient_name || "Sans patient"}
                       </p>
+                      {/* L'ÉTAT DU RATTACHEMENT, ÉCRIT. `patient_name` est
+                          obligatoire à la création : un bilan orphelin
+                          s'affichait donc EXACTEMENT comme un bilan rattaché,
+                          et rien ne permettait de repérer les trois du dépôt.
+                          Relevé par la relecture du moteur de bilans. */}
+                      {!b.patient_id && (
+                        <p className="text-xs text-amber-700">
+                          Aucun dossier rattaché
+                        </p>
+                      )}
                       <div className="flex items-center gap-1.5">
                         <span
                           className={`text-[10px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded ${ui.badge}`}

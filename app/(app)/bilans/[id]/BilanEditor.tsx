@@ -849,6 +849,20 @@ export default function BilanEditor({
               }}
               className={CHAMP}
             />
+            {/* L'ÉTAT DU RATTACHEMENT, ÉCRIT — et pas seulement l'absence de
+                ce qui en découle. Sans dossier, l'éditeur ne manquait de rien
+                à l'écran : il n'y avait RIEN DU TOUT, ni date de naissance, ni
+                âge, ni prescripteur, et l'aperçu les laissait tomber en
+                silence sur le document remis.
+                Le vocabulaire est celui, déjà validé, de l'écran de création.
+                Relevé par la relecture du moteur de bilans. */}
+            {!bilan.patient_id && (
+              <p className="text-xs text-amber-700 mt-1">
+                Ce bilan n&apos;est rattaché à aucun dossier. Il n&apos;apparaît
+                pas dans une fiche patient, et le compte rendu sortira sans date
+                de naissance, sans âge et sans prescripteur.
+              </p>
+            )}
             {patientBirthDate && (
               <p className="text-xs text-slate-500 mt-1">
                 Né(e) le {frDate(patientBirthDate)} ·{" "}

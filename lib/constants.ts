@@ -419,6 +419,20 @@ export const BILAN_TYPE_UI: Record<
 /** Ordre d'affichage des sections par type. */
 export const BILAN_TYPE_ORDER: BilanType[] = ["psychomoteur", "sensoriel"];
 
+/**
+ * Le NOM du bilan, tel qu'on le dit dans une phrase.
+ *
+ * `bilanHeading` rend le titre du document, en capitales, pour le haut d'une
+ * page. Il ne se glisse pas dans « veuillez trouver le compte rendu du … ».
+ * L'enveloppe du courriel annonçait donc « Bilan psychomoteur » quel que soit
+ * le type : un bilan sensoriel partait sous un intitulé faux. Le titre
+ * imprimé, lui, était correct — la fonction juste existait à trente lignes de
+ * là. Relevé par la relecture du moteur de bilans.
+ */
+export function bilanLabel(type: BilanType): string {
+  return BILAN_TYPES.find((t) => t.id === type)?.label ?? "Bilan psychomoteur";
+}
+
 export function bilanHeading(type: BilanType): string {
   return (
     BILAN_TYPES.find((t) => t.id === type)?.heading ??

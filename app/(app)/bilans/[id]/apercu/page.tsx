@@ -14,6 +14,7 @@ import {
   SCORE_INTERPRETATION,
   bilanFontCss,
   bilanHeading,
+  bilanLabel,
   getBilanConfig,
   nsColor,
   resolveBilanSections,
@@ -135,12 +136,6 @@ export default async function BilanApercuPage({
     prescripteurDuParcours = noms.length === 1 ? noms[0] : "";
   }
 
-  const subject = `Bilan psychomoteur - ${b.patient_name}`;
-  const body = `Bonjour,\n\nVeuillez trouver le compte rendu du bilan psychomoteur de ${
-    b.patient_name
-  }${b.bilan_date ? ` (${frDate(b.bilan_date)})` : ""}.\n\nBien cordialement,\n${
-    settings.display_name ?? b.author ?? ""
-  }`;
 
   /* L'AUTEUR EST CELUI DU BILAN, PAS CELUI D'AUJOURD'HUI.
    *
@@ -158,6 +153,20 @@ export default async function BilanApercuPage({
     legacyUsed.length > 0;
   const bilanType =
     content.__type__ === "sensoriel" ? "sensoriel" : "psychomoteur";
+
+  /* L'ENVELOPPE DIT LE MÊME BILAN QUE LE DOCUMENT. Elle annonçait « bilan
+   * psychomoteur » quel que soit le type : un bilan sensoriel partait sous un
+   * intitulé faux, alors que le titre imprimé, lui, était correct. C'était la
+   * seule ligne du produit qui écrivait une fausseté dans un courriel sortant.
+   * Relevé par la relecture du moteur de bilans. */
+  const nomDuBilan = bilanLabel(bilanType);
+  const subject = `${nomDuBilan} - ${b.patient_name}`;
+  const body = `Bonjour,\n\nVeuillez trouver le compte rendu du ${nomDuBilan.toLowerCase()} de ${
+    b.patient_name
+  }${b.bilan_date ? ` (${frDate(b.bilan_date)})` : ""}.\n\nBien cordialement,\n${
+    settings.display_name ?? b.author ?? ""
+  }`;
+
   const sections = resolveBilanSections(profile, bilanType);
   const anamneseTitle =
     sections.find((s) => s.id === "anamnese")?.title ?? "L'anamnèse";

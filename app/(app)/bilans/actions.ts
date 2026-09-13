@@ -39,8 +39,42 @@ export async function createBilan(formData: FormData) {
     String(formData.get("bilan_type") ?? "") === "sensoriel"
       ? "sensoriel"
       : "psychomoteur";
+  /* LE DOSSIER POSTÉ EST VÉRIFIÉ COMME ÉTANT LE SIEN.
+   *
+   * `patient_id` vient du formulaire, et une clé étrangère ne regarde pas à
+   * QUI appartient la ligne qu'elle pointe : elle vérifie seulement qu'elle
+   * existe. Rattacher un bilan au dossier de quelqu'un d'autre passait donc la
+   * base — la RLS de `bilans` protège la LIGNE DU BILAN, pas la valeur qu'on
+   * y met.
+   *
+   * Ce n'était pas exploitable tant qu'aucun écran ne proposait de choisir un
+   * dossier : la lecture du patient, elle, ne contourne pas la RLS, et
+   * l'aperçu n'aurait rien ramené. L'écran de rattachement transforme cet
+   * angle mort latent en chemin réel — la garde est donc écrite AVANT lui, et
+   * pas après.
+   *
+   * Un `select` de vérification, pas un `in` sur la valeur postée : on demande
+   * à la base si ELLE voit ce dossier sous notre session.
+   *
+   * Relevé par la relecture du moteur de bilans. */
+  /* CETTE ACTION REDIRIGE, elle ne rend pas de compte rendu : le refus ne peut
+   * pas prendre la forme d'un message. Un identifiant de dossier qui n'est pas
+   * le nôtre ne peut venir que d'une valeur forgée — le formulaire ne propose
+   * que nos dossiers — et le bilan se crée alors SANS rattachement, avec le
+   * nom libre saisi. C'est un état que le produit connaît et sait dire. */
+  const patientDemande = str(formData.get("patient_id"));
+  const patientPoste = patientDemande
+    ? ((
+        await (await createClient())
+          .from("patients")
+          .select("id")
+          .eq("id", patientDemande)
+          .maybeSingle()
+      ).data?.id ?? null)
+    : null;
+
   const payload = {
-    patient_id: str(formData.get("patient_id")),
+    patient_id: patientPoste,
     patient_name: String(formData.get("patient_name") ?? "").trim(),
     title: str(formData.get("title")) ?? "Bilan psychomoteur",
     bilan_date: str(formData.get("bilan_date")),
@@ -111,8 +145,43 @@ export async function saveBilan(formData: FormData): Promise<Guarded<true>> {
     };
   }
 
+  /* LE DOSSIER POSTÉ EST VÉRIFIÉ COMME ÉTANT LE SIEN.
+   *
+   * `patient_id` vient du formulaire, et une clé étrangère ne regarde pas à
+   * QUI appartient la ligne qu'elle pointe : elle vérifie seulement qu'elle
+   * existe. Rattacher un bilan au dossier de quelqu'un d'autre passait donc la
+   * base — la RLS de `bilans` protège LA LIGNE DU BILAN, pas la valeur qu'on
+   * y met.
+   *
+   * Ce n'était pas exploitable tant qu'aucun écran ne proposait de choisir un
+   * dossier : la lecture du patient, elle, ne contourne pas la RLS, et
+   * l'aperçu n'aurait rien ramené. Le rattachement d'un bilan orphelin, lui,
+   * transforme cet angle mort latent en chemin réel — la garde est donc écrite
+   * AVANT lui, pas après.
+   *
+   * On demande à la base si ELLE voit ce dossier sous notre session ; on ne se
+   * contente pas de comparer la valeur postée à quelque chose.
+   *
+   * Relevé par la relecture du moteur de bilans. */
+  const patientPoste = str(formData.get("patient_id"));
+  if (patientPoste) {
+    const verif = await createClient();
+    const { data: sien, error: erreurVerif } = await verif
+      .from("patients")
+      .select("id")
+      .eq("id", patientPoste)
+      .maybeSingle();
+    if (erreurVerif || !sien) {
+      return {
+        ok: false,
+        error:
+          "Ce dossier n'est pas le vôtre, ou n'existe plus. Le bilan n'a PAS été enregistré : votre texte est toujours à l'écran.",
+      };
+    }
+  }
+
   const payload = {
-    patient_id: str(formData.get("patient_id")),
+    patient_id: patientPoste,
     patient_name: String(formData.get("patient_name") ?? "").trim(),
     title: str(formData.get("title")) ?? "Bilan psychomoteur",
     bilan_date: str(formData.get("bilan_date")),

@@ -112,12 +112,20 @@ peine de le garder.
   session et a induit deux analyses en erreur.*
 
   **Restent ouverts, et aucun ne dépend de `Q-201`** : la légende des scores se
-  contredit à la note 7 et à −1 DS (`Q-202`, une question fermée), le
-  vocabulaire « zone dite pathologique » figure sur un document remis à des
-  familles, la cohérence entre groupe d'âge coché et date de naissance n'est pas
-  montrée (`Q-205`), les bilans déjà orphelins sont invisibles et irréparables,
-  et l'objet du courriel sortant annonce « bilan psychomoteur » quel que soit
-  le type.
+  contredit à la note 7 et à −1 DS — `Q-202`, une question fermée dont la
+  réponse aligne d'un coup quatre surfaces — le vocabulaire « zone dite
+  pathologique » figure sur un document remis à des familles (`Q-202` aussi),
+  la cohérence entre groupe d'âge coché et date de naissance n'est pas montrée
+  au point de décision (`Q-205`), et les bilans déjà orphelins restent à
+  RÉPARER — leur état est désormais visible, le rattachement après coup ne
+  l'est pas encore.
+
+  **Corrigé le 2026-09-13** : l'objet et le corps du courriel sortant
+  annonçaient « bilan psychomoteur » quel que soit le type ; un bilan sensoriel
+  partait sous un intitulé faux, alors que le titre imprimé, lui, était correct.
+  Et `saveBilan` acceptait un `patient_id` posté sans vérifier qu'il appartient
+  à l'appelant — une clé étrangère ne regarde pas à qui appartient la ligne
+  qu'elle pointe.
 - **L'isolation de `public.bilans` est démontrée depuis le 2026-09-13.** Elle
   naît dans le schéma v1, appliqué seulement par la voie `cutover` : la base de
   contrôle courante est bâtie à partir des seules migrations, et la couverture
