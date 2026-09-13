@@ -55,13 +55,20 @@ if (!plan) {
   process.exit(2);
 }
 
-const { cible, mutations } = JSON.parse(readFileSync(join(ROOT, plan), "utf8"));
+const { cible, mutations, commande } = JSON.parse(
+  readFileSync(join(ROOT, plan), "utf8"),
+);
+/* QUELLE SUITE REJOUER. La plupart des plans visent une migration, donc la
+ * base de contrôle courante. Mais `public.bilans` n'existe QUE dans la base de
+ * bascule — elle naît du schéma v1, que seule cette voie applique. Un plan peut
+ * donc nommer la commande qui l'éprouve. */
+const SUITE = commande === "cutover" ? "cutover" : "test";
 const chemin = join(ROOT, cible);
 const origine = readFileSync(chemin, "utf8");
 
 /** Rejoue la suite SQL. Rend `true` quand elle ÉCHOUE, ce qu'on attend ici. */
 function laSuiteTombe() {
-  const r = spawnSync("node", [join(ROOT, "scripts", "db.mjs"), "test"], {
+  const r = spawnSync("node", [join(ROOT, "scripts", "db.mjs"), SUITE], {
     cwd: ROOT,
     encoding: "utf8",
   });

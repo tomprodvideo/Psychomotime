@@ -461,3 +461,78 @@ begin
   end if;
 end
 $$;
+
+-- ============================================================================
+--  L'ISOLATION DE `public.bilans`, ENFIN DÉMONTRÉE
+-- ============================================================================
+--  `bilans` est la table qui porte les comptes rendus — le cœur clinique du
+--  produit — et c'était la SEULE dont l'isolation reposait sur une lecture de
+--  code plutôt que sur une démonstration.
+--
+--  LA RAISON EST STRUCTURELLE, pas un oubli : `bilans` naît dans le schéma v1,
+--  appliqué uniquement par cette voie-ci. La base de contrôle courante est
+--  bâtie à partir des seules migrations, et `tests.check_rls_coverage()` ne
+--  peut pas voir une table qui n'y est pas. Aucun des fichiers de
+--  `supabase/tests/` ne mentionne `bilans` — recherche à zéro résultat.
+--
+--  Sa politique était correcte. Elle n'avait simplement jamais été FALSIFIÉE,
+--  dans un dépôt où cent gardes l'ont été sur les deux dernières migrations.
+--
+--  Relevé par la relecture du moteur de bilans, 2026-09-13.
+-- ============================================================================
+do $$
+declare
+  v_bilan_a uuid := '33333333-3333-4333-8333-000000000001';
+  v_bilan_b uuid;
+begin
+  /* LE SECOND COMPTE A BESOIN D'UN BILAN À LUI, sans quoi le contre-contrôle
+   * « il lit les siens » n'aurait rien à lire, et « il ne lit pas ceux de
+   * l'autre » passerait pour la mauvaise raison. */
+  insert into public.bilans (user_id, patient_name, title, bilan_date)
+  values ('11111111-1111-4111-8111-000000000002',
+          'Fabuline Tourniquet', 'Bilan psychomoteur', date '2026-03-04')
+  returning id into v_bilan_b;
+
+  perform tests.authenticate_as('11111111-1111-4111-8111-000000000002'::uuid);
+
+  -- IL NE LE LIT PAS.
+  perform tests.assert_rows(
+    format('select 1 from public.bilans where id = %L', v_bilan_a), 0,
+    'Un compte ne lit pas le bilan d''un autre.');
+
+  /* IL NE L'ÉCRIT PAS — et le contrôle porte sur le COMPTE de lignes, pas sur
+   * une erreur : la RLS ne lève rien sur un UPDATE ou un DELETE qui ne voit
+   * aucune ligne, elle n'en voit simplement aucune. Un `assert_fails` passerait
+   * ici sans rien prouver. */
+  perform tests.assert_affects_nothing(
+    format('update public.bilans set title = ''INTRUSION'' where id = %L', v_bilan_a),
+    'Un compte ne modifie pas le bilan d''un autre.');
+  perform tests.assert_affects_nothing(
+    format('update public.bilans set content = ''{"__type__":"sensoriel"}''::jsonb where id = %L', v_bilan_a),
+    'Ni son contenu clinique.');
+  perform tests.assert_affects_nothing(
+    format('update public.bilans set status = ''finalisé'' where id = %L', v_bilan_a),
+    'Ni son statut.');
+  perform tests.assert_affects_nothing(
+    format('delete from public.bilans where id = %L', v_bilan_a),
+    'Un compte ne supprime pas le bilan d''un autre.');
+
+  /* IL NE S'EN ATTRIBUE PAS NON PLUS. `user_id` porte `default auth.uid()`,
+   * mais un défaut se contourne en postant une valeur : c'est la clause
+   * `with check` qui tient, et c'est elle qu'on éprouve ici. */
+  perform tests.assert_fails(
+    'insert into public.bilans (user_id, patient_name)
+     values (''11111111-1111-4111-8111-000000000001'', ''Intrusion'')',
+    'Un compte n''écrit pas un bilan au nom d''un autre.');
+
+  -- LE CONTRE-CONTRÔLE : les siens, il les lit et les modifie.
+  perform tests.assert_rows(
+    format('select 1 from public.bilans where id = %L', v_bilan_b), 1,
+    'Il lit le sien : sans quoi les refus ci-dessus ne prouveraient rien.');
+  perform tests.assert_affects_rows(
+    format('update public.bilans set title = ''Bilan sensoriel'' where id = %L', v_bilan_b),
+    1, 'Et il le modifie.');
+
+  reset role;
+end
+$$;

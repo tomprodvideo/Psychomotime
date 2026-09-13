@@ -1,0 +1,21 @@
+{
+  "cible": "supabase/schema-v1/schema.sql",
+  "commande": "cutover",
+  "mutations": [
+    {
+      "nom": "la politique d'isolation de bilans existe",
+      "avant": "create policy \"own bilans\"   on public.bilans   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);",
+      "apres": "create policy \"own bilans\"   on public.bilans   for all using (true) with check (true);"
+    },
+    {
+      "nom": "la clause with check empêche de s'attribuer le bilan d'un autre",
+      "avant": "create policy \"own bilans\"   on public.bilans   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);",
+      "apres": "create policy \"own bilans\"   on public.bilans   for all using (auth.uid() = user_id) with check (true);"
+    },
+    {
+      "nom": "la RLS est activée sur bilans",
+      "avant": "alter table public.bilans    enable row level security;",
+      "apres": ""
+    }
+  ]
+}

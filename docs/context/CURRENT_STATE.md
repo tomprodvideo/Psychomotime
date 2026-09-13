@@ -14,7 +14,7 @@ locataire n'est plus le compte : c'est le CABINET** (`practices` +
 `practice_members`, cinq rôles). C'est le changement structurant dont tout le
 reste découle.
 
-Vingt-quatre migrations (`0000` à `0023`) sont appliquées en production —
+Vingt-cinq migrations (`0000` à `0024`) sont appliquées en production —
 projet Supabase `sisummvlowhtfgiatwwf`, vérifié après chaque application.
 Depuis `0023`, la vérification ne se contente plus de compter les objets :
 **les empreintes des huit fonctions déployées sont comparées une à une à
@@ -82,7 +82,9 @@ jetable, et les **budgets de performance**.
 |---|---|---|
 | 2026-09-13 | `npm run verify` | tout passe — 134 contrôles unitaires, 12 fichiers SQL |
 | 2026-09-13 | `npm run build` | succès |
-| 2026-09-13 | Falsification des 23 gardes de `0023` + 4 instantanés | chacune détectée en désarmant |
+| 2026-09-13 | `npm run falsifier` sur `0023`, `0024` et le schéma v1 | 105 gardes, 105 détectées |
+| 2026-09-13 | Empreintes des fonctions déployées comparées à la base locale | 15 sur 15 identiques |
+| 2026-09-13 | Analyseur de sécurité Supabase après `0023` et `0024` | aucune erreur ; trois avertissements connus |
 | 2026-09-12 | `npm run verify` | tout passe |
 | 2026-09-12 | `npm run build` | succès |
 | 2026-09-12 | Budgets à 400 puis 2 000 dossiers, sous RLS | aucune requête d'écran au-dessus de 1 ms |
@@ -116,13 +118,14 @@ peine de le garder.
   montrée (`Q-205`), les bilans déjà orphelins sont invisibles et irréparables,
   et l'objet du courriel sortant annonce « bilan psychomoteur » quel que soit
   le type.
-- **`public.bilans` n'est couverte par AUCUN contrôle d'isolation.** Elle naît
-  dans le schéma v1, appliqué seulement par la voie `cutover` ; la base de test
-  est construite à partir des seules migrations, et la couverture RLS
-  générique ne peut donc pas voir une table qui n'y est pas. Sa politique est
-  lisible et correcte — elle n'a simplement jamais été FALSIFIÉE, dans un dépôt
-  où 102 gardes l'ont été sur les deux dernières migrations. C'est la table qui
-  porte les comptes rendus.
+- **L'isolation de `public.bilans` est démontrée depuis le 2026-09-13.** Elle
+  naît dans le schéma v1, appliqué seulement par la voie `cutover` : la base de
+  contrôle courante est bâtie à partir des seules migrations, et la couverture
+  RLS générique ne pouvait pas voir une table qui n'y est pas. Sa politique
+  était correcte — elle n'avait simplement jamais été falsifiée, dans un dépôt
+  où cent gardes l'ont été sur les deux dernières migrations. Les contrôles
+  vivent maintenant dans `supabase/cutover/verifications.sql.check`, avec leur
+  plan de falsification.
 - **Aucun parcours de bout en bout automatisé** (L9), aucun contrôle visuel.
 - **Aucune fonction IA n'a été revue** depuis la refonte.
 - **Le design system n'existe pas** : 58 lignes de CSS, 108 lignes de
