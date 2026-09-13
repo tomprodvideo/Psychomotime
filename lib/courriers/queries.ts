@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { PracticeContext } from "@/lib/dossier/types";
+import { etatDesAccords } from "./types";
 import type { Courrier, EtatConsentement } from "./types";
 
 /**
@@ -79,6 +80,18 @@ export async function getCourrier(
  *
  * Un accord RETIRÉ l'emporte sur un accord donné : c'est la dernière volonté
  * exprimée qui compte, pas la première.
+ *
+ * UN ACCORD SANS DATE D'ACCORD N'EST PAS UN ACCORD. `granted_on` est nullable,
+ * et cette fonction ne le lisait pas : une ligne créée sans date — un
+ * formulaire préparé, un accord attendu — faisait afficher « un accord de
+ * partage est enregistré pour ce dossier », juste au-dessus du bouton qui
+ * remet le document.
+ *
+ * Le produit a fait le choix assumé de DIRE sans EXIGER [D-i]. Ce choix ne
+ * tient que si ce qui est dit est exact : le seul garde-fou du dispositif
+ * pouvait affirmer le contraire de la réalité.
+ *
+ * Trouvé par la relecture protection des données du rang 3.
  */
 export async function etatConsentementPartage(
   practice: PracticeContext,
@@ -90,14 +103,20 @@ export async function etatConsentementPartage(
     .select("kind, granted_on, withdrawn_on")
     .eq("practice_id", practice.practiceId)
     .eq("patient_id", patientId)
-    .in("kind", ["partage_professionnels", "transmission_prescripteur"]);
+    .in("kind", [
+      "partage_professionnels",
+      "partage_etablissement",
+      "transmission_prescripteur",
+    ]);
 
   if (error) {
     console.error("[courriers] lecture des consentements refusée :", error);
     return "absent";
   }
-  const lignes = (data ?? []) as { withdrawn_on: string | null }[];
-  if (lignes.length === 0) return "absent";
-  if (lignes.some((l) => l.withdrawn_on !== null)) return "retire";
-  return "accorde";
+  const lignes = (data ?? []) as {
+    granted_on: string | null;
+    withdrawn_on: string | null;
+  }[];
+  return etatDesAccords(lignes);
 }
+

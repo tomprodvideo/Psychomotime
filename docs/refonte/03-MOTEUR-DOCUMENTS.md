@@ -227,6 +227,9 @@ quelle que soit la réponse.
 | D-i | Faut-il EXIGER un accord de partage avant de remettre un courrier ou une synthèse, ou seulement le DIRE ? *(Le produit dit, aujourd'hui. Une synthèse emporte les objectifs, donc davantage qu'un courrier.)* | psychomotricienne | non |
 | D-j | Le vocabulaire IMPRIMÉ des statuts d'objectif. « Abandonné » se lit comme un constat sur une personne dans un document que liront une famille ou un financeur ; le document imprime « Non poursuivi ». Faut-il imprimer les objectifs non poursuivis ? | psychomotricienne | non |
 | D-k | Le motif d'une annulation reste réécrivable après coup sur l'**attestation** (`0016`) et le **courrier** (`0022`). La synthèse (`0023`) le fige. **Écart assumé et consigné** : le figer sur les deux autres demande une migration, et c'est la même décision pour les trois. | psychomotricienne | non |
+| D-n | Le défaut d'impression des objectifs doit-il DÉPENDRE du destinataire ? Le produit ne distingue aujourd'hui aucune catégorie (prescripteur, famille, structure, financeur) ; en créer une engage une qualification juridique. La case existe, son défaut est « imprimer ». | psychomotricienne + juriste/DPO | non |
+| D-o | Un écrit concernant un mineur peut-il être remis sans identifier le titulaire de l'autorité parentale qui le reçoit ? Le modèle porte `patient_contacts.role` et `legal_basis` ; la synthèse ne les lit pas. | juriste/DPO + psychomotricienne | non |
+| D-p | Faut-il journaliser l'OUVERTURE de la page d'impression ? C'est le seul geste du parcours qui produit une copie hors du système. **Non fait** : Next.js préfetche les liens, et une trace d'impression qui n'a pas eu lieu est pire qu'aucune trace. Il faudrait un bouton d'impression explicite. | DPO | non |
 | D-m | Le non-dit est-il conservé ? Une synthèse remise sans les rendez-vous non honorés ne les garde plus dans son instantané — un document ne conserve pas ce qu'il n'a pas dit. Si la praticienne veut retrouver ce qu'elle n'a PAS dit, c'est une décision produit, et elle est réversible. | psychomotricienne | non |
 | D-l | La périodicité d'une synthèse. Elle se lit dans le contrat signé ; le produit n'en impose aucune et propose six mois comme commodité de saisie. | psychomotricienne | non |
 
@@ -250,6 +253,13 @@ toutes ouvertes depuis le 2026-09-11.
   lignes dans une migration, pour une différence de message sur un identifiant
   qui ne sort jamais de son cabinet. À faire quand `0016` sera touchée pour
   autre chose. Mesuré par la relecture de sécurité du rang 3.
+- **La catégorie du destinataire n'est pas modélisée.** Le document part chez
+  un prescripteur, une famille ou un financeur sans que rien ne les distingue,
+  et l'instantané ne fige que le rôle du contact AU DOSSIER — qui peut être
+  « aucun ». L'article L1110-4 CSP présume autorisé l'échange au sein d'une
+  équipe de soins et requiert le consentement hors de celle-ci : **la
+  qualification d'un destinataire donné n'est pas faite ici** et revient à un
+  juriste. [D-n]
 - **La disposition exacte invoquée pour les comptes rendus en parcours financé
   n'est pas vérifiée.** L'arrêté du 19 décembre 2025 existe et est identifiable
   (JORFTEXT000053143303), mais ni la transmission de comptes rendus à la

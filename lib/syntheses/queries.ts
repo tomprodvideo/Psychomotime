@@ -23,7 +23,8 @@ export interface SyntheseAvecDestinataire extends Synthese {
 const COLONNES =
   "id, practice_id, patient_id, pathway_id, recipient_contact_id, " +
   "recipient_is_patient, period_start, period_end, means, observed_evolution, " +
-  "adjustments, next_step, detail_absences, status, issued_on, note, internal_note, " +
+  "adjustments, next_step, detail_objectifs, detail_absences, status, " +
+  "issued_on, note, internal_note, " +
   "cancellation_reason, snapshot, created_at, updated_at, " +
   "destinataire:contacts!follow_up_summaries_recipient_contact_id_fkey" +
   "(first_name, last_name, organisation_name, profession)";

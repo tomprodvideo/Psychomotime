@@ -104,10 +104,17 @@ export interface InstantaneSynthese {
     adresse?: string | null;
     code_postal?: string | null;
     ville?: string | null;
+    /** Ce qu'il est POUR CE DOSSIER. « aucun » est une réponse, pas un vide. */
+    role_au_dossier?: string | null;
   } | null;
-  faits?: Omit<FaitsPeriode, "honorees_sans_parcours"> | null;
+  /* `honorees_sans_parcours` n'y est jamais — c'est un avertissement d'écran.
+   * `absences`, `annulees_par_le_cabinet` et `objectifs` n'y sont que si elle
+   * a choisi de les dire : un document ne conserve pas ce qu'il n'a pas dit. */
+  faits?: Partial<Omit<FaitsPeriode, "honorees_sans_parcours">> | null;
   /** À qui elle a été remise, écrit en toutes lettres. */
   remise?: "a_la_personne_suivie" | "au_destinataire" | null;
+  /** Ce que le dossier disait de l'accord de partage, le jour de la remise. */
+  consentement_partage?: "accorde" | "retire" | "absent" | null;
   /** Les mentions qui encadrent la lecture, figées avec le document. */
   mentions?: { comptes?: string | null } | null;
 }
@@ -125,6 +132,7 @@ export interface Synthese {
   observed_evolution: string | null;
   adjustments: string | null;
   next_step: string | null;
+  detail_objectifs: boolean;
   detail_absences: boolean;
   status: SyntheseStatus;
   issued_on: string | null;

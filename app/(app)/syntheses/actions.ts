@@ -72,6 +72,7 @@ export async function enregistrerSynthese(fd: FormData): Promise<Guarded<string>
     observed_evolution: str(fd, "observed_evolution"),
     adjustments: str(fd, "adjustments"),
     next_step: str(fd, "next_step"),
+    detail_objectifs: fd.get("detail_objectifs") === "on",
     detail_absences: fd.get("detail_absences") === "on",
     note: str(fd, "note"),
     internal_note: str(fd, "internal_note"),

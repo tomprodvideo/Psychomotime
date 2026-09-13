@@ -195,7 +195,7 @@ function LigneSynthese({
               {SYNTHESE_STATUS_LABELS[s.status]}
             </span>
             {s.issued_on && ` le ${frDate(s.issued_on)}`}
-            {s.snapshot?.faits &&
+            {s.snapshot?.faits?.seances_honorees !== undefined &&
               ` · ${s.snapshot.faits.seances_honorees} séance${
                 s.snapshot.faits.seances_honorees > 1 ? "s" : ""
               } honorée${s.snapshot.faits.seances_honorees > 1 ? "s" : ""}`}
@@ -319,11 +319,13 @@ function ReleveDeLaPeriode({
   erreur,
   enCours,
   avecAbsences,
+  avecObjectifs,
 }: {
   faits: FaitsPeriode | null;
   erreur: string | null;
   enCours: boolean;
   avecAbsences: boolean;
+  avecObjectifs: boolean;
 }) {
   return (
     <div className="rounded-lg bg-slate-50 ring-1 ring-slate-200 px-4 py-3">
@@ -384,7 +386,11 @@ function ReleveDeLaPeriode({
             </p>
           )}
 
-          {faits.objectifs.length > 0 ? (
+          {!avecObjectifs ? (
+            <p className="text-sm text-slate-500">
+              Les objectifs ne figureront pas sur ce document.
+            </p>
+          ) : faits.objectifs.length > 0 ? (
             <ul className="text-sm text-slate-700 mt-1 space-y-0.5 list-none p-0">
               {faits.objectifs.map((o, i) => (
                 <li key={i}>
@@ -398,6 +404,17 @@ function ReleveDeLaPeriode({
                     {" — "}
                     {OBJECTIF_STATUS_IMPRIME[o.statut ?? ""] ?? o.statut}
                   </span>
+                  {/* SES MOTS À ELLE. Ils s'impriment ; ils doivent donc
+                      s'afficher ici, où elle décide de remettre. Le panneau
+                      montrait le statut — mot du logiciel — et taisait la note
+                      de réévaluation — les siens : l'inverse de la doctrine
+                      annoncée. Trouvé par la relecture protection des données
+                      du rang 3. */}
+                  {o.note_de_reevaluation && (
+                    <span className="block text-slate-600 pl-4">
+                      {o.note_de_reevaluation}
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>
@@ -441,6 +458,9 @@ function DialogueSynthese({
   );
   const [avecAbsences, setAvecAbsences] = useState(
     synthese?.detail_absences ?? false,
+  );
+  const [avecObjectifs, setAvecObjectifs] = useState(
+    synthese?.detail_objectifs ?? true,
   );
 
   /* LE RELEVÉ SUIT LA PÉRIODE. Il est refait à chaque changement de parcours
@@ -577,6 +597,7 @@ function DialogueSynthese({
           erreur={aJour?.erreur ?? null}
           enCours={periodeValide && !aJour}
           avecAbsences={avecAbsences}
+          avecObjectifs={avecObjectifs}
         />
 
         {/* ------------------------------------------------- ce qu'elle écrit */}
@@ -705,7 +726,27 @@ function DialogueSynthese({
           </div>
         </fieldset>
 
-        {/* ------------------------------------------------------ assiduité */}
+        {/* ------------------------------------------- ce qui s'imprime ou non */}
+        <div>
+          <label className="flex items-start gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              name="detail_objectifs"
+              checked={avecObjectifs}
+              onChange={(e) => setAvecObjectifs(e.target.checked)}
+              className="h-4 w-4 mt-0.5"
+            />
+            <span>
+              Faire figurer les objectifs et leur état
+              <span className="block text-xs text-slate-500">
+                C&apos;est ce que ce document dit de plus intime. Un prescripteur
+                l&apos;attend ; un organisme qui finance n&apos;en a pas le même
+                besoin. Ce qui n&apos;est pas dit n&apos;est pas conservé.
+              </span>
+            </span>
+          </label>
+        </div>
+
         <div>
           <label className="flex items-start gap-2 text-sm text-slate-700">
             <input

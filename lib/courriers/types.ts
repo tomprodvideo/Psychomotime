@@ -84,3 +84,24 @@ export function messageConsentement(etat: EtatConsentement): string {
       return "Aucun accord de partage avec les professionnels n'est enregistré pour ce dossier.";
   }
 }
+
+/**
+ * La règle, isolée pour être vérifiable sans base ni session.
+ *
+ * Elle vit ICI, et pas dans le module de lecture, pour la même raison que
+ * `lib/supabase/chemins.ts` : une règle qui décide de ce qu'un écran affirme
+ * au-dessus d'un bouton de remise doit pouvoir être éprouvée sans fabriquer
+ * une requête, une session et un client Supabase.
+ *
+ * L'ordre des trois cas est la règle elle-même : un retrait d'abord, puis un
+ * accord effectif, et « absent » comme seul reste.
+ */
+export function etatDesAccords(
+  lignes: { granted_on: string | null; withdrawn_on: string | null }[],
+): EtatConsentement {
+  if (lignes.some((l) => l.withdrawn_on !== null)) return "retire";
+  if (lignes.some((l) => l.granted_on !== null && l.withdrawn_on === null)) {
+    return "accorde";
+  }
+  return "absent";
+}

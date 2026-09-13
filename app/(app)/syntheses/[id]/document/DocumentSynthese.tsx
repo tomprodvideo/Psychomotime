@@ -199,6 +199,9 @@ export default function DocumentSynthese({
         </section>
 
         {/* ------------------------------------- les objectifs, tels que posés */}
+        {/* `detail_objectifs` décide en amont : quand elle les retire, la clé
+            n'est même pas figée dans l'instantané. Ici, on n'a donc rien à
+            filtrer — l'absence de la liste EST la décision. */}
         {objectifs.length > 0 && (
           <section className="mb-8">
             {/* LE TITRE DIT À QUELLE DATE CES ÉTATS ONT ÉTÉ RELEVÉS. Le statut

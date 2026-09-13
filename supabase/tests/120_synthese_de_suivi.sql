@@ -723,7 +723,7 @@ begin
   select string_agg(k, ',' order by k) into v_cles
     from jsonb_object_keys((select snapshot from public.follow_up_summaries where id = v_s)) k;
   perform tests.assert_equals(v_cles,
-    'cabinet,destinataire,emis_le,entite_juridique,faits,identifiants,mentions,patient,periode,praticien,remise',
+    'cabinet,consentement_partage,destinataire,emis_le,entite_juridique,faits,identifiants,mentions,patient,periode,praticien,remise',
     'L''instantané d''une synthèse a une liste de clés CLOSE. En ajouter une est une décision, pas un détail.');
 
   /* LES FAITS ONT DEUX FORMES, ET C'EST LA RÈGLE « UN DOCUMENT NE CONSERVE PAS
@@ -911,6 +911,198 @@ begin
   perform tests.assert_fails(
     format('update public.follow_up_summaries set cancellation_reason = ''Autre motif.'' where id = %L', v_s),
     'Le motif d''une annulation ne se réécrit pas : il a déjà été lu.');
+end
+$$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+--  16. Ce que le dossier disait de l'accord de partage, CE JOUR-LÀ
+-- ---------------------------------------------------------------------------
+--  Le produit DIT l'état du consentement sans jamais l'exiger. Ce choix ne
+--  tient que si l'on peut établir, plus tard, ce que la praticienne avait sous
+--  les yeux — `patient_consents` est une table vivante, relue à chaque
+--  affichage. Trouvé par la relecture protection des données du rang 3.
+--
+--  Le dossier employé est CAPUCINE, qui n'en porte aucun : celui de Zéphyr
+--  porte déjà un accord retiré, et l'état de départ aurait été « retire ».
+begin;
+select tests.authenticate_as(:alpha::uuid);
+do $$
+declare
+  v_s uuid;
+  v_c uuid;
+  v_pat uuid := 'a6000000-0000-4000-8000-000000000002';
+begin
+  perform tests.assert_rows(
+    format('select 1 from public.patient_consents where patient_id = %L', v_pat), 0,
+    'Le dossier de départ ne porte aucun accord : l''état initial est bien « absent ».');
+
+  -- UNE LIGNE D'ACCORD SANS DATE D'ACCORD N'EST PAS UN ACCORD. C'est une ligne
+  -- préparée : un formulaire imprimé, un accord attendu.
+  insert into public.patient_consents (practice_id, patient_id, kind)
+  values ('a1111111-1111-4111-8111-111111111111', v_pat, 'partage_professionnels')
+  returning id into v_c;
+
+  insert into public.follow_up_summaries
+    (practice_id, patient_id, period_start, period_end, observed_evolution)
+  values ('a1111111-1111-4111-8111-111111111111', v_pat,
+          date '2026-08-01', date '2026-08-31', 'Texte.')
+  returning id into v_s;
+  perform public.issue_follow_up_summary(v_s);
+  perform tests.assert_rows(
+    format('select 1 from public.follow_up_summaries
+             where id = %L and snapshot ->> ''consentement_partage'' = ''absent''', v_s),
+    1, 'Un accord sans date d''accord ne compte pas pour un accord.');
+
+  -- Avec une date, il compte.
+  update public.patient_consents set granted_on = date '2026-02-10' where id = v_c;
+  insert into public.follow_up_summaries
+    (practice_id, patient_id, period_start, period_end, observed_evolution)
+  values ('a1111111-1111-4111-8111-111111111111', v_pat,
+          date '2026-08-01', date '2026-08-31', 'Texte.')
+  returning id into v_s;
+  perform public.issue_follow_up_summary(v_s);
+  perform tests.assert_rows(
+    format('select 1 from public.follow_up_summaries
+             where id = %L and snapshot ->> ''consentement_partage'' = ''accorde''', v_s),
+    1, 'Un accord daté compte : sans quoi le contrôle ci-dessus ne prouverait rien.');
+
+  /* ET IL NE BOUGE PLUS. Un retrait postérieur n'est pas une information que
+   * le document remis pouvait porter : il dit ce que le dossier disait ce
+   * jour-là, pas ce qu'il dit aujourd'hui. */
+  update public.patient_consents set withdrawn_on = current_date where id = v_c;
+  perform tests.assert_rows(
+    format('select 1 from public.follow_up_summaries
+             where id = %L and snapshot ->> ''consentement_partage'' = ''accorde''', v_s),
+    1, 'Un retrait postérieur ne réécrit pas ce que le document a constaté.');
+
+  -- Un retrait AVANT la remise, lui, est constaté — et il l'emporte.
+  insert into public.follow_up_summaries
+    (practice_id, patient_id, period_start, period_end, observed_evolution)
+  values ('a1111111-1111-4111-8111-111111111111', v_pat,
+          date '2026-08-01', date '2026-08-31', 'Texte.')
+  returning id into v_s;
+  perform public.issue_follow_up_summary(v_s);
+  perform tests.assert_rows(
+    format('select 1 from public.follow_up_summaries
+             where id = %L and snapshot ->> ''consentement_partage'' = ''retire''', v_s),
+    1, 'Un retrait l''emporte sur un accord : c''est la dernière volonté exprimée qui compte.');
+end
+$$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+--  17. La remise se lit du FAIT, pas d'une case restée cochée
+-- ---------------------------------------------------------------------------
+--  `recipient_is_patient` est vrai par défaut, et la case et le destinataire
+--  nommé peuvent l'être tous les deux. Le document imprimait alors le bloc du
+--  tiers pendant que l'instantané disait « remise à la personne suivie ».
+begin;
+select tests.authenticate_as(:alpha::uuid);
+do $$
+declare v_s uuid; v_dest uuid; v_instantane jsonb;
+begin
+  -- On rattache un contact AU DOSSIER, pour vérifier aussi son rôle figé.
+  select l.contact_id into v_dest from public.patient_contacts l
+   where l.patient_id = 'a6000000-0000-4000-8000-000000000001' limit 1;
+
+  insert into public.follow_up_summaries
+    (practice_id, patient_id, recipient_contact_id, recipient_is_patient,
+     period_start, period_end, observed_evolution)
+  values ('a1111111-1111-4111-8111-111111111111',
+          'a6000000-0000-4000-8000-000000000001', v_dest, true,
+          date '2026-08-01', date '2026-08-31', 'Texte.')
+  returning id into v_s;
+  perform public.issue_follow_up_summary(v_s);
+
+  select snapshot into v_instantane from public.follow_up_summaries where id = v_s;
+  perform tests.assert_equals(v_instantane ->> 'remise', 'au_destinataire',
+    'Un destinataire nommé fait foi, même si la case « à la personne suivie » est restée cochée.');
+  perform tests.assert(
+    v_instantane -> 'destinataire' ->> 'role_au_dossier' <> 'aucun',
+    'Ce que le destinataire est POUR CE DOSSIER est figé avec lui.');
+
+  -- LE CONTRE-CONTRÔLE : sans destinataire nommé, c'est bien la personne.
+  insert into public.follow_up_summaries
+    (practice_id, patient_id, period_start, period_end, observed_evolution)
+  values ('a1111111-1111-4111-8111-111111111111',
+          'a6000000-0000-4000-8000-000000000001',
+          date '2026-08-01', date '2026-08-31', 'Texte.')
+  returning id into v_s;
+  perform public.issue_follow_up_summary(v_s);
+  perform tests.assert_rows(
+    format('select 1 from public.follow_up_summaries
+             where id = %L and snapshot ->> ''remise'' = ''a_la_personne_suivie''', v_s),
+    1, 'Sans destinataire nommé, la remise est à la personne suivie.');
+
+  /* UN CONTACT DU CABINET NON RATTACHÉ AU DOSSIER se dit « aucun ». C'est une
+   * réponse, pas un vide : la liste propose les deux groupes. */
+  select id into v_dest from public.contacts c
+   where c.practice_id = 'a1111111-1111-4111-8111-111111111111'
+     and not exists (select 1 from public.patient_contacts l
+                      where l.contact_id = c.id
+                        and l.patient_id = 'a6000000-0000-4000-8000-000000000001')
+   limit 1;
+  insert into public.follow_up_summaries
+    (practice_id, patient_id, recipient_contact_id, recipient_is_patient,
+     period_start, period_end, observed_evolution)
+  values ('a1111111-1111-4111-8111-111111111111',
+          'a6000000-0000-4000-8000-000000000001', v_dest, false,
+          date '2026-08-01', date '2026-08-31', 'Texte.')
+  returning id into v_s;
+  perform public.issue_follow_up_summary(v_s);
+  perform tests.assert_rows(
+    format('select 1 from public.follow_up_summaries
+             where id = %L
+               and snapshot -> ''destinataire'' ->> ''role_au_dossier'' = ''aucun''', v_s),
+    1, 'Un contact du cabinet étranger au dossier est figé comme tel.');
+end
+$$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+--  18. Les objectifs s'impriment, sauf si elle les retire
+-- ---------------------------------------------------------------------------
+--  Le libellé d'un objectif de prise en soin est ce que ce document divulgue
+--  de plus intime. Un organisme payeur n'en a pas le même besoin qu'un
+--  médecin. Et ce qui n'est pas dit n'est pas conservé.
+begin;
+select tests.authenticate_as(:alpha::uuid);
+do $$
+declare v_s uuid;
+begin
+  insert into public.follow_up_summaries
+    (practice_id, patient_id, pathway_id, period_start, period_end,
+     observed_evolution, detail_objectifs)
+  values ('a1111111-1111-4111-8111-111111111111',
+          'a6000000-0000-4000-8000-000000000001',
+          'a7000000-0000-4000-8000-000000000001',
+          date '2026-08-01', date '2026-08-31', 'Texte.', false)
+  returning id into v_s;
+  perform public.issue_follow_up_summary(v_s);
+  perform tests.assert_rows(
+    format('select 1 from public.follow_up_summaries
+             where id = %L and not (snapshot -> ''faits'' ? ''objectifs'')', v_s),
+    1, 'Retirés du document, les objectifs ne sont pas même conservés.');
+
+  -- LE CONTRE-CONTRÔLE : par défaut, ils y sont.
+  insert into public.follow_up_summaries
+    (practice_id, patient_id, pathway_id, period_start, period_end, observed_evolution)
+  values ('a1111111-1111-4111-8111-111111111111',
+          'a6000000-0000-4000-8000-000000000001',
+          'a7000000-0000-4000-8000-000000000001',
+          date '2026-08-01', date '2026-08-31', 'Texte.')
+  returning id into v_s;
+  perform public.issue_follow_up_summary(v_s);
+  perform tests.assert_rows(
+    format('select 1 from public.follow_up_summaries
+             where id = %L and jsonb_array_length(snapshot -> ''faits'' -> ''objectifs'') = 3', v_s),
+    1, 'Par défaut ils y sont : sans quoi le contrôle ci-dessus ne prouverait rien.');
+
+  -- Et la case se fige à la remise, comme celle des absences.
+  perform tests.assert_fails(
+    format('update public.follow_up_summaries set detail_objectifs = false where id = %L', v_s),
+    'Une synthèse remise ne retire pas ses objectifs après coup.');
 end
 $$;
 rollback;

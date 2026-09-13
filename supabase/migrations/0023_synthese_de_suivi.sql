@@ -75,6 +75,19 @@ create table public.follow_up_summaries (
   adjustments text,         -- ce qu'elle ajuste
   next_step text,           -- la suite proposée
 
+  /* LES OBJECTIFS S'IMPRIMENT, SAUF SI ELLE LE RETIRE.
+   *
+   * Vrai par défaut : c'est le comportement d'origine, et le retirer d'office
+   * priverait le prescripteur de ce qu'il attend. Mais le libellé d'un
+   * objectif de prise en soin est ce que ce document divulgue de plus intime,
+   * et un organisme payeur n'en a pas le même besoin qu'un médecin. Elle
+   * décide, document par document.
+   *
+   * [D-n] Faut-il que ce défaut DÉPENDE du destinataire ? Le produit ne
+   * distingue aujourd'hui aucune catégorie de destinataire ; en créer une est
+   * une décision métier et juridique, pas un réglage. Consignée. */
+  detail_objectifs boolean not null default true,
+
   /* Ajoute le compte des rendez-vous non honorés. Faux par défaut.
    *
    * LE NOM DIT « ABSENCES », PAS « ASSIDUITÉ ». Le mot « assiduité » est
@@ -264,6 +277,7 @@ begin
      or new.snapshot is distinct from old.snapshot
      or new.note is distinct from old.note
      or new.detail_absences is distinct from old.detail_absences
+     or new.detail_objectifs is distinct from old.detail_objectifs
      or new.patient_id <> old.patient_id
      or new.recipient_contact_id is distinct from old.recipient_contact_id
      or new.recipient_is_patient is distinct from old.recipient_is_patient
@@ -571,15 +585,61 @@ begin
                        btrim(coalesce(c.first_name, '') || ' ' || coalesce(c.last_name, ''))),
                'profession', c.profession,
                'adresse', c.address_line1, 'code_postal', c.postal_code,
-               'ville', c.city)
+               'ville', c.city,
+               /* CE QU'IL EST POUR CE DOSSIER, figé avec le reste. Sans cela,
+                * trois ans plus tard, le document ne permet pas de dire s'il
+                * est parti chez un médecin, une école ou un financeur — et
+                * c'est la première chose qu'on demandera. `aucun` est une
+                * réponse, pas un vide : la liste propose aussi les contacts du
+                * cabinet non rattachés à ce dossier. */
+               'role_au_dossier', coalesce((
+                 select pc.role from public.patient_contacts pc
+                  where pc.contact_id = c.id and pc.patient_id = s.patient_id
+                  limit 1), 'aucun'))
              from public.contacts c where c.id = s.recipient_contact_id),
+
+           /* CE QUE LE DOSSIER DISAIT DE L'ACCORD DE PARTAGE, CE JOUR-LÀ.
+            *
+            * Le produit DIT l'état du consentement sans jamais l'exiger [D-i].
+            * Ce choix ne tient que si l'on peut établir, plus tard, ce que la
+            * praticienne avait sous les yeux — `patient_consents` est une table
+            * vivante, relue à chaque affichage. Sans cette clé, un an après,
+            * rien ne dit si le dossier portait un accord, un retrait ou rien
+            * quand le document est parti.
+            *
+            * Un retrait l'emporte sur un accord : c'est la dernière volonté
+            * exprimée qui compte. Et un accord sans date d'accord n'est pas un
+            * accord — c'est une ligne préparée.
+            *
+            * Trouvé par la relecture protection des données du rang 3. */
+           'consentement_partage', (
+             select case
+               when bool_or(pc.withdrawn_on is not null) then 'retire'
+               when bool_or(pc.granted_on is not null
+                            and pc.withdrawn_on is null) then 'accorde'
+               else 'absent' end
+             from public.patient_consents pc
+            where pc.practice_id = s.practice_id
+              and pc.patient_id = s.patient_id
+              and pc.kind in ('partage_professionnels',
+                              'partage_etablissement',
+                              'transmission_prescripteur')),
 
            /* À QUI ELLE A ÉTÉ REMISE, ÉCRIT EN TOUTES LETTRES. Sans cette clé,
             * un document remis en main propre ne portait aucun destinataire :
             * l'instantané était muet là où la garde de cohérence avait été
             * écrite précisément pour qu'on le sache dans un an. */
-           'remise', case when s.recipient_is_patient
-                          then 'a_la_personne_suivie' else 'au_destinataire' end,
+           /* ELLE SE LIT DU FAIT, PAS DE LA CASE. `recipient_is_patient` est
+            * vrai par défaut, et la case et le destinataire nommé peuvent être
+            * renseignés tous les deux : dans le parcours le plus probable —
+            * choisir un destinataire sans décocher une case qu'on n'a pas vue
+            * — le document imprimait le bloc du tiers pendant que l'instantané
+            * disait « remise à la personne suivie ». Une traçabilité qui se
+            * retourne : elle documentait une remise fausse.
+            *
+            * Trouvé par la relecture protection des données du rang 3. */
+           'remise', case when s.recipient_contact_id is not null
+                          then 'au_destinataire' else 'a_la_personne_suivie' end,
 
            /* LA MENTION QUI ENCADRE LES COMPTES, FIGÉE ELLE AUSSI.
             *
@@ -622,12 +682,22 @@ begin
               * si elle veut retrouver ce qu'elle n'a pas dit, c'est une
               * décision produit, pas un défaut à corriger.] */
              - (case when s.detail_absences then array[]::text[]
-                     else array['absences', 'annulees_par_le_cabinet'] end))
+                     else array['absences', 'annulees_par_le_cabinet'] end)
+             - (case when s.detail_objectifs then array[]::text[]
+                     else array['objectifs'] end))
    where id = p_summary_id;
 
+  /* LE JOURNAL DIT À QUI. L'événement ne portait que la date : la ligne du
+   * destinataire disparaît avec le cabinet, alors que l'événement lui survit
+   * (`audit_events.practice_id` passe à null). Aucun contenu clinique n'entre
+   * ici — un identifiant technique et une nature de remise. */
   perform public.log_audit_event(
     s.practice_id, 'follow_up_summary.issue', 'follow_up_summary', p_summary_id,
-    jsonb_build_object('emis_le', v_emission));
+    jsonb_build_object(
+      'emis_le', v_emission,
+      'remise', case when s.recipient_contact_id is not null
+                     then 'au_destinataire' else 'a_la_personne_suivie' end,
+      'destinataire_id', s.recipient_contact_id));
 
   return p_summary_id;
 end;
