@@ -1,0 +1,270 @@
+{
+  "cible": "supabase/migrations/0023_synthese_de_suivi.sql",
+  "mutations": [
+    {
+      "nom": "refus uniforme — synthèse",
+      "avant": "  if app.current_user_id() is not null\n     and not app.can_write(new.practice_id) then\n    raise exception 'Accès refusé.' using errcode = 'insufficient_privilege';\n  end if;",
+      "occurrence": 1
+    },
+    {
+      "nom": "refus uniforme — attestation",
+      "avant": "  if app.current_user_id() is not null\n     and not app.can_write(new.practice_id) then\n    raise exception 'Accès refusé.' using errcode = 'insufficient_privilege';\n  end if;",
+      "occurrence": 2
+    },
+    {
+      "nom": "refus uniforme — courrier de liaison",
+      "avant": "  if app.current_user_id() is not null\n     and not app.can_write(new.practice_id) then\n    raise exception 'Accès refusé.' using errcode = 'insufficient_privilege';\n  end if;",
+      "occurrence": 3
+    },
+    {
+      "nom": "le dossier appartient au cabinet",
+      "avant": "  if not exists (\n    select 1 from public.patients p\n     where p.id = new.patient_id and p.practice_id = new.practice_id\n  ) then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "le destinataire appartient au cabinet",
+      "avant": "  if new.recipient_contact_id is not null and not exists (\n    select 1 from public.contacts c\n     where c.id = new.recipient_contact_id and c.practice_id = new.practice_id\n  ) then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "on sait à qui on remet",
+      "avant": "  if new.recipient_contact_id is null and not new.recipient_is_patient then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "une synthèse sans texte ne part pas",
+      "avant": "  if btrim(coalesce(s.observed_evolution, '')) = '' then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "une période close dans le futur ne se remet pas",
+      "avant": "  if s.period_end > current_date then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "une synthèse ne se date pas du futur",
+      "avant": "  if v_emission > current_date then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "le parcours est celui du dossier (faits)",
+      "avant": "  if p_pathway_id is not null and not exists (\n    select 1 from public.care_pathways cp\n     where cp.id = p_pathway_id\n       and cp.patient_id = p_patient_id\n       and cp.practice_id = v_practice\n  ) then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "le contenu clinique n'est pas lisible par un assistant",
+      "avant": "  if not app.can_read_clinical(v_practice) then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "la lecture est clinique, pas simplement membre",
+      "avant": "  using (practice_id in (select app.mes_cabinets_cliniques()));",
+      "apres": "  using (practice_id in (select app.mes_cabinets()));"
+    },
+    {
+      "nom": "les bornes de période filtrent les séances",
+      "avant": "         and r.session_date between p_from and p_to),",
+      "apres": "         and r.session_date between p_from - 400 and p_to + 400),"
+    },
+    {
+      "nom": "les deux comptes sur la même base (filtre de nature)",
+      "avant": "         and a.kind in ('seance', 'bilan', 'entretien', 'restitution')\n         and a.attendance in ('absent_excuse', 'absent_non_excuse')",
+      "apres": "         and a.attendance in ('absent_excuse', 'absent_non_excuse')"
+    },
+    {
+      "nom": "les annulations du cabinet sont comptées",
+      "avant": "    'annulees_par_le_cabinet', (",
+      "apres": "    'annulees_par_le_cabinet_retire', ("
+    },
+    {
+      "nom": "les séances hors parcours sont signalées",
+      "avant": "    'honorees_sans_parcours', (",
+      "apres": "    'honorees_sans_parcours_retire', ("
+    },
+    {
+      "nom": "l'avertissement ne part pas avec le document",
+      "avant": "             - 'honorees_sans_parcours'",
+      "apres": ""
+    },
+    {
+      "nom": "un objectif posé après la période est exclu",
+      "avant": "         and (o.set_on is null or o.set_on <= p_to)), '[]'::jsonb));",
+      "apres": "         ), '[]'::jsonb));"
+    },
+    {
+      "nom": "les objectifs sont filtrés par parcours",
+      "avant": "         and o.pathway_id = p_pathway_id\n",
+      "apres": ""
+    },
+    {
+      "nom": "la note de réévaluation est figée avec l'objectif",
+      "avant": "          'note_de_reevaluation', o.review_note) order by o.position",
+      "apres": ") order by o.position"
+    },
+    {
+      "nom": "la remise se lit du destinataire, pas de la case",
+      "avant": "           'remise', case when s.recipient_contact_id is not null\n                          then 'au_destinataire' else 'a_la_personne_suivie' end,",
+      "apres": "           'remise', case when s.recipient_is_patient\n                          then 'a_la_personne_suivie' else 'au_destinataire' end,"
+    },
+    {
+      "nom": "le rôle du destinataire au dossier est figé",
+      "avant": "               'role_au_dossier', coalesce((",
+      "apres": "               'role_ignore', coalesce(("
+    },
+    {
+      "nom": "l'accord de partage est figé, pas relu",
+      "avant": "           'consentement_partage', (",
+      "apres": "           'consentement_partage_retire', ("
+    },
+    {
+      "nom": "un accord sans date ne compte pas",
+      "avant": "               when bool_or(pc.granted_on is not null\n                            and pc.withdrawn_on is null) then 'accorde'",
+      "apres": "               when bool_or(pc.withdrawn_on is null) then 'accorde'"
+    },
+    {
+      "nom": "un retrait l'emporte sur un accord",
+      "avant": "               when bool_or(pc.withdrawn_on is not null) then 'retire'\n",
+      "apres": ""
+    },
+    {
+      "nom": "la mention encadrante est figée",
+      "avant": "           'mentions', jsonb_build_object('comptes',",
+      "apres": "           'mentions_retirees', jsonb_build_object('comptes',"
+    },
+    {
+      "nom": "le non-dit des absences n'est pas conservé",
+      "avant": "             - (case when s.detail_absences then array[]::text[]\n                     else array['absences', 'annulees_par_le_cabinet'] end)",
+      "apres": ""
+    },
+    {
+      "nom": "les objectifs retirés ne sont pas conservés",
+      "avant": "             - (case when s.detail_objectifs then array[]::text[]\n                     else array['objectifs'] end)",
+      "apres": ""
+    },
+    {
+      "nom": "le motif d'annulation ne se pose pas d'avance",
+      "avant": "  if new.cancellation_reason is distinct from old.cancellation_reason\n     and new.status <> 'annule' then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "le motif d'annulation ne se réécrit pas",
+      "avant": "  if old.status = 'annule'\n     and new.cancellation_reason is distinct from old.cancellation_reason then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "une annulation ne se défait pas",
+      "avant": "    if not (old.status = 'emis' and new.status = 'annule') then",
+      "apres": "    if false then"
+    },
+    {
+      "nom": "figé après remise — observed_evolution",
+      "avant": "  if new.observed_evolution is distinct from old.observed_evolution\n     or",
+      "apres": "  if"
+    },
+    {
+      "nom": "figé après remise — means",
+      "avant": "     or new.means is distinct from old.means\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — next_step",
+      "avant": "     or new.next_step is distinct from old.next_step\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — adjustments",
+      "avant": "     or new.adjustments is distinct from old.adjustments\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — period_start",
+      "avant": "     or new.period_start is distinct from old.period_start\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — period_end",
+      "avant": "     or new.period_end is distinct from old.period_end\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — issued_on",
+      "avant": "     or new.issued_on is distinct from old.issued_on\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — snapshot",
+      "avant": "     or new.snapshot is distinct from old.snapshot\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — note",
+      "avant": "     or new.note is distinct from old.note\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — detail_absences",
+      "avant": "     or new.detail_absences is distinct from old.detail_absences\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — detail_objectifs",
+      "avant": "     or new.detail_objectifs is distinct from old.detail_objectifs\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — patient_id",
+      "avant": "     or new.patient_id <> old.patient_id\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — recipient_contact_id",
+      "avant": "     or new.recipient_contact_id is distinct from old.recipient_contact_id\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — recipient_is_patient",
+      "avant": "     or new.recipient_is_patient is distinct from old.recipient_is_patient\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — pathway_id",
+      "avant": "     or new.pathway_id is distinct from old.pathway_id\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — issued_by",
+      "avant": "     or new.issued_by is distinct from old.issued_by\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — created_by",
+      "avant": "     or new.created_by is distinct from old.created_by\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — created_at",
+      "avant": "     or new.created_at is distinct from old.created_at then",
+      "apres": "     or false then"
+    },
+    {
+      "nom": "une synthèse remise ne se supprime pas",
+      "avant": "  if old.status <> 'brouillon' then\n    raise exception\n      'Une synthèse remise ne se supprime pas",
+      "apres": "  if false then\n    raise exception\n      'Une synthèse remise ne se supprime pas"
+    },
+    {
+      "nom": "la dérogation de suppression en cascade",
+      "avant": "  if not exists (select 1 from public.practices p where p.id = old.practice_id) then\n    return old;\n  end if;",
+      "apres": ""
+    },
+    {
+      "nom": "le rédacteur est renseigné par défaut",
+      "avant": "alter table public.follow_up_summaries\n  alter column created_by set default app.current_user_id();",
+      "apres": ""
+    },
+    {
+      "nom": "[contre-contrôle] une clé ajoutée à l'instantané est vue",
+      "avant": "           'emis_le', v_emission,",
+      "apres": "           'emis_le', v_emission, 'cle_en_trop', 'x',"
+    }
+  ]
+}

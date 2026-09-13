@@ -14,9 +14,13 @@ locataire n'est plus le compte : c'est le CABINET** (`practices` +
 `practice_members`, cinq rôles). C'est le changement structurant dont tout le
 reste découle.
 
-Vingt-trois migrations (`0000` à `0022`) sont appliquées en production — projet
-Supabase `sisummvlowhtfgiatwwf`, vérifié après chaque application. `0023` est
-écrite et éprouvée en local ; son application est notée plus bas.
+Vingt-quatre migrations (`0000` à `0023`) sont appliquées en production —
+projet Supabase `sisummvlowhtfgiatwwf`, vérifié après chaque application.
+Depuis `0023`, la vérification ne se contente plus de compter les objets :
+**les empreintes des huit fonctions déployées sont comparées une à une à
+celles de la base locale éprouvée.** C'est ce contrôle qui a montré, sur cette
+migration, que la divergence venait de la base LOCALE — laissée sur une
+mutation par le harnais de falsification — et non de la production.
 
 | Lot | Objet | État |
 |---|---|---|
@@ -33,10 +37,18 @@ Supabase `sisummvlowhtfgiatwwf`, vérifié après chaque application. `0023` est
 ## Ce qui est solide, et pourquoi on peut le dire
 
 - **L'isolation entre cabinets est éprouvée par des contrôles qui échouent
-  quand on la casse.** Dix fichiers SQL, rejoués à chaque `npm run verify`.
+  quand on la casse.** Douze fichiers SQL, rejoués à chaque `npm run verify`.
   Chaque garde ajoutée est FALSIFIÉE : on la désarme et on vérifie que le
   contrôle échoue. Cette discipline a trouvé, à répétition, des contrôles qui
   validaient leur propre mise en scène.
+- **La falsification est devenue un outil, et ses plans sont versionnés.**
+  `npm run falsifier supabase/falsifications/<plan>.json` désarme chaque garde
+  une par une et exige qu'un contrôle tombe. Il ferme trois pièges que
+  l'écriture à la main laissait ouverts : une mutation dont le motif ne
+  correspond plus ne prouve rien et est signalée comme telle ; la base est
+  reconstruite après coup, sans quoi elle reste sur la dernière mutation ; le
+  fichier est restauré même en cas d'erreur. **Cinquante-trois gardes
+  démontrées sur `0023`.**
 - **Les montants sont des entiers de centimes, les taux des points de base.**
   Aucun flottant monétaire dans le schéma.
 - **Une pièce émise est immuable**, s'annule par un avoir, et son statut ne se

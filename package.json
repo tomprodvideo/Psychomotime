@@ -18,7 +18,8 @@
     "db:cutover": "node scripts/db.mjs cutover",
     "db:psql": "node scripts/db.mjs psql",
     "verify": "npm run lint && npm run typecheck && npm test",
-    "db:budget": "node scripts/db.mjs budget"
+    "db:budget": "node scripts/db.mjs budget",
+    "falsifier": "node scripts/falsifier.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.2",
