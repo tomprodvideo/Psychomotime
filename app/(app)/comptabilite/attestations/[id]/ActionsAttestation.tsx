@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { Ban, PenLine, Trash2 } from "lucide-react";
 import type { Attestation } from "@/lib/attestations/types";
 import { CHAMP, CHAMP_AUTO } from "@/components/Champ";
+import { Bouton } from "@/components/Bouton";
 import {
   annulerAttestation,
   emettreAttestation,
@@ -60,42 +61,34 @@ export default function ActionsAttestation({
       <div className="flex flex-wrap items-center justify-end gap-2">
         {brouillon && (
           <>
-            <button
-              type="button"
-              onClick={() => setConfirmation("supprimer")}
-              disabled={enCours}
-              className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-rose-700 border border-slate-500 px-3 py-2 rounded-lg disabled:opacity-50"
-            >
+            <Bouton pending={enCours} onClick={() => setConfirmation("supprimer")}>
               <Trash2 className="h-4 w-4" aria-hidden="true" />
               Supprimer
-            </button>
-            <button
-              type="button"
-              onClick={() => setConfirmation("signer")}
-              disabled={enCours || nbFaits === 0}
-              title={
+            </Bouton>
+            {/* MÊME DÉFAUT QUE SUR LA PIÈCE COMPTABLE, avec un message qui pèse
+                plus lourd : il dit que le document n'AFFIRMERAIT RIEN. Il
+                vivait dans un `title`, sur un bouton `disabled`. */}
+            <Bouton
+              variante="principal"
+              pending={enCours}
+              empeche={
                 nbFaits === 0
                   ? "Cochez au moins une séance ou un règlement : sans cela, l'attestation n'affirme rien."
-                  : undefined
+                  : null
               }
-              className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shadow-sm disabled:opacity-40"
+              onClick={() => setConfirmation("signer")}
             >
               <PenLine className="h-4 w-4" aria-hidden="true" />
               Signer et numéroter
-            </button>
+            </Bouton>
           </>
         )}
 
         {attestation.status === "emis" && (
-          <button
-            type="button"
-            onClick={() => setConfirmation("annuler")}
-            disabled={enCours}
-            className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-amber-700 border border-slate-500 px-3 py-2 rounded-lg disabled:opacity-50"
-          >
+          <Bouton pending={enCours} onClick={() => setConfirmation("annuler")}>
             <Ban className="h-4 w-4" aria-hidden="true" />
             Annuler l&apos;attestation
-          </button>
+          </Bouton>
         )}
       </div>
 
@@ -123,9 +116,10 @@ export default function ActionsAttestation({
                 className={CHAMP_AUTO}
               />
             </div>
-            <button
-              type="button"
-              disabled={enCours}
+            <Bouton
+              variante="principal"
+              pending={enCours}
+              pendingLabel="Signature en cours…"
               onClick={() =>
                 agir(() => {
                   const fd = new FormData();
@@ -134,17 +128,15 @@ export default function ActionsAttestation({
                   return emettreAttestation(fd);
                 })
               }
-              className="bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50"
             >
-              {enCours ? "Signature…" : "Confirmer la signature"}
-            </button>
-            <button
-              type="button"
+              Confirmer la signature
+            </Bouton>
+            <Bouton
+              variante="texte"
               onClick={() => setConfirmation(null)}
-              className="text-sm text-slate-500 px-3 py-2"
             >
               Annuler
-            </button>
+            </Bouton>
           </div>
         </Encadre>
       )}
@@ -156,9 +148,10 @@ export default function ActionsAttestation({
             personne.
           </p>
           <div className="flex items-center gap-2 mt-3">
-            <button
-              type="button"
-              disabled={enCours}
+            <Bouton
+              variante="destructif"
+              pending={enCours}
+              pendingLabel="Suppression en cours…"
               onClick={() =>
                 agir(
                   () => {
@@ -169,17 +162,15 @@ export default function ActionsAttestation({
                   () => router.push("/comptabilite/attestations"),
                 )
               }
-              className="bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50"
             >
               Supprimer
-            </button>
-            <button
-              type="button"
+            </Bouton>
+            <Bouton
+              variante="texte"
               onClick={() => setConfirmation(null)}
-              className="text-sm text-slate-500 px-3 py-2"
             >
               Annuler
-            </button>
+            </Bouton>
           </div>
         </Encadre>
       )}
@@ -208,9 +199,15 @@ export default function ActionsAttestation({
             />
           </div>
           <div className="flex items-center gap-2 mt-3">
-            <button
-              type="button"
-              disabled={enCours || motif.trim() === ""}
+            <Bouton
+              variante="principal"
+              pending={enCours}
+              pendingLabel="Annulation en cours…"
+              empeche={
+                motif.trim() === ""
+                  ? "Écrivez d'abord pourquoi cette attestation est annulée."
+                  : null
+              }
               onClick={() =>
                 agir(() => {
                   const fd = new FormData();
@@ -219,17 +216,15 @@ export default function ActionsAttestation({
                   return annulerAttestation(fd);
                 })
               }
-              className="bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-40"
             >
-              {enCours ? "Annulation…" : "Confirmer l'annulation"}
-            </button>
-            <button
-              type="button"
+              Confirmer l&apos;annulation
+            </Bouton>
+            <Bouton
+              variante="texte"
               onClick={() => setConfirmation(null)}
-              className="text-sm text-slate-500 px-3 py-2"
             >
               Revenir
-            </button>
+            </Bouton>
           </div>
         </Encadre>
       )}

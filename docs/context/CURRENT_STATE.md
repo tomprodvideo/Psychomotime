@@ -30,7 +30,7 @@ mutation par le harnais de falsification — et non de la production.
 | L3 | Registre d'instruments et règle de cotation unique | partiel — le moteur de bilans reste sur le modèle v1 |
 | L5 | Moteur comptable, charges, attestations | livré |
 | L7 | Transmissions par lien | livré |
-| L8 | Design, accessibilité, performance | en cours — performance faite, **quinze** manquements WCAG corrigés, socle de formulaire fait, trois jetons sémantiques posés et employés ; `Bouton`, `Statut` et la coque imprimée unique restent à faire |
+| L8 | Design, accessibilité, performance | en cours — performance faite, **quinze** manquements WCAG corrigés, socle de formulaire fait, trois jetons posés et employés, `Bouton` et `Statut` livrés ; restent la migration des 80 `disabled` et la coque imprimée unique |
 | L4 | Écrits cliniques : note, courrier, synthèse, fin de prise en soin, écrit pour un tiers | 5 des 7 écrits manquants livrés |
 | L6, L9 | IA, préparation à la production | à faire |
 
@@ -208,28 +208,57 @@ peine de le garder.
     l'attestation et sur les quatre écrits cliniques, mais pas sur la seule
     pièce qui sert à se faire rembourser. **Corrigé le 2026-09-13** : chaque
     mention dit la conséquence et, quand il y en a un, le recours.
-- **Le composant `Bouton` n'est pas fait**, et l'ampleur du chantier `Statut`
-  était sous-estimée d'un facteur quatre ici même. Ce ne sont pas trois tables
-  de correspondance état → couleur mais **quatorze**, dont une était un
-  duplicata octet pour octet entre l'agenda et le dossier — supprimé le
-  2026-09-13, la table vit désormais dans `lib/dossier/types.ts`. **Il en
-  reste treize**, recomptés un par un : **cinq** tables `Record` — parcours,
-  comptabilité, abonnements côté administration, abonnement côté praticienne,
-  licences d'instruments — et **huit** ternaires en ligne : les quatre écrits
-  cliniques, la liste des attestations, le bloc attestations du dossier, la
-  liste des bilans et l'éditeur de bilan. Toutes appliquent la bonne règle — le libellé est toujours écrit à
-  côté de la couleur — mais par discipline, pas par construction.
+- **`Bouton` et `Statut` existent depuis le 2026-09-13** — 24 et 12 appels.
 
-  **Deux divergences en découlent, et l'une est une décision, pas un défaut.**
-  « Annulé » est rendu en rose dans les quatre écrits cliniques et en ambre en
-  comptabilité (`comptabilite/attestations/page.tsx`, `comptabilite/page.tsx`).
-  Or la doctrine du produit est écrite dans `components/SectionDossier.tsx` :
-  l'ambre dit « regardez avant de continuer », le rose dit « ceci ne se reprend
-  pas ». **Les deux moitiés du produit sont en désaccord sur la réversibilité
-  d'une annulation** — une attestation annulée se refait, un écrit clinique
-  annulé engage autre chose. À trancher par `expert-metier-psychomotricien`,
-  pas par cohérence visuelle. L'autre divergence, elle, se corrige sans
-  décision : le même concept est rendu en pastille ici et en texte nu là.
+  **`Statut` : les quatorze rendus de pastille sont ramenés à six tons.** Le
+  même rôle était peint à deux forces de teinte selon l'écran — `brand-50` ici
+  et `brand-100` là pour « c'est fait », `amber-50` et `amber-100` pour
+  « vérifiez », `slate-100` et `slate-200` pour « rien n'est engagé » — et une
+  seconde teinte de vert servait à « accepté » sans rien distinguer. Le
+  rattachement d'un état à un ton reste chez le domaine ; `Statut` ne connaît
+  que les tons. `libelle` est obligatoire par le typage : WCAG 1.4.1 est tenu
+  par construction, plus par discipline.
+
+  **Le désaccord rose/ambre est PRÉSERVÉ, pas résolu.** Les cartes de la
+  comptabilité et des écrits cliniques gardent chacune leur ton, avec le
+  commentaire qui dit pourquoi elles n'ont pas été alignées. Vérifié à l'écran
+  côte à côte. La question reste posée à `expert-metier-psychomotricien`.
+
+  **`Bouton` n'emploie jamais `disabled`** — le typage l'interdit. Un élément
+  `disabled` sort de l'ordre de tabulation : on ne peut pas l'atteindre pour
+  savoir pourquoi il est éteint, et s'il portait le focus au moment où il
+  s'éteint, le focus retombe sur `body`. Il emploie `aria-disabled` et exige un
+  MOTIF pour éteindre.
+
+  **Deux motifs vivaient dans un `title`, sur un bouton `disabled`** —
+  `BarreActions.tsx` et `ActionsAttestation.tsx`. La phrase existait ; ni le
+  clavier, ni le doigt, ni l'impression ne pouvaient l'atteindre, et un bouton
+  `disabled` ne se survole pas. Dont celui-ci, qui pèse lourd : « Cochez au
+  moins une séance ou un règlement : sans cela, l'attestation n'affirme rien. »
+  Ce motif d'anti-usage a disparu du produit ; les quatre `title` restants sont
+  des libellés d'infobulle sur des boutons-icônes, pas des motifs de refus.
+
+  **Le déplacement de garantie a été MESURÉ, pas supposé.** `aria-disabled`
+  n'empêche rien seul : le refus passe par un gestionnaire de clic. Éprouvé
+  dans le navigateur avec un compteur — bouton actif : compte ; bouton empêché :
+  rien ; `type="submit"` empêché : ni son `onClick`, ni la soumission. Et un
+  bouton inerte reçoit le focus, son motif se lisant par `aria-describedby`.
+  Non couvert, et dit comme tel : une soumission déclenchée par programme —
+  il n'en existe aucune dans le produit.
+
+  **Ce qui reste.** `disabled=` passe de 93 à **80**, dans 41 fichiers : les
+  deux fichiers les plus denses sont faits, le reste doit converger. Quatre
+  valeurs de `disabled:opacity-*` coexistent encore — 30, 40, 50 et 60, sur 71
+  occurrences — et une opacité à 50 % délave AUSSI le libellé, au moment précis
+  où il faut lire pourquoi. Les boutons d'action compacts des quatre écrits
+  cliniques sont à une autre échelle que `Bouton` et demanderaient une taille
+  dédiée. Deux correspondances sont laissées EXPRÈS : la bascule
+  brouillon/finalisé de l'éditeur de bilan est un bouton, pas une pastille, et
+  le titre barré d'une attestation annulée porte déjà un second canal.
+
+  **Cinq boutons disaient « … » pendant l'attente** — un lecteur d'écran
+  annonce « points de suspension, bouton ». Corrigé : chacun dit l'action en
+  cours.
 - **Trois jetons sémantiques existent depuis le 2026-09-13** — `avis`, `arret`
   et `encre-faible` — et chacun est EMPLOYÉ : un jeton posé sans emploi est du
   décor. `--color-trait`, `--container-document` et `--text-document` ont donc
