@@ -26,7 +26,7 @@ Par ordre de ce qu'ils coûtent, pas d'ordre chronologique.
 
 | # | Document | Destinataire | Ce qu'il y a déjà en base |
 |---|---|---|---|
-| 1 | **Note de séance** | personne, usage propre | `patient_notes.appointment_id` **existe, avec un index, et rien ne l'écrit** |
+| 1 | ~~**Note de séance**~~ **fait le 2026-09-13** | personne, usage propre | Branchée depuis la fiche du dossier ET depuis l'agenda. Garde de cohérence en base (`0021`) : même cabinet, même dossier, même séance. L'agenda dit quelles séances portent déjà une note. |
 | 2 | **Courrier de liaison** | un professionnel nommé | `contacts`, et `patient_consents` trace déjà `transmission_prescripteur` |
 | 3 | **Synthèse de suivi** | prescripteur, famille, structure | `appointments.attendance`, `care_objectives.status`, `reviewed_on` |
 | 4 | **Écrit de fin de prise en soin** | prescripteur, famille, relais | `care_pathways.ended_on`, `end_reason` |
@@ -40,9 +40,14 @@ produire ni l'un ni l'autre**.
 
 **Correction d'une erreur de la relecture métier** : elle annonçait que
 `patient_notes` n'avait pas d'`appointment_id`. C'est faux — la colonne a été
-ajoutée par la migration `0005`, avec un index partiel. Le manque n'est donc
-pas un modèle à construire : **c'est un fil à brancher**. Le rang 1 coûte bien
-moins cher qu'annoncé.
+ajoutée par la migration `0005`, avec un index partiel. Le manque n'était donc
+pas un modèle à construire : **c'était un fil à brancher**. Fait le 2026-09-13.
+
+**Et ce branchement a révélé un défaut d'isolation**, trouvé en cherchant à
+falsifier la garde qu'il ajoutait : `patient_notes` ne vérifiait pas que son
+patient appartient à son cabinet. Démontré en exécution — un praticien du
+cabinet A écrivait une note clinique nommant un dossier du cabinet B. C'était
+la seule table de sa famille sans cette garde.
 
 ### Sur les tiers non soignants, un point sourcé qui tranche
 
