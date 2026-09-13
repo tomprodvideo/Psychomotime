@@ -158,14 +158,29 @@ peine de le garder.
   unique, `{ ok, error }`, sans dire QUEL champ a échoué. C'est ce contrat
   qu'il faut élargir avant de brancher quoi que ce soit ; le composant, lui,
   accepte déjà `erreur` en propriété facultative.
-- **Trois points d'accessibilité ne se tranchent qu'EN EXÉCUTION**, et ne
-  doivent pas être déclarés conformes sur lecture de source : le focus sous la
-  barre d'actions fixe de l'éditeur de bilan quand la cible est déjà dans le
-  cadre (`2.4.11`), la taille réelle des cibles après retour à la ligne
-  (`2.5.8`, dont l'exception d'espacement s'applique probablement), et la
-  lisibilité d'un tirage MONOCHROME — `amber-50`, `rose-50` et `brand-50` y
-  deviennent tous trois du blanc, si bien qu'un état qui se lit au fond devient
-  un état illisible.
+- **Les trois points qui ne se tranchaient qu'en exécution ont été MESURÉS le
+  2026-09-13**, en rendant les composants réels sur un jeu fictif :
+
+  · `2.5.8` — **conforme, rien à corriger.** Cinq cibles sur six font 16 à
+    20 px de haut, sous le minimum de 24, mais l'exception d'espacement
+    s'applique : aucun conflit à 1029 px comme à 375 px, cercles de 24 px
+    calculés par paires.
+
+  · `2.4.11` — **conforme, rien à corriger.** Une cible ENTIÈREMENT visible,
+    posée au milieu de la bande couverte par la barre d'actions fixe de
+    l'éditeur de bilan, est quand même dégagée au focus : `scroll-padding-bottom:
+    7rem` traite les 112 derniers pixels comme un endroit où une cible de focus
+    n'a pas le droit de se poser. Le cas strict passe.
+
+  · **Tirage monochrome — un défaut réel, sur le compte rendu de bilan.** Le
+    bandeau d'annulation survit : le trait tireté et le mot en capitales
+    portent le sens, la couleur n'était que le troisième canal. **Mais les
+    bandes de `components/GaussianCurve.tsx` sont dessinées sans trait de
+    séparation, et « Faible » (#e8943a, gris 98) et « Moyenne » (#7aab5a, gris
+    86) sont à DOUZE niveaux de gris l'une de l'autre.** Elles fusionnent en un
+    seul bloc, avec deux libellés flottant dessus sans frontière visible — et
+    c'est précisément la frontière dont discute `Q-202`. Corrigeable sans
+    aucune décision clinique : un trait de séparation ne déplace aucun seuil.
 - **Le composant `Bouton` n'est pas fait.** Trois tables de correspondance
   état → couleur coexistent encore (agenda, comptabilité, et deux ternaires en
   ligne). Les quatre appliquent la bonne règle — le libellé est toujours écrit
