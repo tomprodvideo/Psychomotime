@@ -111,14 +111,20 @@ export default function SeancesSection({
               <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500 mb-1.5">
                 Historique
               </h3>
+              {/* TROIS, PAS DIX. Ce bloc s'intercale entre le parcours et les
+                  notes cliniques — les deux choses qu'on lit ensemble avant une
+                  séance. Dix lignes d'historique les écartaient de la moitié
+                  d'un écran de portable, pour une information qu'on va chercher
+                  dans l'agenda quand on en a besoin.
+                  Relevé par la relecture métier de la fiche. */}
               <ul className="space-y-1.5 list-none p-0 m-0">
-                {passes.slice(0, 10).map((a) => (
+                {passes.slice(0, 3).map((a) => (
                   <Ligne key={a.id} rdv={a} />
                 ))}
               </ul>
-              {passes.length > 10 && (
+              {passes.length > 3 && (
                 <p className="text-xs text-slate-500 mt-2">
-                  {passes.length - 10} rendez-vous plus anciens, visibles dans
+                  {passes.length - 3} rendez-vous plus anciens, visibles dans
                   l&apos;agenda.
                 </p>
               )}

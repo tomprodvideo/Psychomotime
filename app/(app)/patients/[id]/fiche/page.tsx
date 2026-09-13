@@ -114,15 +114,6 @@ export default async function FichePatientImprimable({
           </Link>
           <PrintButton />
         </div>
-        {notesRetenues > 0 && (
-          <p className="max-w-3xl mx-auto text-xs text-amber-800 bg-amber-50 rounded-lg px-3 py-2 mt-3">
-            {notesRetenues} note{notesRetenues > 1 ? "s" : ""} marquée
-            {notesRetenues > 1 ? "s" : ""} « information d&apos;un tiers » n&apos;
-            {notesRetenues > 1 ? "apparaissent" : "apparaît"} pas sur ce document.
-            L&apos;article L1111-7 du code de la santé publique les exclut du droit
-            d&apos;accès du patient.
-          </p>
-        )}
       </div>
 
       <div className="py-8 px-4 print:p-0">
@@ -306,6 +297,21 @@ export default async function FichePatientImprimable({
                 ))}
               </div>
             </>
+          )}
+
+          {/* UN DOCUMENT QUI OMET DU CONTENU DOIT LE DIRE SUR LE PAPIER.
+              Cet avertissement vivait dans la barre `no-print` : il ne
+              s'adressait qu'à celle qui imprime, jamais à celui qui reçoit. Le
+              tirage ne disait donc jamais qu'il était incomplet.
+              Relevé par la relecture métier de la fiche. */}
+          {notesRetenues > 0 && (
+            <p className="mt-8 pt-4 border-t border-slate-100 text-[11px] text-slate-600">
+              {notesRetenues} note{notesRetenues > 1 ? "s" : ""} du dossier
+              {notesRetenues > 1 ? " sont marquées" : " est marquée"} « information
+              d&apos;un tiers » et ne figure{notesRetenues > 1 ? "nt" : ""} pas sur
+              ce document. L&apos;article L1111-7 du code de la santé publique les
+              exclut du droit d&apos;accès.
+            </p>
           )}
 
           <footer className="mt-8 pt-4 border-t border-slate-100 text-[11px] text-slate-500 text-center">

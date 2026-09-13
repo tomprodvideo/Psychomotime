@@ -244,6 +244,8 @@ export default async function FichePatientPage({
 
         <EntourageSection
           patientId={patient.id}
+          patientNom={patientName(patient)}
+          patientNeLe={patient.birth_date}
           liens={entourage}
           contacts={contacts}
           canWrite={practice.canWrite}
@@ -253,6 +255,8 @@ export default async function FichePatientPage({
 
         <ParcoursSection
           patientId={patient.id}
+          patientNom={patientName(patient)}
+          patientNeLe={patient.birth_date}
           parcours={parcours}
           objectifs={objectifs}
           contacts={contacts}
@@ -394,6 +398,8 @@ export default async function FichePatientPage({
 
           <NotesSection
             patientId={patient.id}
+            patientNom={patientName(patient)}
+            patientNeLe={patient.birth_date}
             notes={notes}
             parcours={parcours}
             /* Les séances passées, pour qu'une note puisse dire LAQUELLE elle
@@ -431,6 +437,8 @@ export default async function FichePatientPage({
 
         <ConsentementsSection
           patientId={patient.id}
+          patientNom={patientName(patient)}
+          patientNeLe={patient.birth_date}
           consentements={consentements}
           contacts={contacts}
           canWrite={practice.canWrite}

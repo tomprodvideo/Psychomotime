@@ -24,11 +24,15 @@ import { CHAMP } from "@/components/Champ";
  */
 export default function EntourageSection({
   patientId,
+  patientNom,
+  patientNeLe,
   liens,
   contacts,
   canWrite,
 }: {
   patientId: string;
+  patientNom: string;
+  patientNeLe: string | null;
   liens: PatientContactWithContact[];
   contacts: Contact[];
   canWrite: boolean;
@@ -121,6 +125,8 @@ export default function EntourageSection({
       {ouvert && (
         <DialogueRattachement
           patientId={patientId}
+          patientNom={patientNom}
+          patientNeLe={patientNeLe}
           contacts={contacts}
           onClose={() => setOuvert(false)}
         />
@@ -224,10 +230,14 @@ function LigneLien({
 
 function DialogueRattachement({
   patientId,
+  patientNom,
+  patientNeLe,
   contacts,
   onClose,
 }: {
   patientId: string;
+  patientNom: string;
+  patientNeLe: string | null;
   contacts: Contact[];
   onClose: () => void;
 }) {
@@ -252,7 +262,18 @@ function DialogueRattachement({
   };
 
   return (
-    <Dialogue ouvert onFermer={onClose} titre="Rattacher une personne ou une organisation" taille="petite">
+    <Dialogue ouvert onFermer={onClose} titre="Rattacher une personne ou une organisation"
+      /* LE DOSSIER EST NOMMÉ DANS LA FENÊTRE. `showModal()` rend inerte tout
+         ce qui est derrière : le nom du patient, en tête de page, devient
+         inatteignable — y compris pour un lecteur d'écran — et le titre de
+         l'onglet est délibérément statique.
+         Les quatre écrits cliniques du lot 4 passaient déjà cette description ;
+         les quatre blocs du dossier, plus anciens, ne la passaient pas. Celui
+         qui écrit une NOTE CLINIQUE était le plus exposé des quatre.
+         Relevé par la relecture métier de la fiche. */
+      description={`${patientNom}${patientNeLe ? ` · né(e) le ${frDate(patientNeLe)}` : ""}`}
+      taille="petite"
+    >
         <form onSubmit={soumettre} className="px-6 py-5 space-y-4">
           <input type="hidden" name="patient_id" value={patientId} />
 

@@ -28,12 +28,16 @@ import { CHAMP } from "@/components/Champ";
  */
 export default function NotesSection({
   patientId,
+  patientNom,
+  patientNeLe,
   notes,
   parcours,
   seances,
   canWrite,
 }: {
   patientId: string;
+  patientNom: string;
+  patientNeLe: string | null;
   notes: PatientNote[];
   parcours: CarePathway[];
   /** Les séances passées du dossier, pour rattacher une note à l'une d'elles. */
@@ -121,6 +125,8 @@ export default function NotesSection({
       {ouvert && (
         <DialogueNote
           patientId={patientId}
+          patientNom={patientNom}
+          patientNeLe={patientNeLe}
           parcours={parcours}
           seances={seances}
           onClose={() => setOuvert(false)}
@@ -133,11 +139,15 @@ export default function NotesSection({
 
 function DialogueNote({
   patientId,
+  patientNom,
+  patientNeLe,
   parcours,
   seances,
   onClose,
 }: {
   patientId: string;
+  patientNom: string;
+  patientNeLe: string | null;
   parcours: CarePathway[];
   seances: Appointment[];
   onClose: () => void;
@@ -161,7 +171,18 @@ function DialogueNote({
   };
 
   return (
-    <Dialogue ouvert onFermer={onClose} titre="Nouvelle note" taille="petite">
+    <Dialogue ouvert onFermer={onClose} titre="Nouvelle note"
+      /* LE DOSSIER EST NOMMÉ DANS LA FENÊTRE. `showModal()` rend inerte tout
+         ce qui est derrière : le nom du patient, en tête de page, devient
+         inatteignable — y compris pour un lecteur d'écran — et le titre de
+         l'onglet est délibérément statique.
+         Les quatre écrits cliniques du lot 4 passaient déjà cette description ;
+         les quatre blocs du dossier, plus anciens, ne la passaient pas. Celui
+         qui écrit une NOTE CLINIQUE était le plus exposé des quatre.
+         Relevé par la relecture métier de la fiche. */
+      description={`${patientNom}${patientNeLe ? ` · né(e) le ${frDate(patientNeLe)}` : ""}`}
+      taille="petite"
+    >
         <form onSubmit={soumettre} className="px-6 py-5 space-y-4">
           <input type="hidden" name="patient_id" value={patientId} />
 

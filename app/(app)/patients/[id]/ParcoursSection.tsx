@@ -37,6 +37,8 @@ const COULEURS: Record<PathwayStatus, string> = {
 
 export default function ParcoursSection({
   patientId,
+  patientNom,
+  patientNeLe,
   parcours,
   objectifs,
   contacts,
@@ -44,6 +46,8 @@ export default function ParcoursSection({
   canReadClinical,
 }: {
   patientId: string;
+  patientNom: string;
+  patientNeLe: string | null;
   parcours: CarePathway[];
   objectifs: CareObjective[];
   contacts: Contact[];
@@ -186,6 +190,8 @@ export default function ParcoursSection({
       {edite && (
         <DialogueParcours
           patientId={patientId}
+          patientNom={patientNom}
+          patientNeLe={patientNeLe}
           parcours={edite === "nouveau" ? null : edite}
           contacts={contacts}
           onClose={() => setEdite(null)}
@@ -211,11 +217,15 @@ const CLOS: PathwayStatus[] = ["termine", "interrompu", "reoriente"];
 
 function DialogueParcours({
   patientId,
+  patientNom,
+  patientNeLe,
   parcours,
   contacts,
   onClose,
 }: {
   patientId: string;
+  patientNom: string;
+  patientNeLe: string | null;
   parcours: CarePathway | null;
   contacts: Contact[];
   onClose: () => void;
@@ -239,7 +249,18 @@ function DialogueParcours({
   };
 
   return (
-    <Dialogue ouvert onFermer={onClose} titre={parcours ? "Modifier le parcours" : "Nouveau parcours"} taille="petite">
+    <Dialogue ouvert onFermer={onClose} titre={parcours ? "Modifier le parcours" : "Nouveau parcours"}
+      /* LE DOSSIER EST NOMMÉ DANS LA FENÊTRE. `showModal()` rend inerte tout
+         ce qui est derrière : le nom du patient, en tête de page, devient
+         inatteignable — y compris pour un lecteur d'écran — et le titre de
+         l'onglet est délibérément statique.
+         Les quatre écrits cliniques du lot 4 passaient déjà cette description ;
+         les quatre blocs du dossier, plus anciens, ne la passaient pas. Celui
+         qui écrit une NOTE CLINIQUE était le plus exposé des quatre.
+         Relevé par la relecture métier de la fiche. */
+      description={`${patientNom}${patientNeLe ? ` · né(e) le ${frDate(patientNeLe)}` : ""}`}
+      taille="petite"
+    >
         <form onSubmit={soumettre} className="px-6 py-5 space-y-4">
           <input type="hidden" name="patient_id" value={patientId} />
           {parcours && <input type="hidden" name="id" value={parcours.id} />}
