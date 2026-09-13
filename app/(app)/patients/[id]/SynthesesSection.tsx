@@ -11,6 +11,7 @@ import {
   MENTION_COMPTE_SEANCES,
   OBJECTIF_STATUS_IMPRIME,
   SYNTHESE_STATUS_LABELS,
+  SYNTHESE_STATUS_TONS,
   chevauchements,
   periodeParDefaut,
   type FaitsPeriode,
@@ -25,6 +26,7 @@ import {
   supprimerBrouillonSynthese,
 } from "../../syntheses/actions";
 import type { OptionDestinataire } from "./CourriersSection";
+import { Statut } from "@/components/Statut";
 
 
 export interface OptionParcours {
@@ -182,17 +184,10 @@ function LigneSynthese({
           </p>
           <p className="text-xs text-slate-500 mt-0.5">
             {/* L'état est ÉCRIT, pas seulement coloré. */}
-            <span
-              className={
-                s.status === "emis"
-                  ? "text-brand-700"
-                  : s.status === "annule"
-                    ? "text-rose-700"
-                    : "text-amber-700"
-              }
-            >
-              {SYNTHESE_STATUS_LABELS[s.status]}
-            </span>
+            <Statut
+              ton={SYNTHESE_STATUS_TONS[s.status]}
+              libelle={SYNTHESE_STATUS_LABELS[s.status]}
+            />
             {s.issued_on && ` le ${frDate(s.issued_on)}`}
             {s.snapshot?.faits?.seances_honorees !== undefined &&
               ` · ${s.snapshot.faits.seances_honorees} séance${

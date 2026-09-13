@@ -1,3 +1,5 @@
+
+import type { Ton } from "@/components/Statut";
 /**
  * Types des attestations de présence et de paiement.
  *
@@ -111,6 +113,18 @@ export const ATTESTATION_STATUS_LABELS: Record<AttestationStatus, string> = {
   brouillon: "Brouillon",
   emis: "Émise",
   annule: "Annulée",
+};
+
+/**
+ * `annule` est en `avis` (ambre) et NON en `arret` (rose), à l'inverse des
+ * quatre écrits cliniques. C'est le ton d'aujourd'hui, conservé tel quel : la
+ * question de savoir si une annulation se reprend appartient au métier, pas à
+ * une harmonisation de palette. Voir `docs/context/CURRENT_STATE.md`.
+ */
+export const ATTESTATION_STATUS_TONS: Record<AttestationStatus, Ton> = {
+  brouillon: "attente",
+  emis: "normal",
+  annule: "avis",
 };
 
 /**

@@ -8,6 +8,7 @@ import { BILAN_TYPE_ORDER, BILAN_TYPE_UI, bilanTypeOf } from "@/lib/constants";
 import DeleteBilanButton from "./DeleteBilanButton";
 
 import type { Metadata } from "next";
+import { Statut } from "@/components/Statut";
 /* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
    patient le ferait entrer dans l'historique du navigateur, parfois synchronisé
    entre appareils, parfois affiché devant quelqu'un d'autre. C'est le même
@@ -106,15 +107,10 @@ export default async function BilansPage() {
                         <FileText className="h-5 w-5" />
                       </div>
                       <div className="flex items-center gap-1">
-                        <span
-                          className={`text-xs px-2 py-0.5 rounded-full ${
-                            b.status === "finalisé"
-                              ? "bg-brand-100 text-brand-700"
-                              : "bg-amber-100 text-amber-700"
-                          }`}
-                        >
-                          {b.status}
-                        </span>
+                        <Statut
+                          ton={b.status === "finalisé" ? "normal" : "attente"}
+                          libelle={b.status === "finalisé" ? "Finalisé" : "Brouillon"}
+                        />
                         <DeleteBilanButton
                           id={b.id}
                           label={b.patient_name || b.title || "ce bilan"}

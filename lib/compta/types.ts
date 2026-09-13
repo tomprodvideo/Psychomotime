@@ -14,6 +14,7 @@
  */
 
 import { formatCents } from "@/lib/money";
+import type { Ton } from "@/components/Statut";
 
 /* ==========================================================================
  *  Natures et états
@@ -235,6 +236,26 @@ export const STATUS_LABELS: Record<DocumentStatus, string> = {
   expire: "Expiré",
   remplace: "Remplacée",
   annule_par_avoir: "Annulée par avoir",
+};
+
+/**
+ * `accepte` rejoint `normal` : il était le seul état du produit peint en
+ * émeraude, une seconde teinte de « tout va bien » que rien ne distinguait de
+ * la première.
+ *
+ * `remplace` et `annule_par_avoir` restent en `avis` (ambre) alors que les
+ * quatre écrits cliniques peignent `annule` en `arret` (rose). Conservé tel
+ * quel : une facture annulée par avoir se refait, un écrit clinique annulé
+ * engage autre chose. Question ouverte pour `expert-metier-psychomotricien`.
+ */
+export const STATUS_TONS: Record<DocumentStatus, Ton> = {
+  brouillon: "attente",
+  emis: "normal",
+  accepte: "normal",
+  refuse: "inerte",
+  expire: "inerte",
+  remplace: "avis",
+  annule_par_avoir: "avis",
 };
 
 export const METHOD_LABELS: Record<PaymentMethod, string> = {

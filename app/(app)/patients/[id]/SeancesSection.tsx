@@ -5,10 +5,11 @@ import { CalendarDays } from "lucide-react";
 import {
   APPOINTMENT_KIND_LABELS,
   ATTENDANCE_LABELS,
-  ATTENDANCE_TEINTES,
+  ATTENDANCE_TONS,
   type Appointment,
 } from "@/lib/dossier/types";
 import type { SessionCount } from "@/lib/dossier/queries";
+import { Statut } from "@/components/Statut";
 
 /**
  * Séances d'un patient.
@@ -159,11 +160,10 @@ function Ligne({ rdv }: { rdv: Appointment }) {
         {rdv.attendance_note && (
           <span className="text-xs text-slate-500 italic">{rdv.attendance_note}</span>
         )}
-        <span
-          className={`text-xs font-medium rounded-full px-2 py-0.5 ${ATTENDANCE_TEINTES[rdv.attendance]}`}
-        >
-          {ATTENDANCE_LABELS[rdv.attendance]}
-        </span>
+        <Statut
+          ton={ATTENDANCE_TONS[rdv.attendance]}
+          libelle={ATTENDANCE_LABELS[rdv.attendance]}
+        />
       </span>
     </li>
   );

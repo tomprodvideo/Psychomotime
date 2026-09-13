@@ -8,6 +8,7 @@ import { frDate } from "@/lib/format";
 import { setSubscription } from "./actions";
 
 import type { Metadata } from "next";
+import { Statut, type Ton } from "@/components/Statut";
 /* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
    patient le ferait entrer dans l'historique du navigateur, parfois synchronisé
    entre appareils, parfois affiché devant quelqu'un d'autre. C'est le même
@@ -16,12 +17,12 @@ import type { Metadata } from "next";
 export const metadata: Metadata = { title: "Administration · Psychomotime" };
 
 
-const STATUS_STYLES: Record<string, string> = {
-  active: "bg-emerald-100 text-emerald-700",
-  trialing: "bg-amber-100 text-amber-700",
-  inactive: "bg-slate-200 text-slate-600",
-  canceled: "bg-rose-100 text-rose-700",
-  past_due: "bg-rose-100 text-rose-700",
+const STATUS_TONS: Record<string, Ton> = {
+  active: "normal",
+  trialing: "avis",
+  inactive: "inerte",
+  canceled: "arret",
+  past_due: "arret",
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -102,13 +103,10 @@ export default async function AdminPage() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full ${
-                        STATUS_STYLES[s.status] ?? "bg-slate-200 text-slate-600"
-                      }`}
-                    >
-                      {STATUS_LABEL[s.status] ?? s.status}
-                    </span>
+                    <Statut
+                      ton={STATUS_TONS[s.status] ?? "inerte"}
+                      libelle={STATUS_LABEL[s.status] ?? s.status}
+                    />
                     {trialInfo(s) && (
                       <span className="text-xs text-slate-500 ml-2">
                         {trialInfo(s)}

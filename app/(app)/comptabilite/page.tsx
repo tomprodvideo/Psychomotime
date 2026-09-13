@@ -10,6 +10,7 @@ import { listCharges, listDocuments } from "@/lib/compta/queries";
 import {
   KIND_SHORT,
   STATUS_LABELS,
+  STATUS_TONS,
   documentTitre,
   resumeCharges,
 } from "@/lib/compta/types";
@@ -19,6 +20,7 @@ import SelecteurPeriode from "./SelecteurPeriode";
 import NouvellePiece from "./NouvellePiece";
 
 import type { Metadata } from "next";
+import { Statut } from "@/components/Statut";
 /* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
    patient le ferait entrer dans l'historique du navigateur, parfois synchronisé
    entre appareils, parfois affiché devant quelqu'un d'autre. C'est le même
@@ -299,27 +301,9 @@ function LignePiece({ d }: { d: DocumentListItem }) {
         )}
       </td>
       <td className="px-4 py-2.5">
-        <EtatPastille statut={d.status} />
+        <Statut ton={STATUS_TONS[d.status]} libelle={STATUS_LABELS[d.status]} />
       </td>
     </tr>
   );
 }
 
-function EtatPastille({ statut }: { statut: DocumentListItem["status"] }) {
-  const couleurs: Record<string, string> = {
-    brouillon: "bg-slate-100 text-slate-600",
-    emis: "bg-brand-50 text-brand-700",
-    accepte: "bg-emerald-50 text-emerald-700",
-    refuse: "bg-slate-100 text-encre-faible",
-    expire: "bg-slate-100 text-encre-faible",
-    remplace: "bg-amber-50 text-amber-700",
-    annule_par_avoir: "bg-amber-50 text-amber-700",
-  };
-  return (
-    <span
-      className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${couleurs[statut]}`}
-    >
-      {STATUS_LABELS[statut]}
-    </span>
-  );
-}

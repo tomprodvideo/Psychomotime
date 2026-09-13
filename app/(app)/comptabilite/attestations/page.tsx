@@ -11,11 +11,13 @@ import { listAttestations } from "@/lib/attestations/queries";
 import {
   ATTESTATION_KIND_SHORT,
   ATTESTATION_STATUS_LABELS,
+  ATTESTATION_STATUS_TONS,
   attestationTitre,
 } from "@/lib/attestations/types";
 import NouvelleAttestation from "./NouvelleAttestation";
 
 import type { Metadata } from "next";
+import { Statut } from "@/components/Statut";
 /* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
    patient le ferait entrer dans l'historique du navigateur, parfois synchronisé
    entre appareils, parfois affiché devant quelqu'un d'autre. C'est le même
@@ -143,17 +145,10 @@ export default async function AttestationsPage() {
                       )}
                     </td>
                     <td className="px-4 py-2.5">
-                      <span
-                        className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                          a.status === "emis"
-                            ? "bg-brand-50 text-brand-700"
-                            : a.status === "annule"
-                              ? "bg-amber-50 text-amber-700"
-                              : "bg-slate-100 text-slate-600"
-                        }`}
-                      >
-                        {ATTESTATION_STATUS_LABELS[a.status]}
-                      </span>
+                      <Statut
+                        ton={ATTESTATION_STATUS_TONS[a.status]}
+                        libelle={ATTESTATION_STATUS_LABELS[a.status]}
+                      />
                     </td>
                   </tr>
                 ))}

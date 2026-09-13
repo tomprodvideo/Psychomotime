@@ -9,10 +9,12 @@ import { SectionDossier } from "@/components/SectionDossier";
 import { frDate } from "@/lib/format";
 import {
   COURRIER_STATUS_LABELS,
+  COURRIER_STATUS_TONS,
   messageConsentement,
   type EtatConsentement,
 } from "@/lib/courriers/types";
 import type { CourrierAvecDestinataire } from "@/lib/courriers/queries";
+import { Statut } from "@/components/Statut";
 import {
   annulerCourrier,
   enregistrerCourrier,
@@ -172,17 +174,10 @@ function LigneCourrier({
           </p>
           <p className="text-xs text-slate-500 mt-0.5">
             {/* L'état est ÉCRIT, pas seulement coloré. */}
-            <span
-              className={
-                c.status === "emis"
-                  ? "text-brand-700"
-                  : c.status === "annule"
-                    ? "text-rose-700"
-                    : "text-amber-700"
-              }
-            >
-              {COURRIER_STATUS_LABELS[c.status]}
-            </span>
+            <Statut
+              ton={COURRIER_STATUS_TONS[c.status]}
+              libelle={COURRIER_STATUS_LABELS[c.status]}
+            />
             {c.issued_on && ` le ${frDate(c.issued_on)}`}
             {c.cancellation_reason && ` · ${c.cancellation_reason}`}
           </p>

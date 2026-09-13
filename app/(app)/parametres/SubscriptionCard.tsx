@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { BadgeCheck, Sparkles } from "lucide-react";
 import { cancelSubscription } from "./actions";
+import { TONS, type Ton } from "@/components/Statut";
 
 export default function SubscriptionCard({
   status,
@@ -29,22 +30,22 @@ export default function SubscriptionCard({
           </p>
         </div>
         {isAdmin ? (
-          <Badge tone="brand" icon={<BadgeCheck className="h-4 w-4" />}>
+          <Badge tone="normal" icon={<BadgeCheck className="h-4 w-4" />}>
             Administrateur
           </Badge>
         ) : isPro ? (
-          <Badge tone="emerald" icon={<BadgeCheck className="h-4 w-4" />}>
+          <Badge tone="normal" icon={<BadgeCheck className="h-4 w-4" />}>
             Formule Pro · Active
           </Badge>
         ) : status === "trialing" ? (
-          <Badge tone="amber">
+          <Badge tone="avis">
             Essai
             {trialDaysLeft !== null
               ? ` — ${trialDaysLeft} jour${trialDaysLeft > 1 ? "s" : ""} restant${trialDaysLeft > 1 ? "s" : ""}`
               : ""}
           </Badge>
         ) : (
-          <Badge tone="slate">Inactif</Badge>
+          <Badge tone="inerte">Inactif</Badge>
         )}
       </div>
 
@@ -123,18 +124,12 @@ function Badge({
   icon,
 }: {
   children: React.ReactNode;
-  tone: "brand" | "emerald" | "amber" | "slate";
+  tone: Ton;
   icon?: React.ReactNode;
 }) {
-  const tones: Record<string, string> = {
-    brand: "bg-brand-100 text-brand-700",
-    emerald: "bg-emerald-100 text-emerald-700",
-    amber: "bg-amber-100 text-amber-700",
-    slate: "bg-slate-200 text-slate-600",
-  };
   return (
     <span
-      className={`inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1 rounded-full ${tones[tone]}`}
+      className={`inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1 rounded-full ${TONS[tone]}`}
     >
       {icon}
       {children}

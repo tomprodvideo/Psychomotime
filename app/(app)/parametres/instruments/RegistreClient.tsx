@@ -21,6 +21,7 @@ import {
   type Vocabulary,
 } from "@/lib/dossier/types";
 import { CHAMP } from "@/components/Champ";
+import { Statut, type Ton } from "@/components/Statut";
 
 
 const STATUTS: LicenceStatus[] = [
@@ -30,11 +31,11 @@ const STATUTS: LicenceStatus[] = [
   "outil_libre_valide",
 ];
 
-const TEINTE_STATUT: Record<LicenceStatus, string> = {
-  reference_seule: "bg-slate-100 text-slate-600",
-  scores_saisis_par_le_praticien: "bg-brand-50 text-brand-700",
-  integration_editeur_autorisee: "bg-sky-50 text-sky-700",
-  outil_libre_valide: "bg-emerald-50 text-emerald-700",
+const TON_STATUT: Record<LicenceStatus, Ton> = {
+  reference_seule: "attente",
+  scores_saisis_par_le_praticien: "normal",
+  integration_editeur_autorisee: "ailleurs",
+  outil_libre_valide: "normal",
 };
 
 const TYPE_RESULTAT: Record<string, string> = {
@@ -138,11 +139,10 @@ export default function RegistreClient({
                   </div>
                 </button>
                 <div className="flex items-center gap-2 shrink-0">
-                  <span
-                    className={`text-xs font-medium rounded-full px-2 py-0.5 ${TEINTE_STATUT[i.licence_status]}`}
-                  >
-                    {LICENCE_LABELS[i.licence_status]}
-                  </span>
+                  <Statut
+                    ton={TON_STATUT[i.licence_status]}
+                    libelle={LICENCE_LABELS[i.licence_status]}
+                  />
                   {canWrite && (
                     <button
                       type="button"

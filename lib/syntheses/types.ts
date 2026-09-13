@@ -1,3 +1,5 @@
+
+import type { Ton } from "@/components/Statut";
 /**
  * LA SYNTHÈSE DE SUIVI.
  *
@@ -22,6 +24,24 @@ export const SYNTHESE_STATUS_LABELS: Record<SyntheseStatus, string> = {
   brouillon: "Brouillon",
   emis: "Remise",
   annule: "Annulée",
+};
+
+/**
+ * « Brouillon » passe de l'ambre au gris.
+ *
+ * L'ambre a un sens écrit dans `components/SectionDossier.tsx` : « regardez
+ * avant de continuer ». Un brouillon ne demande pas qu'on le vérifie, il
+ * demande qu'on le finisse — et la comptabilité le peignait déjà en gris. Le
+ * garder en ambre ici diluait le seul signal censé dire « attention ».
+ *
+ * « Annulé » RESTE rose, et la comptabilité le garde en ambre : les deux
+ * moitiés du produit sont en désaccord sur la réversibilité d'une annulation,
+ * et ce n'est pas une cohérence visuelle qui doit trancher cela.
+ */
+export const SYNTHESE_STATUS_TONS: Record<SyntheseStatus, Ton> = {
+  brouillon: "attente",
+  emis: "normal",
+  annule: "arret",
 };
 
 /** Le statut d'un objectif, tel qu'elle l'a posé. Le logiciel ne le change pas. */

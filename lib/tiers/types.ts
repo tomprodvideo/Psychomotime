@@ -1,3 +1,5 @@
+
+import type { Ton } from "@/components/Statut";
 /**
  * L'ÉCRIT POUR UN TIERS NON SOIGNANT.
  *
@@ -17,6 +19,24 @@ export const TIERS_STATUS_LABELS: Record<TiersStatus, string> = {
   brouillon: "Brouillon",
   emis: "Remis",
   annule: "Annulé",
+};
+
+/**
+ * « Brouillon » passe de l'ambre au gris.
+ *
+ * L'ambre a un sens écrit dans `components/SectionDossier.tsx` : « regardez
+ * avant de continuer ». Un brouillon ne demande pas qu'on le vérifie, il
+ * demande qu'on le finisse — et la comptabilité le peignait déjà en gris. Le
+ * garder en ambre ici diluait le seul signal censé dire « attention ».
+ *
+ * « Annulé » RESTE rose, et la comptabilité le garde en ambre : les deux
+ * moitiés du produit sont en désaccord sur la réversibilité d'une annulation,
+ * et ce n'est pas une cohérence visuelle qui doit trancher cela.
+ */
+export const TIERS_STATUS_TONS: Record<TiersStatus, Ton> = {
+  brouillon: "attente",
+  emis: "normal",
+  annule: "arret",
 };
 
 export type UsageTiers = "ecole" | "mdph" | "autre_tiers";

@@ -11,6 +11,7 @@ import {
   MODE_REMISE_TIERS_AIDES,
   MODE_REMISE_TIERS_LABELS,
   TIERS_STATUS_LABELS,
+  TIERS_STATUS_TONS,
   USAGE_AIDES,
   USAGE_LABELS,
   messageAccordTiers,
@@ -28,6 +29,7 @@ import {
 } from "../../tiers/actions";
 import type { OptionDestinataire } from "./CourriersSection";
 import type { OptionParcours } from "./SynthesesSection";
+import { Statut } from "@/components/Statut";
 
 /**
  * Les écrits destinés à un tiers non soignant.
@@ -166,17 +168,10 @@ function LigneTiers({
             <span className="text-slate-500"> — {nom}</span>
           </p>
           <p className="text-xs text-slate-500 mt-0.5">
-            <span
-              className={
-                e.status === "emis"
-                  ? "text-brand-700"
-                  : e.status === "annule"
-                    ? "text-rose-700"
-                    : "text-amber-700"
-              }
-            >
-              {TIERS_STATUS_LABELS[e.status]}
-            </span>
+            <Statut
+              ton={TIERS_STATUS_TONS[e.status]}
+              libelle={TIERS_STATUS_LABELS[e.status]}
+            />
             {e.issued_on && ` le ${frDate(e.issued_on)}`}
             {/* CE QUI DISTINGUE UNE REMISE SANS ACCORD, jusque dans la liste :
                 c'est ce qu'on cherchera en premier si la question se pose. */}

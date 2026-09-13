@@ -10,12 +10,14 @@ import {
   FUNDING_LABELS,
   OBJECTIVE_STATUS_LABELS,
   PATHWAY_STATUS_LABELS,
+  PATHWAY_TONS,
   type CareObjective,
   type CarePathway,
   type Contact,
   type PathwayStatus,
 } from "@/lib/dossier/types";
 import { CHAMP } from "@/components/Champ";
+import { Statut } from "@/components/Statut";
 
 /**
  * Parcours de prise en soin.
@@ -25,16 +27,6 @@ import { CHAMP } from "@/components/Champ";
  * parcours au cours de sa vie, chacun avec sa demande, sa prescription et ses
  * objectifs.
  */
-const COULEURS: Record<PathwayStatus, string> = {
-  demande: "bg-sky-50 text-sky-700",
-  liste_attente: "bg-amber-50 text-amber-700",
-  actif: "bg-brand-50 text-brand-700",
-  en_pause: "bg-slate-100 text-slate-600",
-  termine: "bg-slate-100 text-slate-600",
-  interrompu: "bg-slate-100 text-slate-600",
-  reoriente: "bg-slate-100 text-slate-600",
-};
-
 export default function ParcoursSection({
   patientId,
   patientNom,
@@ -116,11 +108,10 @@ export default function ParcoursSection({
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span
-                      className={`text-xs font-medium rounded-full px-2 py-0.5 ${COULEURS[p.status]}`}
-                    >
-                      {PATHWAY_STATUS_LABELS[p.status]}
-                    </span>
+                    <Statut
+                      ton={PATHWAY_TONS[p.status]}
+                      libelle={PATHWAY_STATUS_LABELS[p.status]}
+                    />
                     {canWrite && (
                       <button
                         type="button"

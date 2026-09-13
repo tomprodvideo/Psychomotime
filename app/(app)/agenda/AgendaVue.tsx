@@ -7,7 +7,7 @@ import { AlertCircle, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import {
   APPOINTMENT_KIND_LABELS,
   ATTENDANCE_LABELS,
-  ATTENDANCE_TEINTES,
+  ATTENDANCE_TONS,
   patientName,
   type Appointment,
   type AppointmentWithPatient,
@@ -16,6 +16,7 @@ import type { PatientListItem } from "@/lib/dossier/queries";
 import AppointmentDialog from "./AppointmentDialog";
 import AttendanceControl from "./AttendanceControl";
 import NoteSeanceBouton from "./NoteSeanceBouton";
+import { Statut } from "@/components/Statut";
 
 /** Couleur de l'issue. Jamais la SEULE porteuse de l'information : le libellé
  *  est toujours écrit à côté (WCAG 1.4.1). */
@@ -315,11 +316,10 @@ function LigneRendezVous({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <span
-            className={`text-xs font-medium rounded-full px-2 py-0.5 ${ATTENDANCE_TEINTES[rdv.attendance]}`}
-          >
-            {ATTENDANCE_LABELS[rdv.attendance]}
-          </span>
+          <Statut
+            ton={ATTENDANCE_TONS[rdv.attendance]}
+            libelle={ATTENDANCE_LABELS[rdv.attendance]}
+          />
           {rdv.attendance !== "a_venir" && !rdv.billable && (
             <span className="text-xs text-slate-500">non facturable</span>
           )}

@@ -1,4 +1,5 @@
 import type { Band, Scale } from "@/lib/scales";
+import type { Ton } from "@/components/Statut";
 
 /**
  * Types du dossier patient — modèle cible.
@@ -284,6 +285,20 @@ export const PATHWAY_STATUS_LABELS: Record<PathwayStatus, string> = {
   reoriente: "Réorienté",
 };
 
+/**
+ * `en_pause` et `termine` étaient peints à l'identique. Ils ne disent pourtant
+ * pas la même chose : une pause peut reprendre, un parcours terminé non.
+ */
+export const PATHWAY_TONS: Record<PathwayStatus, Ton> = {
+  demande: "ailleurs",
+  liste_attente: "avis",
+  actif: "normal",
+  en_pause: "attente",
+  termine: "inerte",
+  interrompu: "inerte",
+  reoriente: "inerte",
+};
+
 export const FUNDING_LABELS: Record<FundingScheme, string> = {
   liberal: "Libéral",
   pco: "Plateforme de coordination",
@@ -396,26 +411,24 @@ export const ATTENDANCE_LABELS: Record<Attendance, string> = {
 };
 
 /**
- * Couleur de l'issue. Jamais la SEULE porteuse de l'information : le libellé
- * d'`ATTENDANCE_LABELS` est toujours écrit à côté (WCAG 1.4.1).
+ * Le TON de l'issue — plus la classe CSS : `components/Statut.tsx` la tient.
  *
  * ELLE VIT ICI PARCE QU'ELLE VIVAIT DEUX FOIS. L'agenda et le dossier en
  * portaient chacun une copie, octet pour octet identique, à sept entrées.
  * Deux écrans qui montrent la même chose n'ont aucune raison de pouvoir
  * diverger sur ce qu'« annulé » a l'air d'être.
  *
- * `annule_praticien` et `annule_patient` emploient `encre-faible` et non
- * `slate-500` : ce dernier vaut 4,34:1 sur `bg-slate-100`, sous le seuil de
- * 1.4.3 (AA) pour du texte de 12 px.
+ * `reporte` est le seul état du produit qui ne soit ni bon, ni mauvais, ni
+ * fini : c'est lui qui justifie le ton `ailleurs`.
  */
-export const ATTENDANCE_TEINTES: Record<Attendance, string> = {
-  a_venir: "bg-slate-100 text-slate-600",
-  honore: "bg-brand-50 text-brand-700",
-  absent_excuse: "bg-amber-50 text-amber-800",
-  absent_non_excuse: "bg-rose-50 text-rose-700",
-  annule_praticien: "bg-slate-100 text-encre-faible",
-  annule_patient: "bg-slate-100 text-encre-faible",
-  reporte: "bg-sky-50 text-sky-700",
+export const ATTENDANCE_TONS: Record<Attendance, Ton> = {
+  a_venir: "attente",
+  honore: "normal",
+  absent_excuse: "avis",
+  absent_non_excuse: "arret",
+  annule_praticien: "inerte",
+  annule_patient: "inerte",
+  reporte: "ailleurs",
 };
 
 /**

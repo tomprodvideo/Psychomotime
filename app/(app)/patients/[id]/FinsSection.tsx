@@ -11,6 +11,7 @@ import {
   FIN_NATURE_AIDES,
   FIN_NATURE_LABELS,
   FIN_STATUS_LABELS,
+  FIN_STATUS_TONS,
   MODE_REMISE_LABELS,
   OBJECTIF_STATUS_IMPRIME,
   type FaitsEpisode,
@@ -27,6 +28,7 @@ import {
   supprimerBrouillonFin,
 } from "../../fins/actions";
 import type { OptionDestinataire } from "./CourriersSection";
+import { Statut } from "@/components/Statut";
 
 
 export interface OptionParcoursFin {
@@ -186,17 +188,10 @@ function LigneFin({
             <span className="text-slate-500"> — {nom}</span>
           </p>
           <p className="text-xs text-slate-500 mt-0.5">
-            <span
-              className={
-                f.status === "emis"
-                  ? "text-brand-700"
-                  : f.status === "annule"
-                    ? "text-rose-700"
-                    : "text-amber-700"
-              }
-            >
-              {FIN_STATUS_LABELS[f.status]}
-            </span>
+            <Statut
+              ton={FIN_STATUS_TONS[f.status]}
+              libelle={FIN_STATUS_LABELS[f.status]}
+            />
             {f.issued_on && ` le ${frDate(f.issued_on)}`}
             {f.cancellation_reason && ` · ${f.cancellation_reason}`}
           </p>
