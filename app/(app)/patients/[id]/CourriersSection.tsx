@@ -99,8 +99,8 @@ export default function CourriersSection({
 
       {courriers.length === 0 ? (
         <p className="text-sm text-slate-500 mt-3">
-          Aucun courrier. Un courrier de liaison est une page adressée à un
-          professionnel nommé — une question, ou un élément à transmettre.
+          Aucun courrier. Un courrier de liaison s&apos;adresse à un
+          professionnel de santé nommé.
         </p>
       ) : (
         <ul className="mt-3 divide-y divide-slate-100 list-none p-0 m-0">

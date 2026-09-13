@@ -960,7 +960,7 @@ export default function BilanEditor({
                         <div className="overflow-x-auto rounded-lg border border-slate-200">
                           <table className="w-full text-xs min-w-[580px]">
                             <thead>
-                              <tr className="bg-slate-100 text-slate-500">
+                              <tr className="bg-slate-100 text-encre-faible">
                                 <th className="px-2 py-1.5 text-left font-semibold">
                                   Par rapport à la moyenne
                                 </th>

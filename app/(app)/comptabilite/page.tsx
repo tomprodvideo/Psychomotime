@@ -310,8 +310,8 @@ function EtatPastille({ statut }: { statut: DocumentListItem["status"] }) {
     brouillon: "bg-slate-100 text-slate-600",
     emis: "bg-brand-50 text-brand-700",
     accepte: "bg-emerald-50 text-emerald-700",
-    refuse: "bg-slate-100 text-slate-500",
-    expire: "bg-slate-100 text-slate-500",
+    refuse: "bg-slate-100 text-encre-faible",
+    expire: "bg-slate-100 text-encre-faible",
     remplace: "bg-amber-50 text-amber-700",
     annule_par_avoir: "bg-amber-50 text-amber-700",
   };

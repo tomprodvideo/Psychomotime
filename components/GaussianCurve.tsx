@@ -1,7 +1,60 @@
 /**
- * Courbe de Gauss (loi normale) avec zones colorées : Très faible / Faible /
- * Moyenne / Sup / Très supérieur, et axes DS, NS et percentiles.
- * SVG pur -> s'imprime en couleur dans le PDF du bilan.
+ * Courbe de Gauss (loi normale) : Très faible / Faible / Moyenne / Supérieur /
+ * Très supérieur, et axes DS, NS et percentiles.
+ * SVG pur -> s'imprime dans le PDF du bilan.
+ *
+ * ── CE QUE CETTE FIGURE DOIT SURVIVRE : UNE IMPRIMANTE NOIR ET BLANC ───────
+ *
+ * `globals.css` pose `print-color-adjust: exact`. Sur une imprimante
+ * monochrome, cela ne préserve pas la couleur : cela force le pilote à
+ * CONVERTIR chaque couleur en gris. Tout ce qui était codé par la couleur
+ * devient donc codé par un niveau de gris — et c'est là que l'ancienne palette
+ * cassait.
+ *
+ * Mesuré sur les valeurs déclarées (luminance relative sRGB, ré-encodée en
+ * gris perçu, aplat composité à son opacité réelle sur blanc) :
+ *
+ *     AVANT   125 -> 174 -> 165 -> 202 -> 224
+ *                      \______/
+ *              « Faible » s'imprimait PLUS CLAIR que « Moyenne ».
+ *
+ * Sur une courbe où le clair se lit spontanément comme « tout va bien », la
+ * bande de fragilité paraissait plus rassurante que la bande moyenne. Ce
+ * n'était pas une perte d'information : c'était une information fausse.
+ *
+ *     APRÈS   147 -> 170 -> 192 -> 212 -> 232
+ *
+ * La teinte et la saturation de chacune des cinq couleurs sont CONSERVÉES —
+ * seule la clarté bouge, juste assez pour que l'échelle de gris soit
+ * monotone. La figure reste rouge-orangé-vert ; elle s'imprime en dégradé
+ * lisible. AUCUN SEUIL N'EST DÉPLACÉ : les frontières restent à -2, -1, +1 et
+ * +2 DS, et le vocabulaire des bandes est inchangé. La question ouverte
+ * `Q-202` porte sur les MOTS et les seuils ; elle n'est pas tranchée ici et
+ * n'a pas à l'être pour corriger un défaut de rendu.
+ *
+ * ── LA COULEUR N'EST PLUS JAMAIS LE SEUL CANAL ────────────────────────────
+ *
+ * 1. Les quatre frontières de classification sont TRACÉES. Un trait reste un
+ *    trait en noir et blanc, même là où les deux bandes qu'il sépare
+ *    s'impriment au même gris.
+ * 2. Chaque bande ÉCRIT son intervalle en DS. La classification ne dépend plus
+ *    de savoir lire une position sur l'axe.
+ *
+ * ── CONTRASTE ─────────────────────────────────────────────────────────────
+ *
+ * Les étiquettes de bande étaient en blanc sur trois des cinq bandes :
+ * 4,10:1, 2,23:1 et 2,45:1 — trois échecs de 1.4.3 (AA), sur un document remis
+ * à des familles. Et les libellés d'axe portaient cinq teintes dont QUATRE
+ * échouaient (3,22 / 4,10 / 2,83 / 2,29:1) à 8,5 px.
+ *
+ * Tout le texte est donc en `ENCRE`, vérifié >= 4,5:1 sur blanc ET sur chacun
+ * des cinq aplats à leur opacité réelle. Les numéros d'axe ne sont plus
+ * teintés par zone : cinq teintes distinctes qui passent toutes le seuil sont
+ * impossibles à 8,5 px, et cette information est mieux portée par la bande
+ * juste en dessous, qui a la place de l'écrire.
+ *
+ * [Contrastes calculés sur les valeurs déclarées ici. Un profil d'impression
+ * peut les déplacer : cela suffit à corriger, pas à certifier.]
  */
 
 const DS_MIN = -3.4;
@@ -11,30 +64,19 @@ const X_RIGHT = 795;
 const Y_TOP = 58;
 const Y_BASE = 295;
 
+/** Clarté choisie pour que l'échelle de gris imprimée soit croissante. */
 const COLORS = {
-  red: "#c0504d",
-  orange: "#e8943a",
-  green: "#7aab5a",
-  lightGreen: "#a9d18e",
-  pale: "#d4e3c3",
+  red: "#cc716f",
+  orange: "#e78f30",
+  green: "#a2c58c",
+  lightGreen: "#b9daa3",
+  pale: "#deead1",
 };
 
-// Couleurs de texte (plus soutenues, lisibles) par zone.
-const TEXT = {
-  red: "#b23b37",
-  orange: "#d17a1e",
-  green: "#5a8a37",
-  lightGreen: "#7ba653",
-  pale: "#93b673",
-};
-
-function zoneColor(ds: number) {
-  if (ds < -2) return TEXT.red;
-  if (ds < -1) return TEXT.orange;
-  if (ds <= 1) return TEXT.green;
-  if (ds <= 2) return TEXT.lightGreen;
-  return TEXT.pale;
-}
+/** Une seule encre. 4,77:1 au pire (sur l'aplat rouge), 14,9:1 sur blanc. */
+const ENCRE = "#1e293b";
+/** Le trait des frontières et de l'axe. */
+const TRAIT = "#334155";
 
 function X(ds: number) {
   return X_LEFT + ((ds - DS_MIN) / (DS_MAX - DS_MIN)) * (X_RIGHT - X_LEFT);
@@ -85,6 +127,10 @@ const PCTS: [number, string][] = [
 ];
 
 const DS_TICKS = [-3, -2, -1, 0, 1, 2, 3];
+
+/** Les quatre DS où une bande change. Tracées ; les autres restent décoratives. */
+const FRONTIERES = [-2, -1, 1, 2];
+
 const PERCENTILES: [number, string][] = [
   [-3, "≤ 2,3"],
   [-2, "2,3"],
@@ -95,12 +141,13 @@ const PERCENTILES: [number, string][] = [
   [3, "≥ 97,7"],
 ];
 
+/** [début, fin, aplat, nom, intervalle écrit] */
 const CATEGORIES: [number, number, string, string, string][] = [
-  [DS_MIN, -2, COLORS.red, "Très faible", "#fff"],
-  [-2, -1, COLORS.orange, "Faible", "#fff"],
-  [-1, 1, COLORS.green, "Moyenne", "#fff"],
-  [1, 2, COLORS.lightGreen, "Sup", "#31431f"],
-  [2, DS_MAX, COLORS.pale, "Très supérieur", "#31431f"],
+  [DS_MIN, -2, COLORS.red, "Très faible", "< -2 DS"],
+  [-2, -1, COLORS.orange, "Faible", "-2 à -1 DS"],
+  [-1, 1, COLORS.green, "Moyenne", "-1 à +1 DS"],
+  [1, 2, COLORS.lightGreen, "Supérieur", "+1 à +2 DS"],
+  [2, DS_MAX, COLORS.pale, "Très supérieur", "> +2 DS"],
 ];
 
 const BAND_Y = 372;
@@ -116,7 +163,7 @@ export default function GaussianCurve() {
        psychomotricien, pas par une étiquette. */
     <svg
       role="img"
-      aria-label="Courbe de répartition en cloche, graduée en déviations standard de -3 à +3, avec le pourcentage attendu dans chaque intervalle et les libellés des zones."
+      aria-label="Courbe de répartition en cloche, graduée en déviations standard de -3 à +3, avec le pourcentage attendu dans chaque intervalle. Cinq zones sont délimitées par un trait et nommées avec leur intervalle : très faible en dessous de -2 DS, faible de -2 à -1 DS, moyenne de -1 à +1 DS, supérieur de +1 à +2 DS, très supérieur au-dessus de +2 DS."
       viewBox="0 0 820 430"
       className="w-full h-auto"
       style={{
@@ -129,8 +176,8 @@ export default function GaussianCurve() {
         <path key={i} d={areaPath(a, b)} fill={color} fillOpacity={0.9} />
       ))}
 
-      {/* Lignes verticales aux DS entiers */}
-      {DS_TICKS.map((ds) => (
+      {/* Graduations décoratives : les DS entiers qui ne sont PAS une frontière. */}
+      {DS_TICKS.filter((ds) => !FRONTIERES.includes(ds)).map((ds) => (
         <line
           key={ds}
           x1={X(ds)}
@@ -141,6 +188,30 @@ export default function GaussianCurve() {
           strokeWidth={0.8}
           strokeOpacity={0.7}
         />
+      ))}
+
+      {/* LES FRONTIÈRES DE CLASSIFICATION, TRACÉES.
+          Deux segments, pour ne pas barrer les trois rangées de chiffres qui
+          s'intercalent entre la courbe et la bande des catégories. */}
+      {FRONTIERES.map((ds) => (
+        <g key={`f${ds}`}>
+          <line
+            x1={X(ds)}
+            x2={X(ds)}
+            y1={Y(ds)}
+            y2={Y_BASE}
+            stroke={TRAIT}
+            strokeWidth={1}
+          />
+          <line
+            x1={X(ds)}
+            x2={X(ds)}
+            y1={BAND_Y}
+            y2={BAND_Y + BAND_H}
+            stroke={TRAIT}
+            strokeWidth={1}
+          />
+        </g>
       ))}
 
       {/* Contour de la courbe */}
@@ -165,20 +236,20 @@ export default function GaussianCurve() {
           textAnchor="middle"
           fontSize={8.5}
           fontStyle="italic"
-          fill={zoneColor(ds)}
+          fill={ENCRE}
         >
           {label}
         </text>
       ))}
 
       {/* Libellés de lignes (à gauche) */}
-      <text x={6} y={315} fontSize={8.5} fontStyle="italic" fill="#444">
+      <text x={6} y={315} fontSize={8.5} fontStyle="italic" fill={ENCRE}>
         Déviations Standards (DS)
       </text>
-      <text x={6} y={337} fontSize={8.5} fontStyle="italic" fill="#444">
+      <text x={6} y={337} fontSize={8.5} fontStyle="italic" fill={ENCRE}>
         Notes Standards (NS)
       </text>
-      <text x={6} y={359} fontSize={8.5} fontStyle="italic" fill="#444">
+      <text x={6} y={359} fontSize={8.5} fontStyle="italic" fill={ENCRE}>
         Percentiles
       </text>
 
@@ -191,7 +262,7 @@ export default function GaussianCurve() {
           textAnchor="middle"
           fontSize={9}
           fontWeight={600}
-          fill={zoneColor(ds)}
+          fill={ENCRE}
         >
           {ds > 0 ? `+${ds}` : ds} DS
         </text>
@@ -206,7 +277,7 @@ export default function GaussianCurve() {
           textAnchor="middle"
           fontSize={8.5}
           fontWeight={600}
-          fill={zoneColor((ns - 10) / 3)}
+          fill={ENCRE}
         >
           {ns}
         </text>
@@ -221,14 +292,14 @@ export default function GaussianCurve() {
           textAnchor="middle"
           fontSize={8.5}
           fontWeight={600}
-          fill={zoneColor(ds)}
+          fill={ENCRE}
         >
           {label}
         </text>
       ))}
 
-      {/* Bande des catégories */}
-      {CATEGORIES.map(([a, b, color, label, textColor], i) => {
+      {/* Bande des catégories : le nom, puis l'intervalle qui le définit. */}
+      {CATEGORIES.map(([a, b, color, label, intervalle], i) => {
         const x = X(a);
         const w = X(b) - X(a);
         return (
@@ -243,18 +314,38 @@ export default function GaussianCurve() {
             />
             <text
               x={x + w / 2}
-              y={BAND_Y + BAND_H / 2 + 3.5}
+              y={BAND_Y + 14}
               textAnchor="middle"
               fontSize={10}
               fontWeight={600}
               fontStyle="italic"
-              fill={textColor}
+              fill={ENCRE}
             >
               {label}
+            </text>
+            <text
+              x={x + w / 2}
+              y={BAND_Y + 26}
+              textAnchor="middle"
+              fontSize={7.5}
+              fill={ENCRE}
+            >
+              {intervalle}
             </text>
           </g>
         );
       })}
+
+      {/* Le cadre de la bande, pour que les frontières tracées s'y appuient. */}
+      <rect
+        x={X(DS_MIN)}
+        y={BAND_Y}
+        width={X(DS_MAX) - X(DS_MIN)}
+        height={BAND_H}
+        fill="none"
+        stroke={TRAIT}
+        strokeWidth={1}
+      />
     </svg>
   );
 }

@@ -112,8 +112,7 @@ export default function FinsSection({
         </p>
       ) : ecrits.length === 0 ? (
         <p className="text-sm text-slate-500 mt-3">
-          Aucun écrit de fin. Il se rédige quand un suivi s&apos;achève : ce qui
-          a été fait, ce qui met fin, ce qui reste ouvert, et comment reprendre.
+          Aucun écrit de fin. Il se rédige quand un suivi s&apos;achève.
         </p>
       ) : (
         <ul className="mt-3 divide-y divide-slate-100 list-none p-0 m-0">

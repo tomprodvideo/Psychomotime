@@ -80,7 +80,7 @@ export default async function CourrierDocumentPage({
 
       <article className="print-area max-w-3xl mx-auto bg-white shadow-sm border border-slate-200 rounded-lg px-12 py-10 print:shadow-none print:border-0 text-[13px] leading-relaxed text-slate-800">
         {c.status === "annule" && (
-          <p className="mb-6 border-2 border-dashed border-rose-600 bg-rose-50 px-4 py-3 rounded-lg text-rose-900 print:bg-white">
+          <p className="mb-6 border-2 border-dashed border-arret-trait bg-arret-fond px-4 py-3 rounded-lg text-arret-encre print:bg-white">
             <span className="font-semibold uppercase tracking-wide text-xs">
               Courrier annulé
             </span>
@@ -130,6 +130,21 @@ export default async function CourrierDocumentPage({
           {e?.ville ? `${e.ville}, le ` : "Le "}
           {frDate(s.emis_le ?? c.issued_on ?? "")}
         </p>
+
+        {/* CE DOCUMENT NE SE NOMMAIT PAS.
+            Des sept documents imprimables, c'était le seul dont le corps
+            n'avait AUCUN titre : sa seule structure était « Objet : » en gras.
+            Deux conséquences. Sur le papier, la page ne dit pas ce qu'elle
+            est — elle arrive dans un dossier où elle côtoiera une attestation
+            et un compte rendu. Et un lecteur d'écran qui parcourt les titres
+            de cette page n'en trouvait aucun : 1.3.1 Information et relations,
+            niveau A.
+
+            Le titre porte la NATURE du document, constante ; l'objet, qui est
+            la phrase de la praticienne, reste dessous et à sa place. */}
+        <h1 className="text-base font-semibold text-slate-900 mb-4">
+          Courrier de liaison
+        </h1>
 
         <p className="mb-6">
           <span className="font-semibold">Objet : </span>

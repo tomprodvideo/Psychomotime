@@ -47,7 +47,7 @@ export function SectionDossier({
       {erreur && (
         <p
           role="alert"
-          className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+          className="mt-3 rounded-lg border border-avis-trait bg-avis-fond px-3 py-2 text-sm text-avis-encre"
         >
           {erreur}
         </p>
@@ -81,8 +81,8 @@ export function Avertissement({
     <p
       className={
         compact
-          ? "text-xs text-amber-900 bg-amber-50 ring-1 ring-amber-200 rounded px-2 py-1.5"
-          : "text-sm text-amber-900 bg-amber-50 ring-1 ring-amber-200 rounded-lg px-3 py-2"
+          ? "text-xs text-avis-encre bg-avis-fond ring-1 ring-avis-trait rounded px-2 py-1.5"
+          : "text-sm text-avis-encre bg-avis-fond ring-1 ring-avis-trait rounded-lg px-3 py-2"
       }
     >
       {children}

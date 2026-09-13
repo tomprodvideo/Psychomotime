@@ -21,6 +21,43 @@
   --font-sans: var(--font-geist-sans), system-ui, sans-serif;
 }
 
+/* ---------------------------------------------------------------------------
+   TROIS RÔLES, PAS TROIS COULEURS
+
+   Chacun de ces jetons remplace une classe Tailwind déjà employée pour un RÔLE
+   précis. Aucun ne sert à « harmoniser l'apparence » : chacun ferme une
+   divergence constatée, et chacun est employé dès maintenant. Un jeton qu'on
+   pose sans l'employer est du décor — `--color-trait`, `--container-document`
+   et `--text-document` ont été écartés pour cette raison : ils ne vaudront la
+   peine qu'au moment d'unifier la coque des sept documents imprimables.
+
+   `@theme` et non `@theme inline` : il faut que les variables existent
+   réellement dans `:root` pour rester lisibles depuis `@media print`.
+
+   AVIS et ARRÊT viennent d'une doctrine déjà écrite dans le produit
+   (`components/SectionDossier.tsx`) : l'ambre dit « regardez avant de
+   continuer », le rose dit « ceci ne se reprend pas ». Elle était tenue par
+   discipline ; elle devient nommable.
+   --------------------------------------------------------------------------- */
+@theme {
+  /* AVIS — une vérification est demandée, l'action reste possible. */
+  --color-avis-fond: #fffbeb;   /* amber-50  */
+  --color-avis-trait: #fcd34d;  /* amber-300 */
+  --color-avis-encre: #78350f;  /* amber-900 — 9,07:1 sur blanc */
+
+  /* ARRÊT — l'action est refusée, ou son effet ne se reprend pas. */
+  --color-arret-fond: #fff1f2;  /* rose-50   */
+  --color-arret-trait: #e11d48; /* rose-600  */
+  --color-arret-encre: #881337; /* rose-900 — 9,56:1 sur blanc */
+
+  /* ENCRE SECONDAIRE — le seul jeton dont la VALEUR change quelque chose.
+     `text-slate-500` vaut 4,76:1 sur blanc mais 4,34:1 sur `bg-slate-100`,
+     sous le seuil de 4,5:1 de 1.4.3 (AA), sur du texte de 12 px. Ce jeton vaut
+     slate-600 : 6,92:1 sur slate-100. La valeur est choisie pour son PIRE
+     fond, pas pour le blanc. */
+  --color-encre-faible: #475569;
+}
+
 html,
 body {
   height: 100%;

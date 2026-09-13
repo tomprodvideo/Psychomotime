@@ -125,7 +125,7 @@ export default async function PatientsPage({
                           aria-hidden="true"
                           className={`h-10 w-10 shrink-0 rounded-full flex items-center justify-center font-semibold uppercase ${
                             p.status === "archive"
-                              ? "bg-slate-100 text-slate-500"
+                              ? "bg-slate-100 text-encre-faible"
                               : "bg-brand-100 text-brand-700"
                           }`}
                         >

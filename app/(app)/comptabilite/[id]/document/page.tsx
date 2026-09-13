@@ -78,6 +78,76 @@ export default async function DocumentPage({
    * nom du patient — il suffisait de l'imprimer. */
   const patientConcerne = payeurTiers ? s.patient?.nom?.trim() : null;
   const identifiants = (s.identifiants ?? []).filter((i) => i?.valeur);
+
+  /* ── CE DOCUMENT VAUT-IL ENCORE ? ────────────────────────────────────────
+   *
+   * Sept statuts existent ; cette page n'en traitait qu'UN — le brouillon,
+   * qu'elle refuse d'imprimer. Les cinq autres sortaient de l'imprimante
+   * strictement identiques à une pièce vivante. Une facture annulée par avoir,
+   * remise à une mutuelle, ne disait nulle part qu'elle était annulée.
+   *
+   * Le produit prend pourtant la peine de marquer l'annulation sur
+   * l'attestation et sur les quatre écrits cliniques. Il ne la marquait pas
+   * sur la seule pièce qui sert à se faire rembourser.
+   *
+   * CHAQUE MENTION DIT LA CONSÉQUENCE, ET LE RECOURS QUAND IL Y EN A UN.
+   * « Ce document est annulé » ne dit ni l'une ni l'autre : le lecteur ne sait
+   * ni ce qu'il ne peut plus faire, ni quelle pièce demander à la place.
+   *
+   * ELLE TIENT SANS COULEUR. Un mot en capitales, un trait de 2 px, et la
+   * teinte seulement en troisième — c'est la recette que l'attestation avait
+   * déjà trouvée. `print:bg-white` retire l'aplat : sur une imprimante
+   * monochrome, un fond teinté devient un gris qui dégrade le texte posé
+   * dessus. Le trait, lui, reste un trait.
+   */
+  const feminin = d.kind === "facture" || d.kind === "facture_de_remplacement";
+  const accord = feminin ? "e" : "";
+  /* « Ce avoir » : l'élision ne se déduit pas du genre. On la pose. */
+  const ce = feminin ? "Cette" : d.kind === "avoir" ? "Cet" : "Ce";
+  const nomPiece = KIND_LABELS[d.kind].toUpperCase();
+  /* La pièce qui rectifie celle-ci : c'est elle qu'il faut aller chercher. */
+  const rectifiant =
+    piece.rectifications.find((r) => r.status !== "brouillon") ?? null;
+  const refRectifiant = rectifiant?.number
+    ? `n° ${rectifiant.number}${
+        rectifiant.issued_on ? ` du ${frDate(rectifiant.issued_on)}` : ""
+      }`
+    : null;
+
+  const mention: { titre: string; texte: string } | null =
+    d.status === "annule_par_avoir"
+      ? {
+          titre: `${nomPiece} ANNULÉ${accord.toUpperCase()} PAR AVOIR`,
+          texte: refRectifiant
+            ? `Cette pièce a été annulée par l'avoir ${refRectifiant}. Elle ne peut pas servir de justificatif.`
+            : "Cette pièce a été annulée par un avoir. Elle ne peut pas servir de justificatif.",
+        }
+      : d.status === "remplace"
+        ? {
+            titre: `${nomPiece} REMPLACÉ${accord.toUpperCase()}`,
+            texte: refRectifiant
+              ? `Cette pièce a été remplacée par la pièce ${refRectifiant}, qui seule fait foi.`
+              : "Cette pièce a été remplacée. C'est la pièce de remplacement qui fait foi.",
+          }
+        : d.status === "refuse"
+          ? {
+              titre: `${nomPiece} REFUSÉ${accord.toUpperCase()}`,
+              texte: `${ce} ${KIND_LABELS[
+                d.kind
+              ].toLowerCase()} n'a pas été accepté${accord}. Les montants indiqués n'engagent personne.`,
+            }
+          : d.status === "expire"
+            ? {
+                titre: `${nomPiece} EXPIRÉ${accord.toUpperCase()}`,
+                texte: d.valid_until
+                  ? `${ce} ${KIND_LABELS[d.kind].toLowerCase()} était valable jusqu'au ${frDate(
+                      d.valid_until,
+                    )}. Les montants indiqués ne sont plus engageants.`
+                  : `${ce} ${KIND_LABELS[
+                      d.kind
+                    ].toLowerCase()} a dépassé sa durée de validité. Les montants indiqués ne sont plus engageants.`,
+              }
+            : null;
   const exonere = piece.lignes.every(
     (l) => l.vat_treatment === "exoneration_soins",
   );
@@ -109,6 +179,18 @@ export default async function DocumentPage({
       </div>
 
       <article className="print-area bg-white rounded-xl border border-slate-100 shadow-sm p-8 sm:p-10">
+        {mention && (
+          <p
+            className="border-2 border-arret-trait bg-arret-fond print:bg-white text-arret-encre text-center px-4 py-3 mb-8 rounded-lg"
+            style={{ breakInside: "avoid" }}
+          >
+            <span className="font-semibold uppercase tracking-wide text-sm">
+              {mention.titre}
+            </span>
+            <span className="block text-xs mt-1">{mention.texte}</span>
+          </p>
+        )}
+
         <header className="flex justify-between gap-8 mb-10">
           <div className="text-sm text-slate-700">
             {s.cabinet?.nom && (

@@ -92,8 +92,7 @@ export default function EcritsTiersSection({
       {ecrits.length === 0 ? (
         <p className="text-sm text-slate-500 mt-3">
           Aucun écrit. Celui-ci part chez quelqu&apos;un qui n&apos;est pas un
-          professionnel de santé — il s&apos;écrit donc autrement : ce qui se
-          passe, dans quelles conditions, et ce qui aide.
+          professionnel de santé.
         </p>
       ) : (
         <ul className="mt-3 divide-y divide-slate-100 list-none p-0 m-0">

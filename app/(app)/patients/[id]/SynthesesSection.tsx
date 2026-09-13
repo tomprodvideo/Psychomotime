@@ -106,9 +106,8 @@ export default function SynthesesSection({
 
       {syntheses.length === 0 ? (
         <p className="text-sm text-slate-500 mt-3">
-          Aucune synthèse. Une synthèse de suivi couvre une période : ce qui a
-          été fait, où en sont les objectifs, ce que vous observez et ce que
-          vous ajustez.
+          Aucune synthèse. Une synthèse de suivi rend compte d&apos;une période
+          écoulée.
         </p>
       ) : (
         <ul className="mt-3 divide-y divide-slate-100 list-none p-0 m-0">

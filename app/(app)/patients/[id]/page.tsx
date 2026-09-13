@@ -266,6 +266,21 @@ export default async function FichePatientPage({
 
         {practice.canReadClinical ? (
           <>
+          <NotesSection
+            patientId={patient.id}
+            patientNom={patientName(patient)}
+            patientNeLe={patient.birth_date}
+            notes={notes}
+            parcours={parcours}
+            /* Les séances passées, pour qu'une note puisse dire LAQUELLE elle
+               raconte. On ne propose que le passé : une note de séance sur un
+               créneau qui n'a pas eu lieu n'a rien à raconter. */
+            seances={rendezVous.filter(
+              (r) => new Date(r.starts_at) <= maintenant,
+            )}
+            canWrite={practice.canWrite}
+          />
+
           <CourriersSection
             patientId={patient.id}
             patientNom={patientName(patient)}
@@ -396,20 +411,6 @@ export default async function FichePatientPage({
             ]}
           />
 
-          <NotesSection
-            patientId={patient.id}
-            patientNom={patientName(patient)}
-            patientNeLe={patient.birth_date}
-            notes={notes}
-            parcours={parcours}
-            /* Les séances passées, pour qu'une note puisse dire LAQUELLE elle
-               raconte. On ne propose que le passé : une note de séance sur un
-               créneau qui n'a pas eu lieu n'a rien à raconter. */
-            seances={rendezVous.filter(
-              (r) => new Date(r.starts_at) <= maintenant,
-            )}
-            canWrite={practice.canWrite}
-          />
           </>
         ) : (
           <section className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">

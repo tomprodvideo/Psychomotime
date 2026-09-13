@@ -24,8 +24,8 @@ const TEINTES: Record<Attendance, string> = {
   honore: "bg-brand-50 text-brand-700",
   absent_excuse: "bg-amber-50 text-amber-800",
   absent_non_excuse: "bg-rose-50 text-rose-700",
-  annule_praticien: "bg-slate-100 text-slate-500",
-  annule_patient: "bg-slate-100 text-slate-500",
+  annule_praticien: "bg-slate-100 text-encre-faible",
+  annule_patient: "bg-slate-100 text-encre-faible",
   reporte: "bg-sky-50 text-sky-700",
 };
 
