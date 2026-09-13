@@ -59,7 +59,7 @@ export default function ArchiveControls({
           className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg disabled:opacity-60"
         >
           <ArchiveRestore className="h-4 w-4" aria-hidden="true" />
-          {pending ? "…" : "Rouvrir le dossier"}
+          {pending ? "Réouverture en cours…" : "Rouvrir le dossier"}
         </button>
         {erreur && (
           <p role="alert" className="text-xs text-red-700">
@@ -105,7 +105,7 @@ export default function ArchiveControls({
             disabled={pending}
             className="text-sm text-white bg-slate-700 hover:bg-slate-800 px-3 py-1.5 rounded-lg disabled:opacity-60"
           >
-            {pending ? "…" : "Archiver"}
+            {pending ? "Archivage en cours…" : "Archiver"}
           </button>
         </div>
       </div>

@@ -196,7 +196,7 @@ export default function AttendanceControl({
           disabled={pending || (motifExige && !note.trim())}
           className="text-sm text-white bg-brand-600 hover:bg-brand-700 px-4 py-1.5 rounded-lg disabled:opacity-50"
         >
-          {pending ? "…" : "Enregistrer"}
+          {pending ? "Enregistrement en cours…" : "Enregistrer"}
         </button>
       </div>
     </div>

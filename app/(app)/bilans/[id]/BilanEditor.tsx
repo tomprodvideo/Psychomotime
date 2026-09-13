@@ -1182,7 +1182,7 @@ export default function BilanEditor({
               ) : (
                 <Save className="h-4 w-4" />
               )}
-              {pending ? "…" : "Enregistrer"}
+              {pending ? "Enregistrement en cours…" : "Enregistrer"}
             </button>
           </div>
         </div>

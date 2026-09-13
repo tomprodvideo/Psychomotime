@@ -521,7 +521,7 @@ function DecoupageLigne({
             disabled={pending}
             className="text-xs font-medium text-brand-700 hover:underline shrink-0 disabled:opacity-50"
           >
-            {pending ? "…" : "Appliquer"}
+            {pending ? "Application en cours…" : "Appliquer"}
           </button>
         )}
       </div>

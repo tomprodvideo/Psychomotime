@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { CheckCircle2, FileMinus, FileSignature, Send, Trash2 } from "lucide-react";
 import type { BillingDocument } from "@/lib/compta/types";
 import { CHAMP, CHAMP_AUTO } from "@/components/Champ";
+import { Bouton } from "@/components/Bouton";
 import {
   changerEtatDevis,
   creerRectification,
@@ -62,32 +63,34 @@ export default function BarreActions({
       <div className="flex flex-wrap items-center justify-end gap-2">
         {brouillon && (
           <>
-            <button
-              type="button"
-              onClick={() => setConfirmation("supprimer")}
-              disabled={enCours}
-              className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-rose-700 border border-slate-500 px-3 py-2 rounded-lg disabled:opacity-50"
-            >
+            <Bouton pending={enCours} onClick={() => setConfirmation("supprimer")}>
               <Trash2 className="h-4 w-4" aria-hidden="true" />
               Supprimer
-            </button>
-            <button
-              type="button"
+            </Bouton>
+            {/* LE MOTIF ÉTAIT DANS UN `title`, SUR UN BOUTON `disabled`. Deux
+                raisons de ne jamais le lire : une infobulle n'existe ni au
+                clavier ni au doigt, et un bouton `disabled` ne se survole ni
+                ne se focalise. La phrase existait ; personne ne pouvait
+                l'atteindre. */}
+            <Bouton
+              variante="principal"
+              pending={enCours}
+              empeche={
+                nbLignes === 0
+                  ? "Cette pièce ne porte aucune ligne : il n'y a rien à émettre."
+                  : null
+              }
               onClick={() => setConfirmation("emettre")}
-              disabled={enCours || nbLignes === 0}
-              title={nbLignes === 0 ? "Une pièce sans ligne ne peut pas être émise." : undefined}
-              className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shadow-sm disabled:opacity-40"
             >
               <Send className="h-4 w-4" aria-hidden="true" />
               Émettre
-            </button>
+            </Bouton>
           </>
         )}
 
         {estDevis && document.status === "emis" && (
           <>
-            <button
-              type="button"
+            <Bouton
               onClick={() =>
                 agir(() => {
                   const fd = new FormData();
@@ -96,13 +99,11 @@ export default function BarreActions({
                   return changerEtatDevis(fd);
                 })
               }
-              disabled={enCours}
-              className="inline-flex items-center gap-1.5 text-sm text-slate-600 border border-slate-500 px-3 py-2 rounded-lg disabled:opacity-50"
+              pending={enCours}
             >
               Marquer refusé
-            </button>
-            <button
-              type="button"
+            </Bouton>
+            <Bouton
               onClick={() =>
                 agir(() => {
                   const fd = new FormData();
@@ -111,35 +112,25 @@ export default function BarreActions({
                   return changerEtatDevis(fd);
                 })
               }
-              disabled={enCours}
-              className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition disabled:opacity-50"
+              pending={enCours}
+              variante="principal"
             >
               <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
               Marquer accepté
-            </button>
+            </Bouton>
           </>
         )}
 
         {rectifiable && (
           <>
-            <button
-              type="button"
-              onClick={() => setConfirmation("remplacement")}
-              disabled={enCours}
-              className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-800 border border-slate-500 px-3 py-2 rounded-lg disabled:opacity-50"
-            >
+            <Bouton pending={enCours} onClick={() => setConfirmation("remplacement")}>
               <FileSignature className="h-4 w-4" aria-hidden="true" />
               Facture de remplacement
-            </button>
-            <button
-              type="button"
-              onClick={() => setConfirmation("avoir")}
-              disabled={enCours}
-              className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-800 border border-slate-500 px-3 py-2 rounded-lg disabled:opacity-50"
-            >
+            </Bouton>
+            <Bouton pending={enCours} onClick={() => setConfirmation("avoir")}>
               <FileMinus className="h-4 w-4" aria-hidden="true" />
               Créer un avoir
-            </button>
+            </Bouton>
           </>
         )}
       </div>
@@ -167,9 +158,8 @@ export default function BarreActions({
                 className={CHAMP_AUTO}
               />
             </div>
-            <button
-              type="button"
-              disabled={enCours}
+            <Bouton
+              pending={enCours}
               onClick={() =>
                 agir(() => {
                   const fd = new FormData();
@@ -178,17 +168,17 @@ export default function BarreActions({
                   return emettrePiece(fd);
                 })
               }
-              className="bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50"
+              variante="principal"
+              pendingLabel="Émission en cours…"
             >
-              {enCours ? "Émission…" : "Confirmer l'émission"}
-            </button>
-            <button
-              type="button"
+              Confirmer l&apos;émission
+            </Bouton>
+            <Bouton
+              variante="texte"
               onClick={() => setConfirmation(null)}
-              className="text-sm text-slate-500 px-3 py-2"
             >
               Annuler
-            </button>
+            </Bouton>
           </div>
         </Encadre>
       )}
@@ -200,9 +190,8 @@ export default function BarreActions({
             aucun trou dans la série.
           </p>
           <div className="flex items-center gap-2 mt-3">
-            <button
-              type="button"
-              disabled={enCours}
+            <Bouton
+              pending={enCours}
               onClick={() =>
                 agir(
                   () => {
@@ -213,17 +202,17 @@ export default function BarreActions({
                   () => router.push("/comptabilite"),
                 )
               }
-              className="bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50"
+              variante="destructif"
+              pendingLabel="Suppression en cours…"
             >
               Supprimer
-            </button>
-            <button
-              type="button"
+            </Bouton>
+            <Bouton
+              variante="texte"
               onClick={() => setConfirmation(null)}
-              className="text-sm text-slate-500 px-3 py-2"
             >
               Annuler
-            </button>
+            </Bouton>
           </div>
         </Encadre>
       )}
@@ -259,9 +248,13 @@ export default function BarreActions({
             />
           </div>
           <div className="flex items-center gap-2 mt-3">
-            <button
-              type="button"
-              disabled={enCours || motif.trim() === ""}
+            <Bouton
+              pending={enCours}
+              empeche={
+                motif.trim() === ""
+                  ? "Écrivez d'abord le motif de la rectification."
+                  : null
+              }
               onClick={() =>
                 agir(
                   () => {
@@ -277,17 +270,17 @@ export default function BarreActions({
                   (id) => id && router.push(`/comptabilite/${id}`),
                 )
               }
-              className="bg-slate-700 hover:bg-slate-800 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-40"
+              variante="principal"
+              pendingLabel="Création en cours…"
             >
-              {enCours ? "Création…" : "Créer le brouillon"}
-            </button>
-            <button
-              type="button"
+              Créer le brouillon
+            </Bouton>
+            <Bouton
+              variante="texte"
               onClick={() => setConfirmation(null)}
-              className="text-sm text-slate-500 px-3 py-2"
             >
               Annuler
-            </button>
+            </Bouton>
           </div>
         </Encadre>
       )}
