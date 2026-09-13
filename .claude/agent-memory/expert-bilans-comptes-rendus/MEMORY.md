@@ -8,6 +8,7 @@
 
 - Aucun modèle de bilan ou compte rendu n'est validé à l'installation.
 - [Moteur de bilans, dernier îlot v1](project_moteur-bilans-ilot-v1.md) — L4 gelé derrière Q-203 (bloc de prose ou registres séparés), non tranchée.
+- [Série des écrits cliniques](project_ecrits-cliniques-serie.md) — livrée rang par rang, SQL d'abord et document imprimable en dernier ; décisions groupées en attente.
 
 ## Instruments, licences et psychométrie
 

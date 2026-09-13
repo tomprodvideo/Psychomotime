@@ -1,6 +1,6 @@
 # État courant
 
-Dernière mise à jour : 2026-09-12. Dépôt sur `main`, synchronisé avec `origin/main`.
+Dernière mise à jour : 2026-09-13. Dépôt sur `main`, synchronisé avec `origin/main`.
 
 Ce document ne contient que ce que le dépôt et la base DÉMONTRENT. Ce qui est
 supposé est marqué comme tel. Il a été entièrement réécrit : la version
@@ -14,8 +14,9 @@ locataire n'est plus le compte : c'est le CABINET** (`practices` +
 `practice_members`, cinq rôles). C'est le changement structurant dont tout le
 reste découle.
 
-Vingt migrations (`0000` à `0020`) sont appliquées en production — projet
-Supabase `sisummvlowhtfgiatwwf`, vérifié après chaque application.
+Vingt-trois migrations (`0000` à `0022`) sont appliquées en production — projet
+Supabase `sisummvlowhtfgiatwwf`, vérifié après chaque application. `0023` est
+écrite et éprouvée en local ; son application est notée plus bas.
 
 | Lot | Objet | État |
 |---|---|---|
@@ -26,7 +27,8 @@ Supabase `sisummvlowhtfgiatwwf`, vérifié après chaque application.
 | L5 | Moteur comptable, charges, attestations | livré |
 | L7 | Transmissions par lien | livré |
 | L8 | Design, accessibilité, performance | en cours — performance faite, accessibilité en audit |
-| L4, L6, L9 | Documents, IA, préparation à la production | à faire |
+| L4 | Écrits cliniques : note de séance, courrier de liaison, synthèse de suivi | 3 des 7 écrits manquants livrés |
+| L6, L9 | IA, préparation à la production | à faire |
 
 ## Ce qui est solide, et pourquoi on peut le dire
 
@@ -45,16 +47,30 @@ Supabase `sisummvlowhtfgiatwwf`, vérifié après chaque application.
   Révocable, tracé, borné dans le temps par la base.
 - **Les lectures sont cloisonnées à coût constant** (`0019`) : l'appartenance
   est calculée une fois par requête, plus une fois par ligne.
+- **Les instantanés des quatre documents sont désormais PROUVÉS immuables.**
+  La garde existait sur les quatre ; rien ne la démontrait sur trois d'entre
+  eux — désarmer la ligne qui protège `snapshot` ne faisait échouer aucun
+  contrôle. Trouvé en falsifiant la synthèse, corrigé sur la pièce comptable,
+  l'attestation et le courrier au passage.
+- **La synthèse de suivi (`0023`) est le premier document dont une moitié est
+  pré-remplie.** La ligne est tenue en base : `public.follow_up_facts` relève
+  des FAITS — comptes de séances, objectifs tels qu'elle les a posés — et la
+  MÊME fonction sert l'écran avant la remise et l'émission qui les fige. Aucune
+  phrase d'évolution n'est produite, et l'émission **refuse** tant qu'elle n'a
+  rien écrit.
 
 ## Vérifications connues
 
-`npm run verify` enchaîne : `lint`, `typecheck`, 116 contrôles unitaires
-(19 fichiers), 10 fichiers de contrôle SQL, un contrôle de concurrence sur la
+`npm run verify` enchaîne : `lint`, `typecheck`, 134 contrôles unitaires
+(20 fichiers), 12 fichiers de contrôle SQL, un contrôle de concurrence sur la
 numérotation, le **rejeu complet de la bascule v1 → cible** sur une base
 jetable, et les **budgets de performance**.
 
 | Date | Vérification | Résultat |
 |---|---|---|
+| 2026-09-13 | `npm run verify` | tout passe — 134 contrôles unitaires, 12 fichiers SQL |
+| 2026-09-13 | `npm run build` | succès |
+| 2026-09-13 | Falsification des 23 gardes de `0023` + 4 instantanés | chacune détectée en désarmant |
 | 2026-09-12 | `npm run verify` | tout passe |
 | 2026-09-12 | `npm run build` | succès |
 | 2026-09-12 | Budgets à 400 puis 2 000 dossiers, sous RLS | aucune requête d'écran au-dessus de 1 ms |
@@ -94,5 +110,7 @@ lever :
 
 ## Prochaine action
 
-Terminer le lot 8 : accessibilité WCAG 2.2 AA et socle visuel. Puis L4 et L6,
-et L9 en dernier.
+Appliquer `0023` en production, puis poursuivre les écrits manquants : rang 4
+(écrit de fin de prise en soin), rang 5 (écrit pour un tiers non soignant),
+rang 6 (notice d'information), rang 7 (projet d'accompagnement imprimable).
+Reste ensuite l'accessibilité WCAG 2.2 AA du lot 8, puis L6, et L9 en dernier.

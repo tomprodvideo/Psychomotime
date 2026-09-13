@@ -21,7 +21,9 @@ import {
   listCourriers,
   etatConsentementPartage,
 } from "@/lib/courriers/queries";
+import { listSyntheses } from "@/lib/syntheses/queries";
 import CourriersSection from "./CourriersSection";
+import SynthesesSection from "./SynthesesSection";
 import { ROLE_LABELS, contactName, patientName } from "@/lib/dossier/types";
 import { listAttestations } from "@/lib/attestations/queries";
 import PatientFormDialog from "../PatientFormDialog";
@@ -70,6 +72,7 @@ export default async function FichePatientPage({
     pieces,
     attestations,
     courriers,
+    syntheses,
     consentementPartage,
   ] = await Promise.all([
     listPatientContacts(practice, patient.id),
@@ -83,6 +86,7 @@ export default async function FichePatientPage({
     listPatientPieces(patient.id),
     listAttestations(practice, { patientId: patient.id }),
     listCourriers(practice, patient.id),
+    listSyntheses(practice, patient.id),
     etatConsentementPartage(practice, patient.id),
   ]);
 
@@ -260,6 +264,38 @@ export default async function FichePatientPage({
                proposer indistinctement tous les contacts du cabinet rendrait
                possible d'écrire au confrère d'un autre patient au sujet de
                celui-ci. */
+            destinataires={[
+              ...entourage.map((l) => ({
+                id: l.contact.id,
+                nom: contactName(l.contact),
+                role: ROLE_LABELS[l.role] ?? l.role,
+                groupe: "dossier" as const,
+              })),
+              ...contacts
+                .filter((c) => !entourage.some((l) => l.contact.id === c.id))
+                .map((c) => ({
+                  id: c.id,
+                  nom: contactName(c),
+                  groupe: "cabinet" as const,
+                })),
+            ]}
+          />
+
+          {/* LA SYNTHÈSE VIENT APRÈS LE COURRIER ET AVANT LES NOTES : elle se
+              rédige en relisant les notes de la période, et les destinataires
+              sont les mêmes que ceux d'un courrier. */}
+          <SynthesesSection
+            patientId={patient.id}
+            syntheses={syntheses.items}
+            erreur={syntheses.erreur}
+            consentement={consentementPartage}
+            canWrite={practice.canWrite}
+            parcours={parcours.map((p) => ({
+              id: p.id,
+              libelle:
+                p.label?.trim() ||
+                `Parcours ouvert le ${p.started_on ? frDate(p.started_on) : "—"}`,
+            }))}
             destinataires={[
               ...entourage.map((l) => ({
                 id: l.contact.id,

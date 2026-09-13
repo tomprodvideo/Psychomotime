@@ -28,7 +28,7 @@ Par ordre de ce qu'ils coûtent, pas d'ordre chronologique.
 |---|---|---|---|
 | 1 | ~~**Note de séance**~~ **fait le 2026-09-13** | personne, usage propre | Branchée depuis la fiche du dossier ET depuis l'agenda. Garde de cohérence en base (`0021`) : même cabinet, même dossier, même séance. L'agenda dit quelles séances portent déjà une note. |
 | 2 | ~~**Courrier de liaison**~~ **fait le 2026-09-13** | un professionnel nommé | Écrit depuis le dossier, remis, imprimable, annulable avec motif. Destinataire obligatoire, en deux groupes séparés. Instantané figé à la remise. L'état du consentement est DIT, pas exigé. Ne reprend rien d'un bilan. |
-| 3 | **Synthèse de suivi** | prescripteur, famille, structure | `appointments.attendance`, `care_objectives.status`, `reviewed_on` |
+| 3 | ~~**Synthèse de suivi**~~ **fait le 2026-09-13** | prescripteur, famille, structure | Rédigée depuis le dossier, remise, imprimable, annulable avec motif. **Premier document dont une moitié est pré-remplie** : `public.follow_up_facts` relève les séances honorées, les rendez-vous non honorés, les séances annulées par le cabinet, l'ouverture du parcours et les objectifs tels qu'elle les a posés — la MÊME fonction sert l'écran et l'émission, qui la fige. L'émission REFUSE si elle n'a rien écrit. |
 | 4 | **Écrit de fin de prise en soin** | prescripteur, famille, relais | `care_pathways.ended_on`, `end_reason` |
 | 5 | **Écrit pour un tiers non soignant** (école, MDPH) | enseignant, MDPH | — |
 | 6 | **Notice d'information** | la personne, à l'entrée | `patient_consents` trace `information_recue` |
@@ -224,6 +224,10 @@ quelle que soit la réponse.
 | D-f | Un lien partagé suit-il le document remplacé, ou le remplaçant ? | psychomotricienne | `0021` |
 | D-g | `Q-303` — la conclusion reste-t-elle reformulable ? | psychomotricienne | palier A |
 | D-h | La structure Dunn 2 devenue donnée du cabinet : ce que cela change, ou non | conseil en propriété intellectuelle | non |
+| D-i | Faut-il EXIGER un accord de partage avant de remettre un courrier ou une synthèse, ou seulement le DIRE ? *(Le produit dit, aujourd'hui. Une synthèse emporte les objectifs, donc davantage qu'un courrier.)* | psychomotricienne | non |
+| D-j | Le vocabulaire IMPRIMÉ des statuts d'objectif. « Abandonné » se lit comme un constat sur une personne dans un document que liront une famille ou un financeur ; le document imprime « Non poursuivi ». Faut-il imprimer les objectifs non poursuivis ? | psychomotricienne | non |
+| D-k | Le motif d'une annulation reste réécrivable après coup sur l'**attestation** (`0016`) et le **courrier** (`0022`). La synthèse (`0023`) le fige. **Écart assumé et consigné** : le figer sur les deux autres demande une migration, et c'est la même décision pour les trois. | psychomotricienne | non |
+| D-l | La périodicité d'une synthèse. Elle se lit dans le contrat signé ; le produit n'en impose aucune et propose six mois comme commodité de saisie. | psychomotricienne | non |
 
 Douze questions de plus, sur la trame et sur la pratique, sont dans les rapports
 d'agents : elles s'ajoutent à `Q-201`–`Q-208` et aux dix questions d'attestation,
@@ -236,6 +240,17 @@ toutes ouvertes depuis le 2026-09-11.
   trancheraient en une séance ce qu'on ne peut qu'argumenter.*
 - **La latence de frappe de l'éditeur** est une hypothèse mécaniquement
   plausible : rien n'a été profilé.
+- **La disposition exacte invoquée pour les comptes rendus en parcours financé
+  n'est pas vérifiée.** L'arrêté du 19 décembre 2025 existe et est identifiable
+  (JORFTEXT000053143303), mais ni la transmission de comptes rendus à la
+  structure, à la famille et aux professionnels accompagnants, ni sa
+  périodicité n'ont été lues à la source. Le marquage `[SOURCE — à vérifier]`
+  en tête de `0023` reste. **La lecture se fait sur le cahier des charges et
+  sur SON contrat, pas ici.**
+- **Le statut d'un objectif imprimé est celui du jour de la remise**, pas celui
+  de la fin de période : on ne sait pas reconstituer un statut passé. Le
+  document le dit dans son titre de rubrique plutôt que de le laisser croire.
+  *Historiser les statuts d'objectif lèverait la limite — ce n'est pas fait.*
 - **`practices.timezone` existe et n'est lu nulle part** — `Europe/Paris` est
   écrit en dur partout. Une date de validation calculée en UTC décale d'un jour
   tout ce qui se valide après 22 h en été.

@@ -61,6 +61,13 @@ begin
   perform tests.assert_fails(
     format('update public.liaison_letters set status = ''brouillon'' where id = %L', v_lettre),
     'Un courrier remis ne redevient pas un brouillon.');
+  /* L'INSTANTANÉ LUI-MÊME : c'est lui qui fait foi de ce qui est parti.
+   * La garde le protégeait déjà ; rien ne le DÉMONTRAIT. */
+  perform tests.assert_fails(
+    format('update public.liaison_letters
+              set snapshot = jsonb_set(snapshot, ''{corps}'', ''"Autre chose."'')
+            where id = %L', v_lettre),
+    'L''instantané d''un courrier remis ne se réécrit pas.');
   perform tests.assert_fails(
     format('delete from public.liaison_letters where id = %L', v_lettre),
     'Un courrier remis ne se supprime pas.');

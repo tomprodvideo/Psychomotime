@@ -266,6 +266,15 @@ begin
   perform tests.assert_fails(
     format('delete from public.attestation_sessions where attestation_id = %L', v_att),
     'Ce qu''elle atteste ne se retire pas non plus.');
+  /* L'INSTANTANÉ LUI-MÊME. La garde le protégeait déjà ; rien ne le
+   * DÉMONTRAIT. Or c'est lui, et lui seul, qui fait foi de ce qui a été
+   * remis : protéger les champs alentour sans le protéger lui laisserait
+   * réécrire le document par la porte de service. */
+  perform tests.assert_fails(
+    format('update public.attestations
+              set snapshot = jsonb_set(snapshot, ''{total_cents}'', ''999999'')
+            where id = %L', v_att),
+    'L''instantané d''une attestation émise ne se réécrit pas.');
 
   -- Annuler SANS motif est refusé : un document disparaîtrait sans explication
   -- pour qui en détient une copie.

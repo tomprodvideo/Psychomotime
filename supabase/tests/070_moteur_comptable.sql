@@ -136,6 +136,16 @@ begin
   perform tests.assert_fails(
     format('update public.billing_documents set number = ''TRUQUE'' where id = %L', v_doc),
     'Le numéro d''une pièce émise ne doit pas pouvoir être modifié.');
+  /* L'INSTANTANÉ LUI-MÊME. La garde le protégeait déjà ; rien ne le
+   * DÉMONTRAIT — désarmer cette ligne-là ne faisait échouer aucun contrôle.
+   * Or c'est l'instantané qui s'imprime : protéger le numéro et la date sans
+   * le protéger lui laisserait réécrire le montant du document par la porte
+   * de service, en laissant le numéro intact. */
+  perform tests.assert_fails(
+    format('update public.billing_documents
+              set snapshot = jsonb_set(snapshot, ''{payeur,nom}'', ''"Autre payeur"'')
+            where id = %L', v_doc),
+    'L''instantané d''une pièce émise ne se réécrit pas.');
   perform tests.assert_fails(
     format('update public.billing_documents set issued_on = date ''2020-01-01'' where id = %L', v_doc),
     'La date d''émission ne doit pas pouvoir être modifiée.');
