@@ -30,7 +30,7 @@ mutation par le harnais de falsification — et non de la production.
 | L3 | Registre d'instruments et règle de cotation unique | partiel — le moteur de bilans reste sur le modèle v1 |
 | L5 | Moteur comptable, charges, attestations | livré |
 | L7 | Transmissions par lien | livré |
-| L8 | Design, accessibilité, performance | en cours — performance faite, **quinze** manquements WCAG corrigés, socle de formulaire fait, trois jetons posés et employés, `Bouton` et `Statut` livrés ; restent la migration des 80 `disabled` et la coque imprimée unique |
+| L8 | Design, accessibilité, performance | en cours — performance faite, **quinze** manquements WCAG corrigés, socle de formulaire fait, trois jetons posés et employés, `Bouton` et `Statut` livrés, **aucun bouton `disabled` restant** ; reste la coque imprimée unique |
 | L4 | Écrits cliniques : note, courrier, synthèse, fin de prise en soin, écrit pour un tiers | 5 des 7 écrits manquants livrés |
 | L6, L9 | IA, préparation à la production | à faire |
 
@@ -235,8 +235,14 @@ peine de le garder.
   clavier, ni le doigt, ni l'impression ne pouvaient l'atteindre, et un bouton
   `disabled` ne se survole pas. Dont celui-ci, qui pèse lourd : « Cochez au
   moins une séance ou un règlement : sans cela, l'attestation n'affirme rien. »
-  Ce motif d'anti-usage a disparu du produit ; les quatre `title` restants sont
-  des libellés d'infobulle sur des boutons-icônes, pas des motifs de refus.
+  **Cette rubrique affirmait que ce motif d'anti-usage avait disparu du
+  produit. C'était faux** — corrigé le 2026-09-13. Deux motifs de refus
+  restaient cachés dans une infobulle, tous deux dans l'éditeur de bilan :
+  « Dictée non disponible (utilisez Chrome ou Safari) » et « Écrivez
+  d'abord ». Le relevé s'arrêtait au premier `>` d'une balise, et
+  `onClick={() => …}` en contient un AVANT d'atteindre le `title`. Refait avec
+  un analyseur qui respecte les accolades : ce sont les deux seuls. Ils sont
+  maintenant atteignables.
 
   **Le déplacement de garantie a été MESURÉ, pas supposé.** `aria-disabled`
   n'empêche rien seul : le refus passe par un gestionnaire de clic. Éprouvé
@@ -246,15 +252,43 @@ peine de le garder.
   Non couvert, et dit comme tel : une soumission déclenchée par programme —
   il n'en existe aucune dans le produit.
 
-  **Ce qui reste.** `disabled=` passe de 93 à **80**, dans 41 fichiers : les
-  deux fichiers les plus denses sont faits, le reste doit converger. Quatre
-  valeurs de `disabled:opacity-*` coexistent encore — 30, 40, 50 et 60, sur 71
-  occurrences — et une opacité à 50 % délave AUSSI le libellé, au moment précis
-  où il faut lire pourquoi. Les boutons d'action compacts des quatre écrits
-  cliniques sont à une autre échelle que `Bouton` et demanderaient une taille
-  dédiée. Deux correspondances sont laissées EXPRÈS : la bascule
-  brouillon/finalisé de l'éditeur de bilan est un bouton, pas une pastille, et
-  le titre barré d'une attestation annulée porte déjà un second canal.
+  **Plus aucun bouton du produit n'emploie `disabled`** — migration terminée le
+  2026-09-13, 93 au départ. Ce qui garde `disabled`, et doit le garder : six
+  `<input>` et un `<textarea>`. Sur un champ de saisie, `aria-disabled` seul
+  laisserait taper dans un champ qui ne sera pas soumis, ce qui serait pire.
+  La pagination de la liste des dossiers reçoit une propriété nommée
+  `disabled` mais rend alors un `<span>`, pas un bouton.
+
+  Soixante-dix boutons ont été migrés **sans en redessiner un seul** : la
+  variante `libre` n'apporte que le comportement, l'apparence reste celle de
+  l'appelant. La dette d'apparence et la dette de comportement sont deux
+  dettes ; les solder dans le même diff rendait l'une et l'autre illisibles.
+  Soixante sont passés par une transformation automatique, simulée avant
+  écriture ; dix exigeaient un motif écrit à la main.
+
+  **Mesuré dans le navigateur, sur le scénario même que la migration vise** :
+  « Descendre » sur l'avant-dernière section la rend dernière, et son bouton
+  s'éteint sous le focus. Le focus y RESTE, au lieu de retomber sur `body`, et
+  le motif « déjà la dernière » est annoncé. Les deux formulaires publics
+  — connexion et mot de passe oublié — gardent un vrai bouton de soumission,
+  contrôlé dans le DOM sans rien soumettre.
+
+  **Le motif peut être annoncé sans être affiché** (`motifMasque`), dans deux
+  cas seulement : la cause est visible juste à côté — un champ vide, une
+  position en tête de liste — ou le contrôle se répète à chaque section.
+  Mesuré : aucun écart ni aucune hauteur ajoutés dans une rangée flex.
+
+  **L'opacité ne délave plus l'information.** Quatre valeurs coexistaient
+  (30, 40, 50, 60). Il n'en reste qu'une, et elle n'est plus appliquée au
+  bouton qui LANCE l'action : son libellé « Émission en cours… » est
+  l'information, et une opacité à 70 % le faisait tomber de 6,00:1 à 3,18:1.
+  Les autres boutons de la barre, réellement inactifs, s'estompent.
+
+  **Un défaut livré au tour précédent, trouvé en préparant celui-ci.** Le
+  libellé d'attente par défaut était « Enregistrement en cours… » : pendant
+  une seule action, les boutons Supprimer, Émettre et Créer un avoir de la
+  pièce comptable l'affichaient tous à la fois. Sept boutons concernés. Sans
+  libellé explicite, un bouton garde désormais le nom de son action.
 
   **Cinq boutons disaient « … » pendant l'attente** — un lecteur d'écran
   annonce « points de suspension, bouton ». Corrigé : chacun dit l'action en

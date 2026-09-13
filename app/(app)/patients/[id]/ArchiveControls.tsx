@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Archive, ArchiveRestore } from "lucide-react";
 import { archivePatient, unarchivePatient } from "../actions";
+import { Bouton } from "@/components/Bouton";
 
 /**
  * Archivage d'un dossier.
@@ -52,15 +53,15 @@ export default function ArchiveControls({
   if (archived) {
     return (
       <div className="flex flex-col items-end gap-1">
-        <button
+        <Bouton variante="libre"
           type="button"
           onClick={rouvrir}
-          disabled={pending}
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg disabled:opacity-60"
+          pending={pending}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg"
         >
           <ArchiveRestore className="h-4 w-4" aria-hidden="true" />
           {pending ? "Réouverture en cours…" : "Rouvrir le dossier"}
-        </button>
+        </Bouton>
         {erreur && (
           <p role="alert" className="text-xs text-red-700">
             {erreur}
@@ -99,14 +100,15 @@ export default function ArchiveControls({
           >
             Annuler
           </button>
-          <button
+          <Bouton variante="libre"
             type="button"
             onClick={archiver}
-            disabled={pending}
-            className="text-sm text-white bg-slate-700 hover:bg-slate-800 px-3 py-1.5 rounded-lg disabled:opacity-60"
-          >
-            {pending ? "Archivage en cours…" : "Archiver"}
-          </button>
+            pending={pending}
+            className="text-sm text-white bg-slate-700 hover:bg-slate-800 px-3 py-1.5 rounded-lg"
+              pendingLabel="Archivage en cours…"
+            >
+            Archiver
+          </Bouton>
         </div>
       </div>
     );

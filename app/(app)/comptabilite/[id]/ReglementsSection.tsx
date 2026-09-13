@@ -9,6 +9,7 @@ import { METHOD_LABELS, type PaymentMethod } from "@/lib/compta/types";
 import type { ReglementAffecte } from "@/lib/compta/queries";
 import { enregistrerReglement, retirerAffectation } from "../actions";
 import { CHAMP } from "@/components/Champ";
+import { Bouton } from "@/components/Bouton";
 
 /**
  * Les règlements imputés sur une pièce.
@@ -112,15 +113,15 @@ export default function ReglementsSection({
                 </span>
               </span>
               {modifiable && (
-                <button
+                <Bouton variante="libre"
                   type="button"
                   onClick={() => retirer(r.allocation_id)}
-                  disabled={enCours}
-                  className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-rose-600 disabled:opacity-40"
+                  pending={enCours}
+                  className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-rose-600"
                 >
                   <Unlink className="h-3.5 w-3.5" aria-hidden="true" />
                   Retirer l&apos;imputation
-                </button>
+                </Bouton>
               )}
             </li>
           ))}
@@ -186,13 +187,14 @@ export default function ReglementsSection({
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <button
+                <Bouton variante="libre"
                   type="submit"
-                  disabled={enCours}
-                  className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50"
-                >
-                  {enCours ? "Enregistrement…" : "Enregistrer le règlement"}
-                </button>
+                  pending={enCours}
+                  className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg"
+              pendingLabel="Enregistrement…"
+            >
+                  Enregistrer le règlement
+                </Bouton>
                 <button
                   type="button"
                   onClick={() => setOuvert(false)}

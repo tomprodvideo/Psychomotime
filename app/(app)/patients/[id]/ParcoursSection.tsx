@@ -18,6 +18,7 @@ import {
 } from "@/lib/dossier/types";
 import { CHAMP } from "@/components/Champ";
 import { Statut } from "@/components/Statut";
+import { Bouton } from "@/components/Bouton";
 
 /**
  * Parcours de prise en soin.
@@ -400,13 +401,14 @@ function DialogueParcours({
             >
               Annuler
             </button>
-            <button
+            <Bouton variante="libre"
               type="submit"
-              disabled={pending}
-              className="px-5 py-2 text-sm text-white bg-brand-600 hover:bg-brand-700 rounded-lg disabled:opacity-60"
+              pending={pending}
+              className="px-5 py-2 text-sm text-white bg-brand-600 hover:bg-brand-700 rounded-lg"
+              pendingLabel="Enregistrement…"
             >
-              {pending ? "Enregistrement…" : "Enregistrer"}
-            </button>
+              Enregistrer
+            </Bouton>
           </div>
         </form>
       </Dialogue>

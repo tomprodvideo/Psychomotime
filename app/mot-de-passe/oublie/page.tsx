@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { Mail } from "lucide-react";
 import AuthShell from "../AuthShell";
 import { demanderReinitialisation, type MotDePasseState } from "../actions";
+import { Bouton } from "@/components/Bouton";
 
 
 const initial: MotDePasseState = {};
@@ -58,13 +59,14 @@ export default function MotDePasseOubliePage() {
           </p>
         )}
 
-        <button
+        <Bouton variante="libre"
           type="submit"
-          disabled={pending}
-          className="w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white font-medium py-2.5 rounded-lg transition shadow-sm"
-        >
-          {pending ? "Envoi en cours…" : "Recevoir le lien"}
-        </button>
+          pending={pending}
+          className="w-full bg-brand-600 hover:bg-brand-700 text-white font-medium py-2.5 rounded-lg transition shadow-sm"
+              pendingLabel="Envoi en cours…"
+            >
+          Recevoir le lien
+        </Bouton>
       </form>
     </AuthShell>
   );

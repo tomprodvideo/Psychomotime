@@ -29,6 +29,7 @@ import {
 } from "../../fins/actions";
 import type { OptionDestinataire } from "./CourriersSection";
 import { Statut } from "@/components/Statut";
+import { Bouton } from "@/components/Bouton";
 
 
 export interface OptionParcoursFin {
@@ -216,33 +217,33 @@ function LigneFin({
               >
                 Modifier
               </button>
-              <button
+              <Bouton variante="libre"
                 type="button"
-                disabled={pending}
+                pending={pending}
                 onClick={() => {
                   const fd = new FormData();
                   fd.set("id", f.id);
                   fd.set("patient_id", patientId);
                   agir(remettreFin, fd);
                 }}
-                className="inline-flex items-center gap-1 text-xs font-medium text-brand-700 border border-brand-200 rounded-lg px-2 py-1 hover:bg-brand-50 disabled:opacity-50"
+                className="inline-flex items-center gap-1 text-xs font-medium text-brand-700 border border-brand-200 rounded-lg px-2 py-1 hover:bg-brand-50"
               >
                 <Send className="h-3.5 w-3.5" aria-hidden="true" />
                 Remettre
-              </button>
-              <button
+              </Bouton>
+              <Bouton variante="libre"
                 type="button"
-                disabled={pending}
+                pending={pending}
                 onClick={() => {
                   const fd = new FormData();
                   fd.set("id", f.id);
                   fd.set("patient_id", patientId);
                   agir(supprimerBrouillonFin, fd);
                 }}
-                className="text-xs text-slate-500 hover:text-rose-700 disabled:opacity-50"
+                className="text-xs text-slate-500 hover:text-rose-700"
               >
                 Supprimer
-              </button>
+              </Bouton>
             </>
           )}
           {canWrite && f.status === "emis" && (
@@ -275,13 +276,13 @@ function LigneFin({
             </label>
             <input id={`motif-fin-${f.id}`} name="reason" required className={CHAMP} />
           </div>
-          <button
+          <Bouton variante="libre"
             type="submit"
-            disabled={pending}
-            className="px-3 py-2 text-sm text-white bg-rose-700 hover:bg-rose-800 rounded-lg disabled:opacity-60"
+            pending={pending}
+            className="px-3 py-2 text-sm text-white bg-rose-700 hover:bg-rose-800 rounded-lg"
           >
             Annuler l&apos;écrit
-          </button>
+          </Bouton>
           <button
             type="button"
             onClick={() => setAnnulation(false)}
@@ -836,13 +837,14 @@ function DialogueFin({
           <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-slate-600">
             Annuler
           </button>
-          <button
+          <Bouton variante="libre"
             type="submit"
-            disabled={pending}
-            className="px-5 py-2 text-sm text-white bg-brand-600 hover:bg-brand-700 rounded-lg disabled:opacity-60"
-          >
-            {pending ? "Enregistrement…" : "Enregistrer le brouillon"}
-          </button>
+            pending={pending}
+            className="px-5 py-2 text-sm text-white bg-brand-600 hover:bg-brand-700 rounded-lg"
+              pendingLabel="Enregistrement…"
+            >
+            Enregistrer le brouillon
+          </Bouton>
         </div>
       </form>
     </Dialogue>

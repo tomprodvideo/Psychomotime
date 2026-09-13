@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { BadgeCheck, Sparkles } from "lucide-react";
 import { cancelSubscription } from "./actions";
 import { TONS, type Ton } from "@/components/Statut";
+import { Bouton } from "@/components/Bouton";
 
 export default function SubscriptionCard({
   status,
@@ -94,14 +95,15 @@ export default function SubscriptionCard({
                 interrompu.
               </p>
               <div className="flex items-center gap-2 mt-3">
-                <button
+                <Bouton variante="libre"
                   type="button"
-                  disabled={pending}
+                  pending={pending}
                   onClick={() => start(() => cancelSubscription())}
-                  className="text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 px-4 py-2 rounded-lg disabled:opacity-60"
-                >
-                  {pending ? "Résiliation…" : "Confirmer la résiliation"}
-                </button>
+                  className="text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 px-4 py-2 rounded-lg"
+              pendingLabel="Résiliation…"
+            >
+                  Confirmer la résiliation
+                </Bouton>
                 <button
                   type="button"
                   onClick={() => setConfirmCancel(false)}

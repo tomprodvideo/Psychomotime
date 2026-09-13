@@ -10,6 +10,7 @@ import {
 } from "@/lib/attestations/types";
 import { creerAttestation } from "./actions";
 import { CHAMP } from "@/components/Champ";
+import { Bouton } from "@/components/Bouton";
 
 interface OptionPatient {
   id: string;
@@ -125,14 +126,17 @@ export default function NouvelleAttestation({
       )}
 
       <div className="flex items-center gap-2">
-        <button
-          type="button"
+        <Bouton
+          variante="libre"
           onClick={creer}
-          disabled={enCours || patient === ""}
-          className="bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-40"
+          pending={enCours}
+          pendingLabel="Création…"
+          motifMasque
+          empeche={patient === "" ? "Choisissez d'abord la personne concernée." : null}
+          className="bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg"
         >
-          {enCours ? "Création…" : "Créer le brouillon"}
-        </button>
+          Créer le brouillon
+        </Bouton>
         <button
           type="button"
           onClick={() => setOuvert(false)}

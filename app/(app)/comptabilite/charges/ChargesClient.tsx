@@ -18,6 +18,7 @@ import {
   supprimerRecurrence,
 } from "../actions";
 import { CHAMP } from "@/components/Champ";
+import { Bouton } from "@/components/Bouton";
 
 /**
  * Charges constatées et charges récurrentes.
@@ -211,9 +212,9 @@ function Supprimer({
       ) : (
         <span className="text-slate-500">Supprimer ?</span>
       )}
-      <button
+      <Bouton variante="libre"
         type="button"
-        disabled={enCours}
+        pending={enCours}
         onClick={() =>
           demarrer(async () => {
             const r = await action();
@@ -221,10 +222,10 @@ function Supprimer({
             else router.refresh();
           })
         }
-        className="text-rose-600 font-medium disabled:opacity-50"
+        className="text-rose-600 font-medium"
       >
         Oui
-      </button>
+      </Bouton>
       <button
         type="button"
         onClick={() => setConfirme(false)}
@@ -328,13 +329,14 @@ function FormulaireCharge({ aujourdhui }: { aujourdhui: string }) {
         </div>
       </div>
       <div className="flex items-center gap-3">
-        <button
+        <Bouton variante="libre"
           type="submit"
-          disabled={enCours}
-          className="bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50"
-        >
-          {enCours ? "Enregistrement…" : "Enregistrer"}
-        </button>
+          pending={enCours}
+          className="bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg"
+              pendingLabel="Enregistrement…"
+            >
+          Enregistrer
+        </Bouton>
         {erreur && (
           <p role="alert" className="text-sm text-rose-700">{erreur}</p>
         )}
@@ -441,13 +443,14 @@ function FormulaireRecurrence({
         changerait rétroactivement les années déjà closes.
       </p>
       <div className="flex items-center gap-3">
-        <button
+        <Bouton variante="libre"
           type="submit"
-          disabled={enCours}
-          className="bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50"
-        >
-          {enCours ? "Enregistrement…" : "Enregistrer"}
-        </button>
+          pending={enCours}
+          className="bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg"
+              pendingLabel="Enregistrement…"
+            >
+          Enregistrer
+        </Bouton>
         {erreur && (
           <p role="alert" className="text-sm text-rose-700">{erreur}</p>
         )}

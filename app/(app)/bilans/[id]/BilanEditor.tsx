@@ -52,6 +52,7 @@ import {
 import { useDictation } from "./useDictation";
 import { CHAMP } from "@/components/Champ";
 import { Dialogue } from "@/components/Dialogue";
+import { Bouton } from "@/components/Bouton";
 
 function parseJSON<T>(s: unknown, fallback: T): T {
   try {
@@ -533,6 +534,30 @@ export default function BilanEditor({
     const recording = dictation.activeId === fieldKey;
     const otherRecording =
       dictation.activeId !== null && dictation.activeId !== fieldKey;
+
+    /* LES DEUX MOTIFS ÉTAIENT DANS UN `title`, SUR UN BOUTON `disabled`.
+       « Dictée non disponible (utilisez Chrome ou Safari) » et « Écrivez
+       d'abord » : ni le clavier, ni le doigt, ni un lecteur d'écran ne
+       pouvaient les atteindre. Ils sont calculés ici une seule fois, et servent
+       à la fois au motif annoncé et à l'infobulle — qui, sur un bouton
+       `aria-disabled`, reçoit enfin les événements du pointeur.
+
+       `busy` n'est PAS l'attente de la dictée : c'est une reformulation qui
+       réécrit la section. Pour « Dicter », c'est donc un empêchement. */
+    const motifDictee = !dictation.supported
+      ? "La dictée n'est pas disponible dans ce navigateur (utilisez Chrome ou Safari)."
+      : otherRecording
+        ? "Une dictée est déjà en cours dans une autre section."
+        : busy
+          ? "Une reformulation réécrit cette section en ce moment."
+          : null;
+    const motifReformulation = busy
+      ? null
+      : !hasText
+        ? "Écrivez d'abord le texte à reformuler."
+        : aiBusy !== null
+          ? "Une reformulation est déjà en cours dans une autre section."
+          : null;
     return (
       <div>
         <div className="flex items-center justify-between gap-2 mb-1">
@@ -540,16 +565,14 @@ export default function BilanEditor({
             {label}
           </label>
           <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              type="button"
+            <Bouton
+              variante="libre"
               onClick={() => dictation.toggle(fieldKey)}
-              disabled={!dictation.supported || otherRecording || busy}
-              title={
-                dictation.supported
-                  ? "Dicter à la voix"
-                  : "Dictée non disponible (utilisez Chrome ou Safari)"
-              }
-              className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition disabled:opacity-40 ${
+              /* Masqué : ce bouton se répète à chaque section du bilan. */
+              motifMasque
+              empeche={motifDictee}
+              title={motifDictee ?? "Dicter à la voix"}
+              className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition ${
                 recording
                   ? "bg-rose-100 text-rose-700 animate-pulse"
                   : "text-slate-600 bg-slate-100 hover:bg-slate-200"
@@ -561,21 +584,27 @@ export default function BilanEditor({
                 <Mic className="h-3.5 w-3.5" />
               )}
               {recording ? "Stop" : "Dicter"}
-            </button>
-            <button
-              type="button"
+            </Bouton>
+            <Bouton
+              variante="libre"
               onClick={() => handleReformulate(fieldKey, label)}
-              disabled={busy || !hasText || aiBusy !== null}
-              title={hasText ? "Reformuler avec l'IA" : "Écrivez d'abord"}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 px-2.5 py-1 rounded-full transition disabled:opacity-40"
+              pending={busy}
+              /* Un NŒUD, pas une phrase seule : l'indicateur animé fait partie
+                 de ce qu'on lit pendant la reformulation. */
+              pendingLabel={
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                  Reformulation…
+                </>
+              }
+              motifMasque
+              empeche={motifReformulation}
+              title={motifReformulation ?? "Reformuler avec l'IA"}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 px-2.5 py-1 rounded-full transition"
             >
-              {busy ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Sparkles className="h-3.5 w-3.5" />
-              )}
-              {busy ? "Reformulation…" : "Reformuler"}
-            </button>
+              <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+              Reformuler
+            </Bouton>
             <TemplatesMenu
               templates={templateList}
               folders={folderList}
@@ -1172,10 +1201,10 @@ export default function BilanEditor({
               <Eye className="h-4 w-4" />
               Aperçu / PDF
             </Link>
-            <button
+            <Bouton variante="libre"
               onClick={() => doSave()}
-              disabled={pending}
-              className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-60"
+              pending={pending}
+              className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg"
             >
               {savedAt ? (
                 <Check className="h-4 w-4" />
@@ -1183,7 +1212,7 @@ export default function BilanEditor({
                 <Save className="h-4 w-4" />
               )}
               {pending ? "Enregistrement en cours…" : "Enregistrer"}
-            </button>
+            </Bouton>
           </div>
         </div>
       </div>

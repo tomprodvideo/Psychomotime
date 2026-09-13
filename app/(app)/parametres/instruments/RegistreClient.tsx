@@ -22,6 +22,7 @@ import {
 } from "@/lib/dossier/types";
 import { CHAMP } from "@/components/Champ";
 import { Statut, type Ton } from "@/components/Statut";
+import { Bouton } from "@/components/Bouton";
 
 
 const STATUTS: LicenceStatus[] = [
@@ -515,14 +516,15 @@ function DecoupageLigne({
           <p className="text-slate-500">{decoupage.source}</p>
         </div>
         {canWrite && !estActif && (
-          <button
+          <Bouton variante="libre"
             type="button"
             onClick={activer}
-            disabled={pending}
-            className="text-xs font-medium text-brand-700 hover:underline shrink-0 disabled:opacity-50"
-          >
-            {pending ? "Application en cours…" : "Appliquer"}
-          </button>
+            pending={pending}
+            className="text-xs font-medium text-brand-700 hover:underline shrink-0"
+              pendingLabel="Application en cours…"
+            >
+            Appliquer
+          </Bouton>
         )}
       </div>
 
@@ -566,7 +568,7 @@ function SupprimerInstrument({ id, nom }: { id: string; nom: string }) {
 
   return (
     <div>
-      <button
+      <Bouton variante="libre"
         type="button"
         onClick={() => {
           if (
@@ -585,12 +587,12 @@ function SupprimerInstrument({ id, nom }: { id: string; nom: string }) {
             if (!res.ok) setErreur(res.error);
           });
         }}
-        disabled={pending}
-        className="inline-flex items-center gap-1.5 text-xs text-rose-600 hover:bg-rose-50 px-2 py-1 rounded-lg disabled:opacity-50"
+        pending={pending}
+        className="inline-flex items-center gap-1.5 text-xs text-rose-600 hover:bg-rose-50 px-2 py-1 rounded-lg"
       >
         <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
         Retirer du registre
-      </button>
+      </Bouton>
       {erreur && (
         <p role="alert" className="text-xs text-red-700 mt-1">
           {erreur}
@@ -1070,13 +1072,14 @@ function Actions({ pending, onClose }: { pending: boolean; onClose: () => void }
       >
         Annuler
       </button>
-      <button
+      <Bouton variante="libre"
         type="submit"
-        disabled={pending}
-        className="px-5 py-2 text-sm text-white bg-brand-600 hover:bg-brand-700 rounded-lg disabled:opacity-60"
-      >
-        {pending ? "Enregistrement…" : "Enregistrer"}
-      </button>
+        pending={pending}
+        className="px-5 py-2 text-sm text-white bg-brand-600 hover:bg-brand-700 rounded-lg"
+              pendingLabel="Enregistrement…"
+            >
+        Enregistrer
+      </Bouton>
     </div>
   );
 }

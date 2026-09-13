@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Check, X } from "lucide-react";
 import { setAttendance } from "./actions";
+import { Bouton } from "@/components/Bouton";
 import {
   ATTENDANCE_BILLABLE_BY_DEFAULT,
   ATTENDANCE_LABELS,
@@ -81,25 +82,25 @@ export default function AttendanceControl({
     return (
       <div className="flex items-center gap-1">
         {/* Le geste courant, en un clic. */}
-        <button
+        <Bouton variante="libre"
           type="button"
           onClick={() => envoyer("honore")}
-          disabled={pending}
+          pending={pending}
           title="Marquer comme honoré"
           aria-label="Marquer ce rendez-vous comme honoré"
-          className="inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:bg-brand-50 border border-brand-200 rounded-lg px-2 py-1 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-brand-300"
+          className="inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:bg-brand-50 border border-brand-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-brand-300"
         >
           <Check className="h-3.5 w-3.5" aria-hidden="true" />
           {compact ? "Honoré" : "Séance honorée"}
-        </button>
-        <button
+        </Bouton>
+        <Bouton variante="libre"
           type="button"
           onClick={() => setOuvert(true)}
-          disabled={pending}
-          className="text-xs font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg px-2 py-1 disabled:opacity-50"
+          pending={pending}
+          className="text-xs font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg px-2 py-1"
         >
           Autre issue
-        </button>
+        </Bouton>
         {erreur && (
           <span role="alert" className="text-xs text-red-700">
             {erreur}
@@ -190,14 +191,23 @@ export default function AttendanceControl({
         >
           Annuler
         </button>
-        <button
-          type="button"
+        {/* AFFICHÉ : le motif n'est exigé qu'après avoir choisi une issue qui
+            l'impose, et c'est précisément ce lien que la personne ne voit pas.
+            Sans lui, le bouton restait éteint sans rien dire de pourquoi. */}
+        <Bouton
+          variante="libre"
           onClick={() => envoyer(issue, note.trim() || undefined, forcerFacturable)}
-          disabled={pending || (motifExige && !note.trim())}
-          className="text-sm text-white bg-brand-600 hover:bg-brand-700 px-4 py-1.5 rounded-lg disabled:opacity-50"
+          pending={pending}
+          pendingLabel="Enregistrement en cours…"
+          empeche={
+            motifExige && !note.trim()
+              ? "Cette issue exige un motif : écrivez-le avant d'enregistrer."
+              : null
+          }
+          className="text-sm text-white bg-brand-600 hover:bg-brand-700 px-4 py-1.5 rounded-lg"
         >
-          {pending ? "Enregistrement en cours…" : "Enregistrer"}
-        </button>
+          Enregistrer
+        </Bouton>
       </div>
     </div>
   );

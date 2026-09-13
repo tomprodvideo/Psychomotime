@@ -31,6 +31,7 @@ import {
 } from "@/lib/invoiceNumber";
 import RecurringExpensesEditor from "./RecurringExpensesEditor";
 import { CHAMP } from "@/components/Champ";
+import { Bouton } from "@/components/Bouton";
 
 /** Redimensionne une image raster et renvoie un data-URL JPEG léger.
  *  Les SVG (déjà légers et vectoriels) sont conservés tels quels. */
@@ -913,14 +914,14 @@ export default function ParametresForm({
 
       {tab !== "compte" && (
         <div className="flex items-center gap-3">
-          <button
+          <Bouton variante="libre"
             type="submit"
-            disabled={pending}
-            className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg disabled:opacity-60"
+            pending={pending}
+            className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg"
           >
             {saved && !erreur ? <Check className="h-4 w-4" /> : null}
             {pending ? "Enregistrement…" : "Enregistrer les paramètres"}
-          </button>
+          </Bouton>
           {saved && !erreur && (
             <span className="text-sm text-brand-700">
               Paramètres enregistrés ✓

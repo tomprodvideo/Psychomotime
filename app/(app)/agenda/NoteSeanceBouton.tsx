@@ -8,6 +8,7 @@ import { frDate } from "@/lib/format";
 import { saveNote } from "../patients/actions";
 import type { AppointmentWithPatient } from "@/lib/dossier/types";
 import { patientName } from "@/lib/dossier/types";
+import { Bouton } from "@/components/Bouton";
 
 
 /**
@@ -168,13 +169,14 @@ export default function NoteSeanceBouton({
             >
               Annuler
             </button>
-            <button
+            <Bouton variante="libre"
               type="submit"
-              disabled={pending}
-              className="px-5 py-2 text-sm text-white bg-brand-600 hover:bg-brand-700 rounded-lg disabled:opacity-60"
+              pending={pending}
+              className="px-5 py-2 text-sm text-white bg-brand-600 hover:bg-brand-700 rounded-lg"
+              pendingLabel="Enregistrement…"
             >
-              {pending ? "Enregistrement…" : "Enregistrer"}
-            </button>
+              Enregistrer
+            </Bouton>
           </div>
         </form>
       </Dialogue>

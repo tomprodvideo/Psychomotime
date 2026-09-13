@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ArrowDown, ArrowUp, Plus, RotateCcw, Trash2 } from "lucide-react";
 import type { BilanSectionConfig } from "@/lib/types";
 import { DEFAULT_BILAN_SECTIONS } from "@/lib/constants";
+import { Bouton } from "@/components/Bouton";
 
 function uid() {
   return globalThis.crypto?.randomUUID
@@ -143,24 +144,40 @@ export default function BilanSectionsEditor({
               }`}
             >
               <div className="flex flex-col shrink-0">
-                <button
-                  type="button"
+                {/* LE CAS EXACT OÙ `disabled` ÉJECTAIT LE CLAVIER. « Descendre »
+                    sur l'avant-dernière section la rend dernière : son bouton
+                    s'éteignait SOUS le focus, qui retombait sur `body`. La ligne
+                    garde sa clé en se déplaçant, donc son bouton garde le focus.
+
+                    Et ces flèches n'avaient que `title` pour nom accessible —
+                    le même sur chaque ligne. Un lecteur d'écran entendait
+                    « Monter » vingt fois sans savoir quelle section. */}
+                <Bouton
+                  variante="libre"
                   onClick={() => move(i, -1)}
-                  disabled={i === 0}
-                  className="text-slate-500 hover:text-brand-600 disabled:opacity-30"
+                  motifMasque
+                  empeche={i === 0 ? "Cette section est déjà la première." : null}
+                  aria-label={`Monter la section « ${s.title || "sans titre"} »`}
                   title="Monter"
+                  className="text-slate-500 hover:text-brand-600"
                 >
-                  <ArrowUp className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
+                  <ArrowUp className="h-4 w-4" aria-hidden="true" />
+                </Bouton>
+                <Bouton
+                  variante="libre"
                   onClick={() => move(i, 1)}
-                  disabled={i === sections.length - 1}
-                  className="text-slate-500 hover:text-brand-600 disabled:opacity-30"
+                  motifMasque
+                  empeche={
+                    i === sections.length - 1
+                      ? "Cette section est déjà la dernière."
+                      : null
+                  }
+                  aria-label={`Descendre la section « ${s.title || "sans titre"} »`}
                   title="Descendre"
+                  className="text-slate-500 hover:text-brand-600"
                 >
-                  <ArrowDown className="h-4 w-4" />
-                </button>
+                  <ArrowDown className="h-4 w-4" aria-hidden="true" />
+                </Bouton>
               </div>
 
               <input

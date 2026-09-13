@@ -16,6 +16,7 @@ import {
 } from "@/lib/dossier/types";
 import type { PatientListItem } from "@/lib/dossier/queries";
 import { CHAMP } from "@/components/Champ";
+import { Bouton } from "@/components/Bouton";
 
 
 /** Types de rendez-vous qui ne concernent personne en particulier. */
@@ -262,15 +263,15 @@ export default function AppointmentDialog({
 
           <div className="flex items-center justify-between gap-2">
             {appointment ? (
-              <button
+              <Bouton variante="libre"
                 type="button"
                 onClick={supprimer}
-                disabled={pending}
-                className="inline-flex items-center gap-1.5 text-sm text-rose-600 hover:bg-rose-50 px-3 py-2 rounded-lg disabled:opacity-50"
+                pending={pending}
+                className="inline-flex items-center gap-1.5 text-sm text-rose-600 hover:bg-rose-50 px-3 py-2 rounded-lg"
               >
                 <Trash2 className="h-4 w-4" aria-hidden="true" />
                 Supprimer
-              </button>
+              </Bouton>
             ) : (
               <span />
             )}
@@ -282,13 +283,13 @@ export default function AppointmentDialog({
               >
                 Annuler
               </button>
-              <button
+              <Bouton variante="libre"
                 type="submit"
-                disabled={pending}
-                className="px-5 py-2 text-sm text-white bg-brand-600 hover:bg-brand-700 rounded-lg disabled:opacity-60"
+                pending={pending}
+                className="px-5 py-2 text-sm text-white bg-brand-600 hover:bg-brand-700 rounded-lg"
               >
                 {pending ? "Enregistrement…" : serie ? "Créer la série" : "Enregistrer"}
-              </button>
+              </Bouton>
             </div>
           </div>
         </form>

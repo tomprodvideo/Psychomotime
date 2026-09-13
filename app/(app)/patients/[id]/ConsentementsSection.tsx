@@ -13,6 +13,7 @@ import {
   type PatientConsent,
 } from "@/lib/dossier/types";
 import { CHAMP } from "@/components/Champ";
+import { Bouton } from "@/components/Bouton";
 
 /**
  * Autorisations et consentements.
@@ -175,14 +176,14 @@ function LigneConsentement({
         )}
       </div>
       {canWrite && (
-        <button
+        <Bouton variante="libre"
           type="button"
           onClick={retirer}
-          disabled={pending}
-          className="shrink-0 text-xs font-medium text-slate-500 hover:text-rose-700 hover:underline disabled:opacity-50"
+          pending={pending}
+          className="shrink-0 text-xs font-medium text-slate-500 hover:text-rose-700 hover:underline"
         >
           Retirer
-        </button>
+        </Bouton>
       )}
     </li>
   );
@@ -329,13 +330,14 @@ function DialogueConsentement({
             >
               Annuler
             </button>
-            <button
+            <Bouton variante="libre"
               type="submit"
-              disabled={pending}
-              className="px-5 py-2 text-sm text-white bg-brand-600 hover:bg-brand-700 rounded-lg disabled:opacity-60"
+              pending={pending}
+              className="px-5 py-2 text-sm text-white bg-brand-600 hover:bg-brand-700 rounded-lg"
+              pendingLabel="Enregistrement…"
             >
-              {pending ? "Enregistrement…" : "Enregistrer"}
-            </button>
+              Enregistrer
+            </Bouton>
           </div>
         </form>
       </Dialogue>

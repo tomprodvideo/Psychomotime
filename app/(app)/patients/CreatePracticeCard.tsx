@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Building2 } from "lucide-react";
 import { createPractice } from "./actions";
 import { CHAMP_AUTO } from "@/components/Champ";
+import { Bouton } from "@/components/Bouton";
 
 /**
  * Création du cabinet, pour un compte qui n'en a pas encore.
@@ -48,13 +49,20 @@ export default function CreatePracticeCard() {
           placeholder="Cabinet de psychomotricité"
           className={`${CHAMP_AUTO} flex-1`}
         />
-        <button
+        <Bouton
+          variante="libre"
           type="submit"
-          disabled={pending || !nom.trim()}
-          className="bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-5 py-2 rounded-lg disabled:opacity-60"
+          pending={pending}
+          pendingLabel="Création…"
+          /* Masqué : le champ vide est juste à gauche. Un motif affiché
+             accueillerait la personne comme une erreur avant la première
+             frappe. */
+          motifMasque
+          empeche={!nom.trim() ? "Donnez d'abord un nom au cabinet." : null}
+          className="bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-5 py-2 rounded-lg"
         >
-          {pending ? "Création…" : "Créer le cabinet"}
-        </button>
+          Créer le cabinet
+        </Bouton>
       </form>
     </div>
   );

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { signIn, signUp, type AuthState } from "./actions";
 import { MIN_PASSWORD_LENGTH } from "@/lib/auth/password";
 import { Activity, Lock, Mail, User } from "lucide-react";
+import { Bouton } from "@/components/Bouton";
 
 
 const initial: AuthState = {};
@@ -115,17 +116,17 @@ export default function LoginPage() {
               </p>
             )}
 
-            <button
+            <Bouton variante="libre"
               type="submit"
-              disabled={pending}
-              className="w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white font-medium py-2.5 rounded-lg transition shadow-sm"
+              pending={pending}
+              className="w-full bg-brand-600 hover:bg-brand-700 text-white font-medium py-2.5 rounded-lg transition shadow-sm"
             >
               {pending
                 ? "Veuillez patienter…"
                 : mode === "signin"
                   ? "Se connecter"
                   : "Créer mon compte"}
-            </button>
+            </Bouton>
           </form>
 
           {mode === "signin" && (

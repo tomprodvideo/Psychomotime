@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import type { AdaptationFolder, AdaptationTemplate } from "@/lib/types";
 import { saveAdaptationLibrary } from "../bilans/actions";
+import { Bouton } from "@/components/Bouton";
 
 function uid() {
   return globalThis.crypto?.randomUUID
@@ -238,15 +239,15 @@ export default function AdaptationTemplatesManager({
           <FolderPlus className="h-4 w-4" />
           Nouveau dossier
         </button>
-        <button
+        <Bouton variante="libre"
           type="button"
           onClick={save}
-          disabled={pending}
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 px-4 py-1.5 rounded-lg disabled:opacity-60"
+          pending={pending}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 px-4 py-1.5 rounded-lg"
         >
           {saved ? <Check className="h-4 w-4" /> : null}
           {pending ? "Enregistrement…" : "Enregistrer"}
-        </button>
+        </Bouton>
         {saved && !erreur && (
           <span className="text-sm text-brand-700">Modèles enregistrés ✓</span>
         )}

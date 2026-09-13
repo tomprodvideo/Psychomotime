@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { X, Loader2 } from "lucide-react";
 import { deleteBilanById } from "./actions";
+import { Bouton } from "@/components/Bouton";
 
 export default function DeleteBilanButton({
   id,
@@ -24,11 +25,11 @@ export default function DeleteBilanButton({
           {erreur}
         </p>
       )}
-      <button
+      <Bouton variante="libre"
       type="button"
       title="Supprimer ce bilan"
       aria-label={`Supprimer le bilan de ${label}`}
-      disabled={pending}
+      pending={pending}
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -46,14 +47,14 @@ export default function DeleteBilanButton({
           if (!res.ok) setErreur(res.error);
         });
       }}
-      className="relative z-10 h-7 w-7 shrink-0 inline-flex items-center justify-center rounded-full text-slate-500 hover:text-rose-700 hover:bg-rose-50 focus:text-rose-700 focus:bg-rose-50 transition disabled:opacity-50"
+      className="relative z-10 h-7 w-7 shrink-0 inline-flex items-center justify-center rounded-full text-slate-500 hover:text-rose-700 hover:bg-rose-50 focus:text-rose-700 focus:bg-rose-50 transition"
     >
       {pending ? (
         <Loader2 className="h-4 w-4 animate-spin" />
       ) : (
         <X className="h-4 w-4" />
       )}
-      </button>
+      </Bouton>
     </>
   );
 }

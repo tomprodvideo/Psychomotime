@@ -9,6 +9,7 @@ import { frDate } from "@/lib/format";
 import { formatAgeAt } from "@/lib/age";
 import { createBilan } from "../actions";
 import { CHAMP } from "@/components/Champ";
+import { Bouton } from "@/components/Bouton";
 
 type PatientLite = Pick<Patient, "id" | "first_name" | "last_name" | "birth_date">;
 
@@ -199,12 +200,13 @@ function Label({ children }: { children: React.ReactNode }) {
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <button
+    <Bouton variante="libre"
       type="submit"
-      disabled={pending}
-      className="px-5 py-2.5 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
-    >
-      {pending ? "Création…" : "Créer et rédiger"}
-    </button>
+      pending={pending}
+      className="px-5 py-2.5 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg shadow-sm"
+              pendingLabel="Création…"
+            >
+      Créer et rédiger
+    </Bouton>
   );
 }

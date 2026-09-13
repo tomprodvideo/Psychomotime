@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { Lock } from "lucide-react";
 import { definirMotDePasse, type MotDePasseState } from "../actions";
 import { MIN_PASSWORD_LENGTH } from "@/lib/auth/password";
+import { Bouton } from "@/components/Bouton";
 
 const initial: MotDePasseState = {};
 
@@ -41,13 +42,14 @@ export default function NouveauMotDePasseForm() {
         </p>
       )}
 
-      <button
+      <Bouton variante="libre"
         type="submit"
-        disabled={pending}
-        className="w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white font-medium py-2.5 rounded-lg transition shadow-sm"
-      >
-        {pending ? "Enregistrement…" : "Enregistrer le mot de passe"}
-      </button>
+        pending={pending}
+        className="w-full bg-brand-600 hover:bg-brand-700 text-white font-medium py-2.5 rounded-lg transition shadow-sm"
+              pendingLabel="Enregistrement…"
+            >
+        Enregistrer le mot de passe
+      </Bouton>
     </form>
   );
 }

@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { AlertTriangle } from "lucide-react";
 import { deleteAccount } from "./actions";
+import { Bouton } from "@/components/Bouton";
 
 /**
  * Suppression de son propre compte.
@@ -87,12 +88,20 @@ export default function DeleteAccountCard() {
             className="w-full max-w-xs rounded-lg border border-slate-300 py-2 px-3 text-sm outline-none focus:border-rose-400 mb-3"
           />
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              disabled={
-                confirmText.trim() !== "SUPPRIMER" ||
-                motDePasse === "" ||
-                pending
+            {/* AFFICHÉ, pas masqué : on n'arrive ici qu'après avoir ouvert ce
+                panneau exprès. Et `rose-700` plutôt que `rose-600` — mesuré à
+                6,29:1 contre 4,70:1, sur le bouton le plus destructeur du
+                produit. */}
+            <Bouton
+              variante="libre"
+              pending={pending}
+              pendingLabel="Suppression…"
+              empeche={
+                confirmText.trim() !== "SUPPRIMER"
+                  ? "Tapez SUPPRIMER pour confirmer."
+                  : motDePasse === ""
+                    ? "Saisissez votre mot de passe."
+                    : null
               }
               onClick={() => {
                 setErreur(null);
@@ -106,10 +115,10 @@ export default function DeleteAccountCard() {
                   setErreur(r.error);
                 });
               }}
-              className="text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 px-4 py-2 rounded-lg disabled:opacity-50"
+              className="text-sm font-medium text-white bg-rose-700 hover:bg-rose-800 px-4 py-2 rounded-lg"
             >
-              {pending ? "Suppression…" : "Confirmer la suppression définitive"}
-            </button>
+              Confirmer la suppression définitive
+            </Bouton>
             <button
               type="button"
               onClick={() => {

@@ -13,6 +13,7 @@ import {
 import { EXPIRATIONS_PROPOSEES } from "@/lib/transmissions/jeton";
 import { creerLien, revoquerLien } from "./actions";
 import { CHAMP } from "@/components/Champ";
+import { Bouton } from "@/components/Bouton";
 
 interface OptionContact {
   id: string;
@@ -265,24 +266,24 @@ export default function PanneauPartage({
                   </p>
                 </div>
                 {modifiable && (
-                  <button
+                  <Bouton variante="libre"
                     type="button"
                     onClick={() => reprendre(l)}
-                    disabled={enCours}
-                    className="shrink-0 text-xs text-slate-600 hover:text-brand-800 border border-slate-200 px-2.5 py-1.5 rounded-lg disabled:opacity-50"
+                    pending={enCours}
+                    className="shrink-0 text-xs text-slate-600 hover:text-brand-800 border border-slate-200 px-2.5 py-1.5 rounded-lg"
                   >
                     Renvoyer
-                  </button>
+                  </Bouton>
                 )}
                 {modifiable && etat === "actif" && (
-                  <button
+                  <Bouton variante="libre"
                     type="button"
                     onClick={() => revoquer(l.id)}
-                    disabled={enCours}
-                    className="shrink-0 text-xs text-slate-500 hover:text-rose-700 border border-slate-200 px-2.5 py-1.5 rounded-lg disabled:opacity-50"
+                    pending={enCours}
+                    className="shrink-0 text-xs text-slate-500 hover:text-rose-700 border border-slate-200 px-2.5 py-1.5 rounded-lg"
                   >
                     Révoquer
-                  </button>
+                  </Bouton>
                 )}
               </li>
             );
@@ -403,16 +404,16 @@ export default function PanneauPartage({
               </div>
 
               <div className="flex items-center gap-3">
-                <button
+                <Bouton variante="libre"
                   type="button"
-                  disabled={enCours}
+                  pending={enCours}
                   onClick={() => {
                     setErreur(null);
                     // A-18 : on ne part pas sans avoir NOMMÉ le destinataire.
                     if (adresse.trim()) setAConfirmer(true);
                     else creer();
                   }}
-                  className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50"
+                  className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg"
                 >
                   <Link2 className="h-4 w-4" aria-hidden="true" />
                   {enCours
@@ -420,7 +421,7 @@ export default function PanneauPartage({
                     : adresse.trim()
                       ? "Créer et envoyer…"
                       : "Créer le lien"}
-                </button>
+                </Bouton>
                 <button
                   type="button"
                   onClick={() => {
@@ -458,14 +459,15 @@ export default function PanneauPartage({
                     reste derrière le lien — que vous pourrez révoquer.
                   </p>
                   <div className="flex items-center gap-2 mt-3">
-                    <button
+                    <Bouton variante="libre"
                       type="button"
-                      disabled={enCours}
+                      pending={enCours}
                       onClick={creer}
-                      className="bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50"
-                    >
-                      {enCours ? "Envoi…" : "Confirmer l'envoi"}
-                    </button>
+                      className="bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium px-4 py-2 rounded-lg"
+              pendingLabel="Envoi…"
+            >
+                      Confirmer l&apos;envoi
+                    </Bouton>
                     <button
                       type="button"
                       onClick={() => setAConfirmer(false)}

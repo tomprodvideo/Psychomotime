@@ -14,6 +14,7 @@ import {
   type PatientContactWithContact,
 } from "@/lib/dossier/types";
 import { CHAMP } from "@/components/Champ";
+import { Bouton } from "@/components/Bouton";
 
 /**
  * Entourage du dossier : qui gravite autour du patient, et à quel titre.
@@ -205,10 +206,10 @@ function LigneLien({
         )}
       </div>
       {canWrite && (
-        <button
+        <Bouton variante="libre"
           type="button"
           onClick={terminer}
-          disabled={pending}
+          pending={pending}
           aria-label={`Mettre fin au rôle de ${contactName(c)}`}
           /* `slate-300` contre blanc donne 1,48:1, là où un élément
              d'interface en demande 3. Et le glyphe EST la totalité de
@@ -216,10 +217,10 @@ function LigneLien({
              l'entourage, il était correctement nommé pour un lecteur d'écran et
              quasi invisible pour une vue basse. `slate-500` est à 4,76:1.
              Le survol ne corrige rien au tactile. */
-          className="shrink-0 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded p-1 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-rose-200"
+          className="shrink-0 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded p-1 focus:outline-none focus:ring-2 focus:ring-rose-200"
         >
           <X className="h-4 w-4" aria-hidden="true" />
-        </button>
+        </Bouton>
       )}
     </li>
   );
@@ -430,13 +431,14 @@ function DialogueRattachement({
             >
               Annuler
             </button>
-            <button
+            <Bouton variante="libre"
               type="submit"
-              disabled={pending}
-              className="px-5 py-2 text-sm text-white bg-brand-600 hover:bg-brand-700 rounded-lg disabled:opacity-60"
+              pending={pending}
+              className="px-5 py-2 text-sm text-white bg-brand-600 hover:bg-brand-700 rounded-lg"
+              pendingLabel="Enregistrement…"
             >
-              {pending ? "Enregistrement…" : "Rattacher"}
-            </button>
+              Rattacher
+            </Bouton>
           </div>
         </form>
       </Dialogue>

@@ -13,6 +13,7 @@ import {
 import type { SeanceFacturable } from "@/lib/compta/queries";
 import { enregistrerLigne, supprimerLigne } from "../actions";
 import { CHAMP } from "@/components/Champ";
+import { Bouton } from "@/components/Bouton";
 
 /**
  * Les lignes d'un brouillon.
@@ -165,18 +166,18 @@ function Ligne({
       </td>
       {modifiable && (
         <td className="px-3 py-3">
-          <button
+          <Bouton variante="libre"
             type="button"
             onClick={supprimer}
-            disabled={enCours}
+            pending={enCours}
             aria-label={`Supprimer la ligne ${ligne.label}`}
             /* 16 × 16 px sans rembourrage : la cible était à la limite de ce
                qu'un trackpad atteint, pour une action destructive. Le
                rembourrage la porte à 32 px sans changer la mise en page. */
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:text-rose-700 hover:bg-rose-50 disabled:opacity-40"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:text-rose-700 hover:bg-rose-50"
           >
             <Trash2 className="h-4 w-4" aria-hidden="true" />
-          </button>
+          </Bouton>
         </td>
       )}
     </tr>
@@ -407,14 +408,14 @@ function FormulaireLigne({
       </div>
 
       <div className="flex items-center gap-3">
-        <button
+        <Bouton variante="libre"
           type="submit"
-          disabled={enCours}
-          className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition disabled:opacity-50"
+          pending={enCours}
+          className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition"
         >
           <Plus className="h-4 w-4" aria-hidden="true" />
           {enCours ? "Ajout…" : "Ajouter"}
-        </button>
+        </Bouton>
         {apercu !== null && (
           <span className="text-sm text-slate-500">
             Montant de la ligne : <strong>{formatCents(apercu)}</strong>

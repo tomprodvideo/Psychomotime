@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { FilePlus2, FileText } from "lucide-react";
 import { creerPiece } from "./actions";
+import { Bouton } from "@/components/Bouton";
 
 /**
  * Ouvre un brouillon et y conduit.
@@ -50,29 +51,29 @@ export default function NouvellePiece({
     <div className="flex flex-col items-end gap-1">
       <div className="flex items-center gap-2">
         {!compact && (
-        <button
+        <Bouton variante="libre"
           type="button"
           onClick={() => creer("devis")}
-          disabled={enCours}
-          className="inline-flex items-center gap-2 border border-slate-500 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium px-3 py-2 rounded-lg transition disabled:opacity-50"
+          pending={enCours}
+          className="inline-flex items-center gap-2 border border-slate-500 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium px-3 py-2 rounded-lg transition"
         >
           <FileText className="h-4 w-4" aria-hidden="true" />
           Devis
-        </button>
+        </Bouton>
         )}
-        <button
+        <Bouton variante="libre"
           type="button"
           onClick={() => creer("facture")}
-          disabled={enCours}
+          pending={enCours}
           className={
             compact
-              ? "inline-flex items-center gap-1.5 text-sm text-brand-700 hover:text-brand-900 disabled:opacity-50"
-              : "inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shadow-sm disabled:opacity-50"
+              ? "inline-flex items-center gap-1.5 text-sm text-brand-700 hover:text-brand-900"
+              : "inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shadow-sm"
           }
         >
           <FilePlus2 className="h-4 w-4" aria-hidden="true" />
           {compact ? "Facturer" : "Nouvelle facture"}
-        </button>
+        </Bouton>
       </div>
       {erreur && (
         <p role="alert" className="text-xs text-rose-600">
