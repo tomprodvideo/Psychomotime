@@ -30,7 +30,7 @@ mutation par le harnais de falsification — et non de la production.
 | L3 | Registre d'instruments et règle de cotation unique | partiel — le moteur de bilans reste sur le modèle v1 |
 | L5 | Moteur comptable, charges, attestations | livré |
 | L7 | Transmissions par lien | livré |
-| L8 | Design, accessibilité, performance | en cours — performance faite, six manquements WCAG corrigés, socle de formulaire fait, `Bouton` et jetons à faire |
+| L8 | Design, accessibilité, performance | en cours — performance faite, **quinze** manquements WCAG corrigés, socle de formulaire fait, trois jetons sémantiques posés et employés ; `Bouton`, `Statut` et la coque imprimée unique restent à faire |
 | L4 | Écrits cliniques : note, courrier, synthèse, fin de prise en soin, écrit pour un tiers | 5 des 7 écrits manquants livrés |
 | L6, L9 | IA, préparation à la production | à faire |
 
@@ -87,6 +87,10 @@ jetable, et les **budgets de performance**.
 
 | Date | Vérification | Résultat |
 |---|---|---|
+| 2026-09-13 | `npm run verify` après le lot design | tout passe — 148 contrôles unitaires, 14 fichiers SQL, budgets tenus |
+| 2026-09-13 | Contrastes et gris recalculés à la main, aplats composités | 8 échecs 1.4.3 (AA) trouvés et corrigés ; échelle de gris de la courbe rendue monotone |
+| 2026-09-13 | Rendu monochrome de la courbe vérifié à l'écran, avant et après | les cinq bandes se lisent en dégradé croissant, frontières tracées |
+| 2026-09-13 | Jetons et utilitaires vérifiés dans le CSS produit | 6 variables, 8 utilitaires émis |
 | 2026-09-13 | `npm run verify` | tout passe — 134 contrôles unitaires, 12 fichiers SQL |
 | 2026-09-13 | `npm run build` | succès |
 | 2026-09-13 | `npm run falsifier` sur `0023`, `0024`, `0025` et le schéma v1 | 158 gardes, 158 détectées |
@@ -150,6 +154,12 @@ peine de le garder.
   récentes étaient celles des derniers écrans écrits — la dérive était active.
   Il n'en reste **aucune** déclaration locale. Le reste du socle — `Bouton`,
   `Statut`, jetons sémantiques — n'est pas fait.
+- **Onze styles de champ en ligne subsistent dans six fichiers**, tous en
+  comptabilité sauf deux. Neuf sont une variante appauvrie de `CHAMP` — sans
+  focus ni transition ; les deux autres recopient `CHAMP` mot pour mot pour
+  lui ajouter une largeur. **Ces deux-là sont un défaut de l'API de `Champ`,
+  pas de la discipline** : il n'accepte pas de largeur. Les *constantes
+  nommées*, elles, ont bien toutes disparu.
 - **Aucune durée de conservation n'est tranchée**, pour aucune donnée.
 - **Les erreurs de formulaire ne sont toujours pas liées à leur champ.** Le
   composant `Champ` existe et sait le faire — `aria-invalid`,
@@ -172,19 +182,66 @@ peine de le garder.
     7rem` traite les 112 derniers pixels comme un endroit où une cible de focus
     n'a pas le droit de se poser. Le cas strict passe.
 
-  · **Tirage monochrome — un défaut réel, sur le compte rendu de bilan.** Le
-    bandeau d'annulation survit : le trait tireté et le mot en capitales
-    portent le sens, la couleur n'était que le troisième canal. **Mais les
-    bandes de `components/GaussianCurve.tsx` sont dessinées sans trait de
-    séparation, et « Faible » (#e8943a, gris 98) et « Moyenne » (#7aab5a, gris
-    86) sont à DOUZE niveaux de gris l'une de l'autre.** Elles fusionnent en un
-    seul bloc, avec deux libellés flottant dessus sans frontière visible — et
-    c'est précisément la frontière dont discute `Q-202`. Corrigeable sans
-    aucune décision clinique : un trait de séparation ne déplace aucun seuil.
-- **Le composant `Bouton` n'est pas fait.** Trois tables de correspondance
-  état → couleur coexistent encore (agenda, comptabilité, et deux ternaires en
-  ligne). Les quatre appliquent la bonne règle — le libellé est toujours écrit
-  à côté de la couleur — mais par discipline, pas par construction.
+  · **Tirage monochrome — CORRIGÉ le 2026-09-13.** Le bandeau d'annulation
+    survit : le trait tireté et le mot en capitales portent le sens, la couleur
+    n'était que le troisième canal. Le défaut était sur la courbe de Gauss, et
+    la mesure d'origine le sous-estimait : elle ne couvrait que deux bandes sur
+    cinq et manquait le plus grave. **L'échelle de gris n'était pas monotone.**
+    Composités à leur opacité réelle, les cinq aplats donnaient 125 → 174 →
+    165 → 202 → 224 : « Faible » s'imprimait PLUS CLAIR que « Moyenne ». Sur
+    une courbe où le clair se lit comme « tout va bien », la bande de fragilité
+    paraissait plus rassurante que la bande moyenne — une information fausse,
+    pas une information perdue. S'y ajoutaient **sept échecs calculés de 1.4.3
+    (AA)** : trois étiquettes de bande en blanc (4,10 / 2,23 / 2,45:1) et
+    quatre des cinq teintes d'axe (3,22 / 4,10 / 2,83 / 2,29:1) à 8,5 px.
+    Clarté des cinq teintes ajustée à teinte et saturation constantes, encre
+    unique vérifiée sur blanc et sur chacun des aplats, **frontières de
+    classification tracées** et **intervalle en DS écrit dans chaque bande**.
+    Aucun seuil déplacé, aucun mot de classification changé : `Q-202` reste
+    ouverte et n'avait pas à être tranchée.
+
+  · **Un défaut plus grave a été trouvé au passage, et il ne tenait pas à la
+    couleur.** `app/(app)/comptabilite/[id]/document/page.tsx` ne traitait
+    qu'UN statut sur sept — le brouillon, qu'elle refuse d'imprimer. Une
+    facture annulée par avoir, un devis refusé, expiré ou remplacé se
+    réimprimaient sans aucune marque. Le produit marquait l'annulation sur
+    l'attestation et sur les quatre écrits cliniques, mais pas sur la seule
+    pièce qui sert à se faire rembourser. **Corrigé le 2026-09-13** : chaque
+    mention dit la conséquence et, quand il y en a un, le recours.
+- **Le composant `Bouton` n'est pas fait**, et l'ampleur du chantier `Statut`
+  était sous-estimée d'un facteur quatre ici même. Ce ne sont pas trois tables
+  de correspondance état → couleur mais **quatorze**, dont une était un
+  duplicata octet pour octet entre l'agenda et le dossier — supprimé le
+  2026-09-13, la table vit désormais dans `lib/dossier/types.ts`. **Il en
+  reste treize**, recomptés un par un : **cinq** tables `Record` — parcours,
+  comptabilité, abonnements côté administration, abonnement côté praticienne,
+  licences d'instruments — et **huit** ternaires en ligne : les quatre écrits
+  cliniques, la liste des attestations, le bloc attestations du dossier, la
+  liste des bilans et l'éditeur de bilan. Toutes appliquent la bonne règle — le libellé est toujours écrit à
+  côté de la couleur — mais par discipline, pas par construction.
+
+  **Deux divergences en découlent, et l'une est une décision, pas un défaut.**
+  « Annulé » est rendu en rose dans les quatre écrits cliniques et en ambre en
+  comptabilité (`comptabilite/attestations/page.tsx`, `comptabilite/page.tsx`).
+  Or la doctrine du produit est écrite dans `components/SectionDossier.tsx` :
+  l'ambre dit « regardez avant de continuer », le rose dit « ceci ne se reprend
+  pas ». **Les deux moitiés du produit sont en désaccord sur la réversibilité
+  d'une annulation** — une attestation annulée se refait, un écrit clinique
+  annulé engage autre chose. À trancher par `expert-metier-psychomotricien`,
+  pas par cohérence visuelle. L'autre divergence, elle, se corrige sans
+  décision : le même concept est rendu en pastille ici et en texte nu là.
+- **Trois jetons sémantiques existent depuis le 2026-09-13** — `avis`, `arret`
+  et `encre-faible` — et chacun est EMPLOYÉ : un jeton posé sans emploi est du
+  décor. `--color-trait`, `--container-document` et `--text-document` ont donc
+  été écartés jusqu'à l'unification de la coque des sept documents imprimables,
+  qui reste à faire : facture et attestation portent une coque, un corps
+  (14 px) et un cadre différents des cinq autres (13 px), sans justification.
+- **Les rappels de page ne se répètent pas.** Quatre documents portent un bloc
+  `hidden print:block` présenté en commentaire comme un rappel de page ; ce
+  sont des paragraphes en flux normal, placés après la signature, donc
+  imprimés UNE fois en bas de la dernière page. La page 2 d'une synthèse de
+  trois pages n'identifie toujours ni le document, ni la personne. Trois des
+  sept documents n'en ont aucun.
 
 ## Risques ouverts
 

@@ -7,10 +7,10 @@ import { AlertCircle, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import {
   APPOINTMENT_KIND_LABELS,
   ATTENDANCE_LABELS,
+  ATTENDANCE_TEINTES,
   patientName,
   type Appointment,
   type AppointmentWithPatient,
-  type Attendance,
 } from "@/lib/dossier/types";
 import type { PatientListItem } from "@/lib/dossier/queries";
 import AppointmentDialog from "./AppointmentDialog";
@@ -19,15 +19,6 @@ import NoteSeanceBouton from "./NoteSeanceBouton";
 
 /** Couleur de l'issue. Jamais la SEULE porteuse de l'information : le libellé
  *  est toujours écrit à côté (WCAG 1.4.1). */
-const TEINTES: Record<Attendance, string> = {
-  a_venir: "bg-slate-100 text-slate-600",
-  honore: "bg-brand-50 text-brand-700",
-  absent_excuse: "bg-amber-50 text-amber-800",
-  absent_non_excuse: "bg-rose-50 text-rose-700",
-  annule_praticien: "bg-slate-100 text-encre-faible",
-  annule_patient: "bg-slate-100 text-encre-faible",
-  reporte: "bg-sky-50 text-sky-700",
-};
 
 const heure = new Intl.DateTimeFormat("fr-FR", {
   hour: "2-digit",
@@ -325,7 +316,7 @@ function LigneRendezVous({
 
         <div className="flex items-center gap-2 shrink-0">
           <span
-            className={`text-xs font-medium rounded-full px-2 py-0.5 ${TEINTES[rdv.attendance]}`}
+            className={`text-xs font-medium rounded-full px-2 py-0.5 ${ATTENDANCE_TEINTES[rdv.attendance]}`}
           >
             {ATTENDANCE_LABELS[rdv.attendance]}
           </span>

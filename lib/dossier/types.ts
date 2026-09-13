@@ -396,6 +396,29 @@ export const ATTENDANCE_LABELS: Record<Attendance, string> = {
 };
 
 /**
+ * Couleur de l'issue. Jamais la SEULE porteuse de l'information : le libellé
+ * d'`ATTENDANCE_LABELS` est toujours écrit à côté (WCAG 1.4.1).
+ *
+ * ELLE VIT ICI PARCE QU'ELLE VIVAIT DEUX FOIS. L'agenda et le dossier en
+ * portaient chacun une copie, octet pour octet identique, à sept entrées.
+ * Deux écrans qui montrent la même chose n'ont aucune raison de pouvoir
+ * diverger sur ce qu'« annulé » a l'air d'être.
+ *
+ * `annule_praticien` et `annule_patient` emploient `encre-faible` et non
+ * `slate-500` : ce dernier vaut 4,34:1 sur `bg-slate-100`, sous le seuil de
+ * 1.4.3 (AA) pour du texte de 12 px.
+ */
+export const ATTENDANCE_TEINTES: Record<Attendance, string> = {
+  a_venir: "bg-slate-100 text-slate-600",
+  honore: "bg-brand-50 text-brand-700",
+  absent_excuse: "bg-amber-50 text-amber-800",
+  absent_non_excuse: "bg-rose-50 text-rose-700",
+  annule_praticien: "bg-slate-100 text-encre-faible",
+  annule_patient: "bg-slate-100 text-encre-faible",
+  reporte: "bg-sky-50 text-sky-700",
+};
+
+/**
  * Issues exigeant un motif, en écho à la contrainte de la base.
  * Sans motif, on ne saurait ni relancer, ni justifier une facturation.
  */
