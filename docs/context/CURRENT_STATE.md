@@ -30,7 +30,7 @@ mutation par le harnais de falsification — et non de la production.
 | L3 | Registre d'instruments et règle de cotation unique | partiel — le moteur de bilans reste sur le modèle v1 |
 | L5 | Moteur comptable, charges, attestations | livré |
 | L7 | Transmissions par lien | livré |
-| L8 | Design, accessibilité, performance | en cours — performance faite, cinq manquements WCAG corrigés, socle de composants à faire |
+| L8 | Design, accessibilité, performance | en cours — performance faite, six manquements WCAG corrigés, socle de formulaire fait, `Bouton` et jetons à faire |
 | L4 | Écrits cliniques : note de séance, courrier, synthèse, écrit de fin | 4 des 7 écrits manquants livrés |
 | L6, L9 | IA, préparation à la production | à faire |
 
@@ -150,6 +150,14 @@ peine de le garder.
   unique, `{ ok, error }`, sans dire QUEL champ a échoué. C'est ce contrat
   qu'il faut élargir avant de brancher quoi que ce soit ; le composant, lui,
   accepte déjà `erreur` en propriété facultative.
+- **Trois points d'accessibilité ne se tranchent qu'EN EXÉCUTION**, et ne
+  doivent pas être déclarés conformes sur lecture de source : le focus sous la
+  barre d'actions fixe de l'éditeur de bilan quand la cible est déjà dans le
+  cadre (`2.4.11`), la taille réelle des cibles après retour à la ligne
+  (`2.5.8`, dont l'exception d'espacement s'applique probablement), et la
+  lisibilité d'un tirage MONOCHROME — `amber-50`, `rose-50` et `brand-50` y
+  deviennent tous trois du blanc, si bien qu'un état qui se lit au fond devient
+  un état illisible.
 - **Le composant `Bouton` n'est pas fait.** Trois tables de correspondance
   état → couleur coexistent encore (agenda, comptabilité, et deux ternaires en
   ligne). Les quatre appliquent la bonne règle — le libellé est toujours écrit

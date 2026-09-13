@@ -51,6 +51,7 @@ import {
 } from "@/lib/bilans/provenance";
 import { useDictation } from "./useDictation";
 import { CHAMP } from "@/components/Champ";
+import { Dialogue } from "@/components/Dialogue";
 
 function parseJSON<T>(s: unknown, fallback: T): T {
   try {
@@ -1234,39 +1235,31 @@ function TemplatesMenu({
         <ChevronDown className="h-3.5 w-3.5" />
       </button>
       {open && (
-        <div
-          className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-slate-900/40 p-4 overflow-y-auto"
-          onClick={() => setOpen(false)}
+        /* LA SECONDE DES DEUX FENÊTRES QUI CONTOURNAIENT `Dialogue` : un
+           `fixed inset-0` fermé au clic de fond, sans `role="dialog"`, sans
+           piégeage du focus, sans `Escape`, sans restitution du focus. Le
+           clavier continuait de circuler derrière la couche opaque, dans
+           l'éditeur de bilan.
+           Relevé par la relecture d'interface du lot 8. */
+        <Dialogue
+          ouvert
+          onFermer={() => setOpen(false)}
+          taille="petite"
+          titre={current ? current.name : "Modèles"}
         >
-          <div
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-md my-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center gap-2 px-5 py-3 border-b border-slate-100">
-              {current && (
+          <div>
+            {current && (
+              <div className="px-5 pt-3">
                 <button
                   type="button"
                   onClick={() => setFolderId(null)}
-                  className="p-1 -ml-1 text-slate-500 hover:text-brand-600"
-                  title="Retour aux dossiers"
+                  className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-brand-700"
                 >
-                  <ArrowLeft className="h-5 w-5" />
+                  <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                  Retour aux dossiers
                 </button>
-              )}
-              <h2 className="font-semibold text-slate-800 flex-1 truncate">
-                {current ? current.name : "Modèles"}
-              </h2>
-              {/* Ni texte, ni `aria-label`, ni `title` : le nom accessible
-                  était VIDE. `lucide-react` ne pose pas `aria-hidden` de
-                  lui-même, et un `<svg>` sans titre ne nomme rien. */}
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                aria-label="Fermer les modèles"
-              >
-                <X className="h-5 w-5 text-slate-500" aria-hidden="true" />
-              </button>
-            </div>
+              </div>
+            )}
 
             <div className="max-h-[60vh] overflow-y-auto divide-y divide-slate-100">
               {current ? (
@@ -1314,13 +1307,13 @@ function TemplatesMenu({
                     <span className="text-xs text-slate-500">
                       {g.items.length}
                     </span>
-                    <ChevronRight className="h-4 w-4 text-slate-300" />
+                    <ChevronRight className="h-4 w-4 text-slate-400" aria-hidden="true" />
                   </button>
                 ))
               )}
             </div>
           </div>
-        </div>
+        </Dialogue>
       )}
     </>
   );

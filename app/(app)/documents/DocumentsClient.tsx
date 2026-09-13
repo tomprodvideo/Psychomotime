@@ -29,6 +29,7 @@ function isImage(d: { name: string; mime_type: string | null }) {
 import { createClient } from "@/lib/supabase/client";
 import type { DocFolder, DocumentFile } from "@/lib/types";
 import { frDate } from "@/lib/format";
+import { Dialogue } from "@/components/Dialogue";
 
 const ALL = "__all__";
 const NONE = "__none__";
@@ -354,32 +355,33 @@ export default function DocumentsClient({
         )}
       </div>
 
-      {/* Aperçu du fichier */}
+      {/* APERÇU DU FICHIER.
+          C'était une des deux dernières fenêtres à contourner `Dialogue` : un
+          `fixed inset-0` sans `role="dialog"`, sans `aria-modal`, sans
+          piégeage du focus, sans `Escape` et sans restitution du focus — le
+          clavier continuait donc de circuler DERRIÈRE une couche opaque. La
+          docstring de `Dialogue` décrivait précisément ce défaut et affirmait
+          l'avoir traité pour sept fenêtres ; il en restait deux.
+          Relevé par la relecture d'interface du lot 8. */}
       {(preview || previewLoading) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-              <p className="text-sm font-medium text-slate-800 truncate">
-                {preview?.doc.name ?? "Chargement…"}
-              </p>
-              <div className="flex items-center gap-1">
-                {preview && (
-                  <button
-                    onClick={() => download(preview.doc)}
-                    className="p-1.5 text-slate-500 hover:text-brand-600"
-                    title="Télécharger"
-                  >
-                    <Download className="h-4 w-4" />
-                  </button>
-                )}
+        <Dialogue
+          ouvert
+          onFermer={() => setPreview(null)}
+          taille="large"
+          titre={preview?.doc.name ?? "Chargement…"}
+        >
+          <div className="flex flex-col h-[70vh]">
+            <div className="flex items-center justify-end gap-1 px-4 py-2 border-b border-slate-100">
+              {preview && (
                 <button
-                  onClick={() => setPreview(null)}
-                  className="p-1.5 text-slate-500 hover:text-slate-600"
-                  title="Fermer"
+                  type="button"
+                  onClick={() => download(preview.doc)}
+                  className="inline-flex items-center gap-1.5 p-1.5 text-sm text-slate-600 hover:text-brand-700"
                 >
-                  <X className="h-5 w-5" />
+                  <Download className="h-4 w-4" aria-hidden="true" />
+                  Télécharger
                 </button>
-              </div>
+              )}
             </div>
             <div className="flex-1 bg-slate-100 flex items-center justify-center overflow-auto">
               {previewLoading || !preview ? (
@@ -414,7 +416,7 @@ export default function DocumentsClient({
               )}
             </div>
           </div>
-        </div>
+        </Dialogue>
       )}
     </div>
   );
