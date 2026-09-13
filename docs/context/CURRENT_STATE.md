@@ -89,6 +89,7 @@ jetable, et les **budgets de performance**.
 | 2026-09-12 | `npm run build` | succès |
 | 2026-09-12 | Budgets à 400 puis 2 000 dossiers, sous RLS | aucune requête d'écran au-dessus de 1 ms |
 | 2026-09-12 | Analyseur de sécurité Supabase | aucune erreur ; trois avertissements connus et assumés |
+| 2026-09-13 | En-têtes de protection sur TOUTE réponse | `DENY` en cadre, `no-referrer`, `nosniff` partout ; `no-store` sur les routes rendues à la demande |
 | 2026-09-12 | Page publique en production, sans compte | refus neutre d'un jeton inconnu, quatre en-têtes de protection posés |
 | 2026-09-12 | `/documents` sans session, en production | redirige vers `/login` |
 

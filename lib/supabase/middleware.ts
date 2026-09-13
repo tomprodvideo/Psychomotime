@@ -20,10 +20,49 @@ import { estCheminPublic, estConsultationPublique, estSousChemin } from "./chemi
  *  · `DENY` en cadre — un document remis ne s'encadre pas dans une page tierce.
  */
 function enTetesDocumentPublic(res: NextResponse): NextResponse {
+  res.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet");
+  return enTetesDeBase(res);
+}
+
+/**
+ * Les en-têtes posés sur TOUTE réponse du produit.
+ *
+ * LE DÉFAUT, constaté en production le 2026-09-13 : ces quatre en-têtes ne
+ * couvraient QUE la consultation par jeton. Le reste de l'application — les
+ * dossiers, les notes cliniques, les bilans, la comptabilité — n'en portait
+ * aucun. `/login` répondait même `cache-control: public`.
+ *
+ * Trois conséquences, et aucune n'est théorique :
+ *
+ *  · SANS `X-Frame-Options`, une page portant un dossier patient s'encadre
+ *    dans un site tiers. C'est le clic détourné, sur des écrans qui archivent
+ *    un dossier ou remettent un document.
+ *  · SANS `Referrer-Policy`, l'URL part dans l'en-tête `Referer` de la moindre
+ *    ressource externe ou du moindre lien suivi. Or les URL du produit portent
+ *    des identifiants directs — `/patients/<uuid>`, `/bilans/<uuid>` — et
+ *    `docs/security/DATA_CLASSIFICATION.md` demande précisément d'éviter les
+ *    identifiants sensibles dans les URL.
+ *  · SANS `no-store`, un mandataire d'entreprise ou un poste partagé peut
+ *    retenir une page clinique. C'est le même raisonnement que pour le
+ *    document remis par jeton ; il vaut au moins autant pour le dossier
+ *    complet.
+ *
+ * `nosniff` s'y ajoute : il manquait même à la page publique.
+ *
+ * ── UNE LIMITE, DITE PLUTÔT QUE TUE ───────────────────────────────────────
+ *
+ * Les trois en-têtes de sécurité arrivent sur TOUTE réponse. `Cache-Control`,
+ * lui, ne tient que sur les routes RENDUES À LA DEMANDE — c'est-à-dire toutes
+ * celles qui portent des données. Sur une page pré-rendue statiquement
+ * (`/login`, `/mot-de-passe/oublie`), Next pose la sienne et elle l'emporte.
+ * Ces pages-là ne contiennent rien de clinique ; la limite est donc sans
+ * conséquence, mais elle ne doit pas être prise pour une couverture totale.
+ */
+function enTetesDeBase(res: NextResponse): NextResponse {
   res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
   res.headers.set("Referrer-Policy", "no-referrer");
-  res.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet");
   res.headers.set("X-Frame-Options", "DENY");
+  res.headers.set("X-Content-Type-Options", "nosniff");
   return res;
 }
 
@@ -34,7 +73,9 @@ export async function updateSession(request: NextRequest) {
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
     !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   ) {
-    return NextResponse.next({ request });
+    // Même sans configuration, la réponse porte ses protections : l'écran
+    // « configuration requise » n'a pas à être encadrable ni mis en cache.
+    return enTetesDeBase(NextResponse.next({ request }));
   }
 
   let supabaseResponse = NextResponse.next({ request });
@@ -93,7 +134,7 @@ export async function updateSession(request: NextRequest) {
 
   // Non connecté + page privée -> login
   if (!user && !isPublic) {
-    return isMutating ? supabaseResponse : redirectTo("/login");
+    return enTetesDeBase(isMutating ? supabaseResponse : redirectTo("/login"));
   }
 
   /* Déjà connecté + page de login -> accueil.
@@ -103,8 +144,8 @@ export async function updateSession(request: NextRequest) {
    * ouverte par le lien de réinitialisation : y rediriger renverrait la
    * personne à l'accueil sans lui laisser changer son mot de passe. */
   if (user && estSousChemin(path, "/login")) {
-    return isMutating ? supabaseResponse : redirectTo("/");
+    return enTetesDeBase(isMutating ? supabaseResponse : redirectTo("/"));
   }
 
-  return supabaseResponse;
+  return enTetesDeBase(supabaseResponse);
 }
