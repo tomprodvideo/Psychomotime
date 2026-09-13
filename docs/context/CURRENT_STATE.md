@@ -14,8 +14,7 @@ locataire n'est plus le compte : c'est le CABINET** (`practices` +
 `practice_members`, cinq rôles). C'est le changement structurant dont tout le
 reste découle.
 
-Vingt-cinq migrations (`0000` à `0024`) sont appliquées en production ; `0025`
-est écrite et éprouvée en local —
+Vingt-six migrations (`0000` à `0025`) sont appliquées en production —
 projet Supabase `sisummvlowhtfgiatwwf`, vérifié après chaque application.
 Depuis `0023`, la vérification ne se contente plus de compter les objets :
 **les empreintes des huit fonctions déployées sont comparées une à une à
@@ -65,6 +64,13 @@ mutation par le harnais de falsification — et non de la production.
   eux — désarmer la ligne qui protège `snapshot` ne faisait échouer aucun
   contrôle. Trouvé en falsifiant la synthèse, corrigé sur la pièce comptable,
   l'attestation et le courrier au passage.
+- **L'accord de partage DÉCIDE sur l'écrit destiné à un tiers non soignant
+  (`0025`), alors qu'il se contente d'informer sur les trois autres.** Ce
+  n'est pas une incohérence : la présomption d'échange au sein d'une équipe de
+  soins, qui fondait « dire sans exiger », n'existe pas face à une école ou à
+  un organisme évaluateur. Trois états — accord, dérogation motivée et
+  journalisée à part, refus ferme sur un retrait. [SOURCE à vérifier par un
+  juriste ; la qualification d'un destinataire donné n'est pas faite ici.]
 - **La synthèse de suivi (`0023`) est le premier document dont une moitié est
   pré-remplie.** La ligne est tenue en base : `public.follow_up_facts` relève
   des FAITS — comptes de séances, objectifs tels qu'elle les a posés — et la
@@ -83,9 +89,9 @@ jetable, et les **budgets de performance**.
 |---|---|---|
 | 2026-09-13 | `npm run verify` | tout passe — 134 contrôles unitaires, 12 fichiers SQL |
 | 2026-09-13 | `npm run build` | succès |
-| 2026-09-13 | `npm run falsifier` sur `0023`, `0024` et le schéma v1 | 105 gardes, 105 détectées |
-| 2026-09-13 | Empreintes des fonctions déployées comparées à la base locale | 15 sur 15 identiques |
-| 2026-09-13 | Analyseur de sécurité Supabase après `0023` et `0024` | aucune erreur ; trois avertissements connus |
+| 2026-09-13 | `npm run falsifier` sur `0023`, `0024`, `0025` et le schéma v1 | 158 gardes, 158 détectées |
+| 2026-09-13 | Empreintes des fonctions déployées comparées à la base locale | 22 sur 22 identiques |
+| 2026-09-13 | Analyseur de sécurité Supabase après `0023`, `0024` et `0025` | aucune erreur ; trois avertissements connus |
 | 2026-09-12 | `npm run verify` | tout passe |
 | 2026-09-12 | `npm run build` | succès |
 | 2026-09-12 | Budgets à 400 puis 2 000 dossiers, sous RLS | aucune requête d'écran au-dessus de 1 ms |
