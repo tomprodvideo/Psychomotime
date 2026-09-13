@@ -132,30 +132,8 @@ export type DocumentPublic = PiecePublique | AttestationPublique;
  * consultables — quelqu'un en détient peut-être une copie — mais le destinataire
  * doit voir qu'elles ne valent plus. Le taire serait le laisser s'en servir.
  */
-export function documentCaduc(d: DocumentPublic): boolean {
-  return ["annule_par_avoir", "remplace", "annule"].includes(d.etat);
-}
-
-export function raisonCaducite(d: DocumentPublic): string {
-  switch (d.etat) {
-    case "annule_par_avoir":
-      return "Cette facture a été annulée par un avoir.";
-    case "remplace":
-      return "Cette facture a été remplacée par une autre.";
-    case "annule":
-      /* LE MOTIF EST DIT, comme sur l'imprimé.
-       *
-       * Deux relectures ont pointé la même donnée : elle sortait du contrat
-       * public sans jamais être affichée. L'une proposait de la retirer,
-       * l'autre de l'afficher. Les deux corrigent le défaut ; celle-ci le
-       * corrige mieux — qui reçoit une attestation annulée a besoin de savoir
-       * pourquoi, la praticienne écrit ce motif en sachant qu'il figure sur le
-       * document remis, et deux versions d'une même pièce numérotée qui
-       * divergent sont un défaut en soi. */
-      return d.nature === "attestation" && d.motif_annulation?.trim()
-        ? `Cette attestation a été annulée : ${d.motif_annulation.trim()}`
-        : "Cette attestation a été annulée.";
-    default:
-      return "";
-  }
-}
+/* `documentCaduc` et `raisonCaducite` vivaient ici. Ils ne couvraient que
+   l'annulation par avoir et le remplacement : un devis refusé ou expiré,
+   ouvert depuis un lien, s'affichait comme valide. La page du cabinet, elle,
+   couvrait les quatre cas. Les deux versions sont remplacées par UNE fonction,
+   `lib/impression/mentions.ts`, appelée par les deux pages. */

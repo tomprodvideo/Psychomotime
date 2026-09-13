@@ -56,6 +56,13 @@
      slate-600 : 6,92:1 sur slate-100. La valeur est choisie pour son PIRE
      fond, pas pour le blanc. */
   --color-encre-faible: #475569;
+
+  /* LE DOCUMENT IMPRIMÉ — posés quand la coque unique les a employés, pas
+     avant. Neuf documents recopiaient `max-w-3xl` et `text-[13px]
+     leading-relaxed`, et deux d'entre eux ne les recopiaient pas. */
+  --container-document: 48rem;
+  --text-document: 13px;
+  --text-document--line-height: 1.625;
 }
 
 html,
@@ -127,7 +134,10 @@ html {
   body {
     background: #fff !important;
   }
+  /* 22 mm en bas : la place du rappel répété en marge de chaque page
+     (`lib/impression/rappel.ts`). Mesuré dans un PDF : il tient, et ne
+     chevauche jamais le corps. */
   @page {
-    margin: 18mm 16mm;
+    margin: 18mm 16mm 22mm;
   }
 }

@@ -1,7 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getSettings } from "@/lib/data";
 import type { Bilan, BilanSectionConfig, Patient } from "@/lib/types";
@@ -25,6 +23,7 @@ import { frDate } from "@/lib/format";
 import { formatAgeAt } from "@/lib/age";
 import GaussianCurve from "@/components/GaussianCurve";
 import ApercuActions from "./ApercuActions";
+import { BandeauEtat, CoqueDocument } from "@/components/Imprimable";
 
 import type { Metadata } from "next";
 /* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
@@ -289,60 +288,51 @@ export default async function BilanApercuPage({
   }
 
   return (
-    <div className="bg-slate-100 min-h-screen">
-      <div className="no-print sticky top-0 z-10 bg-white border-b border-slate-200 px-4 py-3">
-        <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
-          <Link
-            href={`/bilans/${b.id}`}
-            className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-brand-700"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Retour à l&apos;édition
-          </Link>
-          <ApercuActions
-            patientEmail={patient?.email ?? null}
-            subject={subject}
-            body={body}
-          />
-        </div>
-      </div>
-
-      <div className="py-8 px-4 print:p-0">
-        <article
-          className="print-area max-w-3xl mx-auto bg-white shadow-sm border border-slate-200 rounded-lg px-12 py-10 print:shadow-none print:border-0 text-[13px] leading-relaxed text-slate-800"
-          style={
-            {
-              ["--accent" as string]: accent,
-              fontFamily,
-            } as React.CSSProperties
-          }
-        >
-          {/* UN BROUILLON NE SORT PAS DE L'IMPRIMANTE COMME UN DOCUMENT ABOUTI.
-            *
-            * Le statut existait à l'écran — « ● Finalisé » / « ○ Brouillon » —
-            * et ne figurait NULLE PART sur la page imprimée : un bilan en cours
-            * de rédaction s'imprimait à l'identique d'un bilan achevé,
-            * signature comprise. C'est le § C-1 de la sécurité clinique, ouvert
-            * depuis l'audit d'origine, et le risque est l'attribution : une
-            * famille, une école, un médecin lisent un document de travail comme
-            * s'il était la parole du praticien.
-            *
-            * La comptabilité, elle, REFUSE d'imprimer un brouillon. Ici le
-            * refus serait mauvais : on relit un bilan en le regardant, et
-            * l'imprimer pour l'annoter fait partie du travail. On ne bloque
-            * donc pas — on marque, et on le marque aussi sur le papier. */}
-          {b.status !== "finalisé" && (
-            <div className="mb-6 border-2 border-dashed border-amber-600 bg-amber-50 px-4 py-3 rounded-lg print:bg-white">
-              <p className="text-amber-900 font-semibold tracking-wide uppercase text-xs">
-                Brouillon — document de travail
-              </p>
-              <p className="text-amber-900 text-xs mt-1">
-                Ce bilan n&apos;est pas finalisé. Il peut être incomplet ou
-                modifié, et ne constitue pas le compte rendu remis.
-              </p>
-            </div>
-          )}
-
+    <CoqueDocument
+      retour={{ href: `/bilans/${b.id}`, libelle: "Retour à l'édition" }}
+      actions={
+        <ApercuActions
+          patientEmail={patient?.email ?? null}
+          subject={subject}
+          body={body}
+        />
+      }
+      /* Le bilan n'avait AUCUN rappel de page — c'est pourtant le plus long
+         des documents remis, et le seul qui s'imprime aussi en brouillon. */
+      rappel={{
+        nature: nomDuBilan,
+        personne: b.patient_name,
+        date: b.bilan_date ? `passation du ${frDate(b.bilan_date)}` : null,
+      }}
+      style={
+        {
+          ["--accent" as string]: accent,
+          fontFamily,
+        } as React.CSSProperties
+      }
+      /* UN BROUILLON NE SORT PAS DE L'IMPRIMANTE COMME UN DOCUMENT ABOUTI.
+       *
+       * Le statut existait à l'écran — « ● Finalisé » / « ○ Brouillon » — et ne
+       * figurait NULLE PART sur la page imprimée : un bilan en cours de
+       * rédaction s'imprimait à l'identique d'un bilan achevé, signature
+       * comprise. C'est le § C-1 de la sécurité clinique, et le risque est
+       * l'attribution : une famille, une école, un médecin lisent un document
+       * de travail comme s'il était la parole du praticien.
+       *
+       * La comptabilité, elle, REFUSE d'imprimer un brouillon. Ici le refus
+       * serait mauvais : on relit un bilan en le regardant, et l'imprimer pour
+       * l'annoter fait partie du travail. On ne bloque donc pas — on marque, et
+       * on le marque aussi sur le papier. Trait TIRETÉ : c'est un état
+       * transitoire, à l'inverse d'une annulation. */
+      bandeau={
+        b.status !== "finalisé" && (
+          <BandeauEtat ton="avis" trait="tirete" titre="Brouillon — document de travail">
+            Ce bilan n&apos;est pas finalisé. Il peut être incomplet ou modifié, et
+            ne constitue pas le compte rendu remis.
+          </BandeauEtat>
+        )
+      }
+    >
           {/* En-tête praticien */}
           <header className="mb-6">
             <div className="flex items-start gap-4">
@@ -665,9 +655,7 @@ export default async function BilanApercuPage({
           <footer className="mt-10 text-right text-[12px]">
             <p className="font-semibold text-slate-900">{author}</p>
           </footer>
-        </article>
-      </div>
-    </div>
+    </CoqueDocument>
   );
 }
 

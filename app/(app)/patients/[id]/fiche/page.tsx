@@ -1,7 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getSettings } from "@/lib/data";
 import type { Bilan } from "@/lib/types";
@@ -25,7 +23,7 @@ import {
   patientName,
   ROLE_LABELS,
 } from "@/lib/dossier/types";
-import PrintButton from "./PrintButton";
+import { CoqueDocument } from "@/components/Imprimable";
 
 import type { Metadata } from "next";
 /* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
@@ -102,25 +100,19 @@ export default async function FichePatientImprimable({
   const consentementsActifs = consentements.filter((c) => !c.withdrawn_on);
 
   return (
-    <div className="bg-slate-100 min-h-screen">
-      <div className="no-print sticky top-0 z-10 bg-white border-b border-slate-200 px-4 py-3">
-        <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
-          <Link
-            href={`/patients/${patient.id}`}
-            className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-brand-700"
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-            Retour au dossier
-          </Link>
-          <PrintButton />
-        </div>
-      </div>
-
-      <div className="py-8 px-4 print:p-0">
-        <article
-          className="print-area max-w-3xl mx-auto bg-white shadow-sm border border-slate-200 rounded-lg px-12 py-10 print:shadow-none print:border-0 text-[13px] leading-relaxed text-slate-800"
-          style={{ ["--accent" as string]: accent } as React.CSSProperties}
-        >
+    <CoqueDocument
+      retour={{ href: `/patients/${patient.id}`, libelle: "Retour au dossier" }}
+      /* La fiche n'avait AUCUN rappel de page. C'est pourtant un document
+         vivant — il reflète le dossier du jour de son édition — et deux
+         tirages faits à des jours différents peuvent différer : la date en
+         marge de chaque page est la même que celle de l'en-tête. */
+      rappel={{
+        nature: "Fiche patient",
+        personne: patientName(patient),
+        date: `éditée le ${frDate(edite.toISOString().slice(0, 10))}`,
+      }}
+      style={{ ["--accent" as string]: accent } as React.CSSProperties}
+    >
           <header className="mb-6">
             <div className="flex items-start gap-4">
               {profile.logo_url && (
@@ -317,9 +309,7 @@ export default async function FichePatientImprimable({
           <footer className="mt-8 pt-4 border-t border-slate-100 text-[11px] text-slate-500 text-center">
             Document confidentiel · {patientName(patient)}
           </footer>
-        </article>
-      </div>
-    </div>
+    </CoqueDocument>
   );
 }
 

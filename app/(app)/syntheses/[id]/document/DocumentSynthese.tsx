@@ -1,10 +1,9 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { frDate } from "@/lib/format";
 import { formatAgeAt } from "@/lib/age";
 import { OBJECTIF_STATUS_IMPRIME, type ObjectifFige } from "@/lib/syntheses/types";
 import type { SyntheseAvecDestinataire } from "@/lib/syntheses/queries";
 import { liste } from "@/lib/liste";
+import { BandeauEtat, CoqueDocument, RefusBrouillon } from "@/components/Imprimable";
 
 /**
  * La synthèse de suivi, telle qu'elle est remise.
@@ -27,26 +26,15 @@ export default function DocumentSynthese({
      sortirait de l'imprimante indiscernable d'une synthèse réellement remise. */
   if (syn.status === "brouillon" || !syn.snapshot) {
     return (
-      <div className="p-8 max-w-2xl mx-auto">
-        <Link
-          href={`/patients/${syn.patient_id}`}
-          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-4"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          Retour au dossier
-        </Link>
-        <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6">
-          <h1 className="font-semibold text-slate-800">
-            Cette synthèse est un brouillon
-          </h1>
-          <p className="text-sm text-slate-600 mt-2">
+      <RefusBrouillon
+        retour={{ href: `/patients/${syn.patient_id}`, libelle: "Retour au dossier" }}
+        titre="Cette synthèse est un brouillon"
+      >
             Elle n&apos;a pas encore été remise : ses éléments ne sont pas figés
             et elle ne porte ni date, ni identité du signataire. Imprimée telle
             quelle, son destinataire la prendrait pour un document définitif.
             Remettez-la depuis le dossier, puis revenez ici.
-          </p>
-        </div>
-      </div>
+      </RefusBrouillon>
     );
   }
 
@@ -73,29 +61,28 @@ export default function DocumentSynthese({
   const age = s.patient?.ne_le ? formatAgeAt(s.patient.ne_le, finDePeriode) : null;
 
   return (
-    <div className="py-8 px-4 print:p-0">
-      <div className="max-w-3xl mx-auto mb-4 no-print">
-        <Link
-          href={`/patients/${syn.patient_id}`}
-          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          Retour au dossier
-        </Link>
-      </div>
-
-      <article className="print-area max-w-3xl mx-auto bg-white shadow-sm border border-slate-200 rounded-lg px-12 py-10 print:shadow-none print:border-0 text-[13px] leading-relaxed text-slate-800">
-        {syn.status === "annule" && (
-          <p className="mb-6 border-2 border-dashed border-arret-trait bg-arret-fond px-4 py-3 rounded-lg text-arret-encre print:bg-white">
-            <span className="font-semibold uppercase tracking-wide text-xs">
-              Synthèse annulée
-            </span>
-            {syn.cancellation_reason && (
-              <span className="block text-xs mt-1">{syn.cancellation_reason}</span>
-            )}
-          </p>
-        )}
-
+    <CoqueDocument
+      retour={{ href: `/patients/${syn.patient_id}`, libelle: "Retour au dossier" }}
+      rappel={{
+        nature: "Synthèse de suivi",
+        personne: s.patient?.nom,
+        date: `du ${frDate(s.periode?.du ?? syn.period_start)} au ${frDate(s.periode?.au ?? syn.period_end)}`,
+      }}
+      bandeau={
+        syn.status === "annule" && (
+          <BandeauEtat ton="arret" trait="plein" titre="Synthèse annulée">
+            {syn.cancellation_reason}
+          </BandeauEtat>
+        )
+      }
+      note={
+        <>
+          Ce document est rendu à partir de l&apos;instantané figé à la remise : il
+          ne changera plus, quelles que soient les modifications apportées ensuite
+          au dossier, à l&apos;agenda ou aux objectifs.
+        </>
+      }
+    >
         <header className="flex justify-between gap-8 mb-10">
           <div className="text-sm">
             {s.cabinet?.nom && (
@@ -268,18 +255,6 @@ export default function DocumentSynthese({
         {/* Une synthèse déborde facilement sur une seconde page : deux blocs de
             prose et une liste d'objectifs. Sans ce rappel, la page 2
             n'identifie ni le document, ni la personne, ni la période. */}
-        <p className="hidden print:block text-xs text-slate-500 mt-6">
-          Synthèse de suivi — {s.patient?.nom ?? "—"} — du{" "}
-          {frDate(s.periode?.du ?? syn.period_start)} au{" "}
-          {frDate(s.periode?.au ?? syn.period_end)}
-        </p>
-      </article>
-
-      <p className="text-xs text-slate-500 mt-4 max-w-3xl mx-auto no-print">
-        Ce document est rendu à partir de l&apos;instantané figé à la remise : il
-        ne changera plus, quelles que soient les modifications apportées ensuite
-        au dossier, à l&apos;agenda ou aux objectifs.
-      </p>
-    </div>
+    </CoqueDocument>
   );
 }

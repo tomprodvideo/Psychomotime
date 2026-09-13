@@ -30,7 +30,7 @@ mutation par le harnais de falsification — et non de la production.
 | L3 | Registre d'instruments et règle de cotation unique | partiel — le moteur de bilans reste sur le modèle v1 |
 | L5 | Moteur comptable, charges, attestations | livré |
 | L7 | Transmissions par lien | livré |
-| L8 | Design, accessibilité, performance | en cours — performance faite, **quinze** manquements WCAG corrigés, socle de formulaire fait, trois jetons posés et employés, `Bouton` et `Statut` livrés, **aucun bouton `disabled` restant** ; reste la coque imprimée unique |
+| L8 | Design, accessibilité, performance | largement fait — performance, **quinze** manquements WCAG corrigés, socle de formulaire, cinq jetons employés, `Bouton` et `Statut`, aucun bouton `disabled` restant, **une coque unique pour les neuf documents imprimables** avec rappel de page répété ; non vérifié hors Chrome |
 | L4 | Écrits cliniques : note, courrier, synthèse, fin de prise en soin, écrit pour un tiers | 5 des 7 écrits manquants livrés |
 | L6, L9 | IA, préparation à la production | à faire |
 
@@ -87,6 +87,11 @@ jetable, et les **budgets de performance**.
 
 | Date | Vérification | Résultat |
 |---|---|---|
+| 2026-09-13 | `npm run verify` après la coque imprimée | tout passe — 161 contrôles unitaires, 14 fichiers SQL, budgets tenus |
+| 2026-09-13 | PDF Chrome 152, relus par `pdftotext` : deux mécanismes de rappel | `position: fixed` : 0 page sur 4 ; boîtes de marge `@page` : 4 sur 4 |
+| 2026-09-13 | PDF d'un écrit pour un tiers réel, migré | rappel sur 8 pages sur 8, bandeau présent, barre d'écran absente |
+| 2026-09-13 | PDF avec un nom hostile injecté dans le rappel | imprimé à la lettre, corps du document intact |
+| 2026-09-13 | Falsification des gardes d'échappement et des mentions | 6 mutations, 6 détectées — dont une refaite, qui plantait au lieu de viser sa garde |
 | 2026-09-13 | `npm run verify` après le lot design | tout passe — 148 contrôles unitaires, 14 fichiers SQL, budgets tenus |
 | 2026-09-13 | Contrastes et gris recalculés à la main, aplats composités | 8 échecs 1.4.3 (AA) trouvés et corrigés ; échelle de gris de la courbe rendue monotone |
 | 2026-09-13 | Rendu monochrome de la courbe vérifié à l'écran, avant et après | les cinq bandes se lisent en dégradé croissant, frontières tracées |
@@ -293,18 +298,70 @@ peine de le garder.
   **Cinq boutons disaient « … » pendant l'attente** — un lecteur d'écran
   annonce « points de suspension, bouton ». Corrigé : chacun dit l'action en
   cours.
-- **Trois jetons sémantiques existent depuis le 2026-09-13** — `avis`, `arret`
-  et `encre-faible` — et chacun est EMPLOYÉ : un jeton posé sans emploi est du
-  décor. `--color-trait`, `--container-document` et `--text-document` ont donc
-  été écartés jusqu'à l'unification de la coque des sept documents imprimables,
-  qui reste à faire : facture et attestation portent une coque, un corps
-  (14 px) et un cadre différents des cinq autres (13 px), sans justification.
-- **Les rappels de page ne se répètent pas.** Quatre documents portent un bloc
-  `hidden print:block` présenté en commentaire comme un rappel de page ; ce
-  sont des paragraphes en flux normal, placés après la signature, donc
-  imprimés UNE fois en bas de la dernière page. La page 2 d'une synthèse de
-  trois pages n'identifie toujours ni le document, ni la personne. Trois des
-  sept documents n'en ont aucun.
+- **Cinq jetons sémantiques existent** — `avis`, `arret`, `encre-faible`, et
+  depuis l'unification des documents imprimés `--container-document` et
+  `--text-document` — et chacun est EMPLOYÉ : un jeton posé sans emploi est du
+  décor. `--color-trait` reste écarté : sa migration toucherait ~70 fichiers
+  sans changer un pixel.
+
+- **Les neuf documents imprimables partagent une seule coque depuis le
+  2026-09-13** (`components/Imprimable.tsx`). Il y en avait neuf et non sept,
+  en TROIS variantes : la revue de conception n'avait relevé ni la fiche patient
+  dans son tableau, ni la page publique ouverte par un tiers depuis un lien.
+
+  **Le rappel de page se répète réellement**, mesuré dans des PDF produits par
+  Chrome 152 et relus page par page : 8 pages sur 8 pour un écrit pour un tiers
+  réel, avec « page N sur M ». Il ne se répétait nulle part avant : les quatre
+  blocs présentés comme des rappels s'imprimaient une fois, en fin de document,
+  et trois documents n'en avaient aucun — dont l'attestation, dont le propre
+  commentaire disait qu'elle déborde souvent sur une seconde page.
+
+  **Deux affirmations de la revue de conception étaient fausses, et la mesure
+  l'a montré avant que l'une d'elles ne soit implémentée.** Sa proposition —
+  un élément en `position: fixed; bottom: -16mm` — n'imprime le rappel sur
+  AUCUNE page : le décalage négatif le sort de la zone imprimée. Et les boîtes
+  de marge de `@page` avec `counter(page)`, qu'elle disait indisponibles dans
+  les navigateurs exportateurs, fonctionnent dans Chrome. **Non vérifié** :
+  Safari et Firefox. Là où elles ne sont pas prises en charge, le rappel
+  n'apparaît pas — la page retombe sur l'état d'avant, sans chevauchement.
+
+  **Le nom de la personne est injecté dans une feuille CSS**, ce qui exigeait
+  un échappement sûr par construction : liste blanche, tout ce qui n'est ni
+  lettre ASCII ni chiffre devient un échappement hexadécimal
+  (`lib/impression/rappel.ts`). Éprouvé dans un PDF avec un nom contenant
+  `"; } body{display:none} </style><script>` : imprimé à la lettre, le corps du
+  document intact. Six contrôles, trois gardes falsifiées une à une. La relecture
+  du PDF a trouvé un défaut que la relecture du code avait manqué : une espace
+  qui suit un échappement hexadécimal est absorbée, « Zoé « » s'imprimait
+  « Zoé« ».
+
+  **Une divergence réelle entre les deux rendus d'une même pièce a été fermée.**
+  La page publique ne marquait que l'annulation par avoir et le remplacement :
+  **un devis refusé ou expiré, transmis par lien, s'y affichait comme valide**,
+  alors que la base lui transmettait bien son statut (`'etat', d.status`,
+  migration `0020`). Corrigé en TypeScript seul, sans migration : les deux pages
+  appellent maintenant la même fonction (`lib/impression/mentions.ts`, sept
+  contrôles). Les deux anciennes fonctions de la page publique sont supprimées
+  — c'était la version divergente, et la laisser invitait à la réutiliser.
+
+  **Ce que la coque unifie** : le cadre, le corps de 13 px (facture et
+  attestation étaient à 14), des marges resserrées sur téléphone — c'est là
+  qu'une famille ouvre un lien —, une barre qui reste visible sur un long
+  document, et un bouton d'impression. Les quatre écrits cliniques n'en avaient
+  AUCUN ; il en existait trois versions ailleurs, dont une importée d'une
+  fonctionnalité à l'autre. Le bandeau d'état passe en trait PLEIN pour une
+  annulation (les écrits cliniques la traçaient en tireté, le signal d'un état
+  transitoire) ; le trait d'avis imprimé est en ambre 600, parce que le jeton
+  d'écran s'imprime au gris 215, presque invisible.
+
+  **Ce qu'elle ne décide pas, délibérément** : la taille du titre de chaque
+  document — une facture garde sa nature en grand, un écrit clinique la sienne
+  à la taille du texte, ce sont deux genres —, et la place d'une signature
+  manuscrite sur les écrits cliniques, qui est une question pour la
+  praticienne. La page publique n'a pas de bouton d'impression, par choix
+  antérieur de n'y charger aucun JavaScript pour cela ; vérifié dans la page
+  servie : aucune référence au composant du bouton, contre deux quand il est
+  affiché.
 
 ## Risques ouverts
 

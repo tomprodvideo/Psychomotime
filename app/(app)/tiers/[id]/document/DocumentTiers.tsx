@@ -1,9 +1,8 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { frDate } from "@/lib/format";
 import { USAGE_TITRES, type UsageTiers } from "@/lib/tiers/types";
 import type { EcritTiersAvecDestinataire } from "@/lib/tiers/queries";
 import { liste } from "@/lib/liste";
+import { BandeauEtat, CoqueDocument, RefusBrouillon } from "@/components/Imprimable";
 
 /**
  * L'écrit pour un tiers non soignant, tel qu'il est remis.
@@ -23,23 +22,14 @@ export default function DocumentTiers({
 }) {
   if (ecrit.status === "brouillon" || !ecrit.snapshot) {
     return (
-      <div className="p-8 max-w-2xl mx-auto">
-        <Link
-          href={`/patients/${ecrit.patient_id}`}
-          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-4"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          Retour au dossier
-        </Link>
-        <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6">
-          <h1 className="font-semibold text-slate-800">Cet écrit est un brouillon</h1>
-          <p className="text-sm text-slate-600 mt-2">
-            Il n&apos;a pas encore été remis : ses éléments ne sont pas figés et
-            il ne porte ni date, ni identité du signataire. Imprimé tel quel,
-            son destinataire le prendrait pour un document définitif.
-          </p>
-        </div>
-      </div>
+      <RefusBrouillon
+        retour={{ href: `/patients/${ecrit.patient_id}`, libelle: "Retour au dossier" }}
+        titre="Cet écrit est un brouillon"
+      >
+        Il n&apos;a pas encore été remis : ses éléments ne sont pas figés et
+        il ne porte ni date, ni identité du signataire. Imprimé tel quel,
+        son destinataire le prendrait pour un document définitif.
+      </RefusBrouillon>
     );
   }
 
@@ -58,29 +48,29 @@ export default function DocumentTiers({
     "Écrit à l'attention d'un tiers";
 
   return (
-    <div className="py-8 px-4 print:p-0">
-      <div className="max-w-3xl mx-auto mb-4 no-print">
-        <Link
-          href={`/patients/${ecrit.patient_id}`}
-          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          Retour au dossier
-        </Link>
-      </div>
-
-      <article className="print-area max-w-3xl mx-auto bg-white shadow-sm border border-slate-200 rounded-lg px-12 py-10 print:shadow-none print:border-0 text-[13px] leading-relaxed text-slate-800">
-        {ecrit.status === "annule" && (
-          <p className="mb-6 border-2 border-dashed border-arret-trait bg-arret-fond px-4 py-3 rounded-lg text-arret-encre print:bg-white">
-            <span className="font-semibold uppercase tracking-wide text-xs">
-              Écrit annulé
-            </span>
-            {ecrit.cancellation_reason && (
-              <span className="block text-xs mt-1">{ecrit.cancellation_reason}</span>
-            )}
-          </p>
-        )}
-
+    <CoqueDocument
+      retour={{ href: `/patients/${ecrit.patient_id}`, libelle: "Retour au dossier" }}
+      rappel={{
+        nature: titre,
+        personne: s.patient?.nom,
+        date: frDate(s.emis_le ?? ecrit.issued_on ?? ""),
+      }}
+      bandeau={
+        ecrit.status === "annule" && (
+          <BandeauEtat ton="arret" trait="plein" titre="Écrit annulé">
+            {ecrit.cancellation_reason}
+          </BandeauEtat>
+        )
+      }
+      note={
+        <>
+          Ce document est rendu à partir de l&apos;instantané figé à la remise.
+          Tout ce que vous n&apos;avez pas demandé à faire figurer en a été
+          RETIRÉ, pas seulement masqué : il ne conserve pas ce qu&apos;il n&apos;a
+          pas dit.
+        </>
+      }
+    >
         <header className="flex justify-between gap-8 mb-10">
           <div className="text-sm">
             {s.cabinet?.nom && (
@@ -275,18 +265,6 @@ export default function DocumentTiers({
           </div>
         </div>
 
-        <p className="hidden print:block text-xs text-slate-500 mt-6">
-          {titre} — {s.patient?.nom ?? "—"} —{" "}
-          {frDate(s.emis_le ?? ecrit.issued_on ?? "")}
-        </p>
-      </article>
-
-      <p className="text-xs text-slate-500 mt-4 max-w-3xl mx-auto no-print">
-        Ce document est rendu à partir de l&apos;instantané figé à la remise.
-        Tout ce que vous n&apos;avez pas demandé à faire figurer en a été
-        RETIRÉ, pas seulement masqué : il ne conserve pas ce qu&apos;il n&apos;a
-        pas dit.
-      </p>
-    </div>
+    </CoqueDocument>
   );
 }

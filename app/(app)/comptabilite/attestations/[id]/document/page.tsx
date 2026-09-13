@@ -1,13 +1,12 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { formatCents } from "@/lib/money";
 import { frDate } from "@/lib/format";
 import { getCurrentPractice } from "@/lib/dossier/practice";
 import { getAttestation } from "@/lib/attestations/queries";
 import { formulePresence, libelleActe } from "@/lib/attestations/types";
 import type { AttestationSnapshot } from "@/lib/attestations/types";
-import BoutonImprimer from "../../../[id]/document/BoutonImprimer";
+import { BandeauEtat, CoqueDocument, RefusBrouillon } from "@/components/Imprimable";
+import { mentionEtatAttestation } from "@/lib/impression/mentions";
 
 import type { Metadata } from "next";
 /* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
@@ -48,19 +47,13 @@ export default async function DocumentAttestationPage({
     // Un brouillon ne s'imprime pas : il n'est ni numéroté ni signé, et
     // sortirait de l'imprimante indiscernable d'un document définitif.
     return (
-      <div className="p-8 max-w-2xl mx-auto">
-        <Link
-          href={`/comptabilite/attestations/${a.id}`}
-          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-4"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          Retour à l&apos;attestation
-        </Link>
-        <p className="text-slate-600">
-          Ce brouillon n&apos;est pas signé. Signez-le pour obtenir le document
-          à remettre.
-        </p>
-      </div>
+      <RefusBrouillon
+        retour={{ href: `/comptabilite/attestations/${a.id}`, libelle: "Retour à l'attestation" }}
+        titre="Cette attestation est un brouillon"
+      >
+        Ce brouillon n&apos;est pas signé. Signez-le pour obtenir le document à
+        remettre.
+      </RefusBrouillon>
     );
   }
 
@@ -81,33 +74,39 @@ export default async function DocumentAttestationPage({
   const formule = formulePresence(seances.map((x) => x.nature ?? "seance"));
   const detail = a.detail_nature || formule.forcerNature;
 
+  const mention = mentionEtatAttestation({
+    status: a.status,
+    motif: a.cancellation_reason,
+  });
+
   return (
-    <div className="p-4 sm:p-8 max-w-3xl mx-auto">
-      <div className="flex items-center justify-between mb-5 no-print">
-        <Link
-          href={`/comptabilite/attestations/${a.id}`}
-          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          Retour à l&apos;attestation
-        </Link>
-        <BoutonImprimer />
-      </div>
-
-      <article className="print-area bg-white rounded-xl border border-slate-100 shadow-sm p-8 sm:p-10">
-        {/* Une attestation annulée ne doit JAMAIS ressortir de l'imprimante
-            comme si elle valait encore. */}
-        {a.status === "annule" && (
-          <p className="border-2 border-rose-400 text-rose-700 font-semibold text-center py-2 mb-8 tracking-wide">
-            ATTESTATION ANNULÉE
-            {a.cancellation_reason && (
-              <span className="block text-xs font-normal mt-0.5">
-                {a.cancellation_reason}
-              </span>
-            )}
-          </p>
-        )}
-
+    <CoqueDocument
+      retour={{ href: `/comptabilite/attestations/${a.id}`, libelle: "Retour à l'attestation" }}
+      /* « Une attestation déborde souvent sur une seconde page — une année
+         scolaire fait une trentaine de dates. » Le rappel qui devait identifier
+         cette page 2 ne s'imprimait qu'UNE fois, en bas de la dernière. Il se
+         répète désormais en marge de chaque page. Le numéro reste : pour une
+         pièce numérotée, c'est la clé qui rattache une page à son document. */
+      rappel={{
+        nature: a.number ? `Attestation n° ${a.number}` : "Attestation",
+        personne: patient?.nom,
+        date: frDate(a.issued_on),
+      }}
+      bandeau={
+        mention && (
+          <BandeauEtat ton="arret" trait="plein" titre={mention.titre}>
+            {mention.texte}
+          </BandeauEtat>
+        )
+      }
+      note={
+        <>
+          Ce document est rendu à partir de l&apos;instantané figé à la signature :
+          il ne changera plus, quelles que soient les modifications apportées
+          ensuite au dossier ou à l&apos;agenda.
+        </>
+      }
+    >
         <header className="flex justify-between gap-8 mb-10">
           <div className="text-sm text-slate-700">
             {s.cabinet?.nom && (
@@ -287,19 +286,6 @@ export default async function DocumentAttestationPage({
           )}
         </footer>
 
-        {/* Une attestation déborde souvent sur une seconde page — une année
-            scolaire fait une trentaine de dates. Sans ce rappel, la page 2
-            n'identifie ni le document ni la personne. */}
-        <p className="hidden print:block text-xs text-slate-500 mt-6">
-          {a.number} — {patient?.nom?.trim()}
-        </p>
-      </article>
-
-      <p className="text-xs text-slate-500 mt-4 no-print">
-        Ce document est rendu à partir de l&apos;instantané figé à la signature :
-        il ne changera plus, quelles que soient les modifications apportées
-        ensuite au dossier ou à l&apos;agenda.
-      </p>
-    </div>
+    </CoqueDocument>
   );
 }

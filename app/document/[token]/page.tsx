@@ -3,11 +3,14 @@ import { formatCents } from "@/lib/money";
 import { liste } from "@/lib/liste";
 import { frDate } from "@/lib/format";
 import { getDocumentPublic } from "@/lib/transmissions/queries";
-import {
-  documentCaduc,
-  raisonCaducite,
-  type DocumentPublic,
-} from "@/lib/transmissions/types";
+import type { DocumentPublic } from "@/lib/transmissions/types";
+import { KIND_LABELS } from "@/lib/compta/types";
+import { BandeauEtat, CoqueDocument } from "@/components/Imprimable";
+import { mentionEtatAttestation, mentionEtatPiece } from "@/lib/impression/mentions";
+
+/* Le contrat public transmet `kind` en chaîne libre : une nature inconnue ne
+   doit pas imprimer « undefined ». */
+const NATURE_PIECE: Record<string, string> = KIND_LABELS;
 import { formulePresence, libelleActe } from "@/lib/attestations/types";
 
 /**
@@ -61,43 +64,56 @@ export default async function DocumentPublicPage({
     );
   }
 
+  const mention =
+    document.nature === "billing_document"
+      ? mentionEtatPiece({
+          kind: document.kind,
+          status: document.etat,
+          validUntil: document.valable_jusqu_au,
+          /* Le contrat public ne transmet pas la pièce qui rectifie celle-ci :
+             la mention le dit donc sans numéro, plutôt que d'en inventer un. */
+          rectifiant: null,
+        })
+      : mentionEtatAttestation({
+          status: document.etat,
+          motif: document.motif_annulation,
+        });
+
   return (
-    <div className="bg-slate-100 min-h-screen">
-      <div className="no-print bg-white border-b border-slate-200 px-4 py-3">
-        <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
-          <p className="text-sm text-slate-500">
-            Document transmis par votre praticien
-          </p>
-          <button
-            type="button"
-            // Pas de JavaScript à charger pour cela : l'impression du
-            // navigateur suffit, et la page est déjà prête pour elle.
-            className="hidden"
-          />
-        </div>
-      </div>
-
-      <div className="py-8 px-4 print:p-0">
-        <article className="print-area max-w-3xl mx-auto bg-white rounded-xl border border-slate-100 shadow-sm p-8 sm:p-10">
-          {documentCaduc(document) && (
-            <p className="border-2 border-rose-400 text-rose-700 font-semibold text-center py-2 mb-8 tracking-wide">
-              {raisonCaducite(document)}
-            </p>
-          )}
-
-          {document.nature === "billing_document" ? (
-            <Piece d={document} />
-          ) : (
-            <Attestation d={document} />
-          )}
-        </article>
-
-        <p className="no-print max-w-3xl mx-auto text-xs text-slate-500 mt-4">
+    <CoqueDocument
+      contexte="Document transmis par votre praticien"
+      /* AUCUN JAVASCRIPT POUR IMPRIMER, ici plus qu'ailleurs : c'est la seule
+         page ouverte sans compte, et l'impression du navigateur y suffit. Le
+         bouton vide et caché qui occupait cette place ne faisait rien. */
+      imprimer={false}
+      rappel={{
+        nature:
+          document.nature === "billing_document"
+            ? `${NATURE_PIECE[document.kind] ?? "Pièce"}${document.numero ? ` n° ${document.numero}` : ""}`
+            : `Attestation${document.numero ? ` n° ${document.numero}` : ""}`,
+        personne: document.patient?.nom,
+        date: frDate(document.emise_le),
+      }}
+      bandeau={
+        mention && (
+          <BandeauEtat ton="arret" trait="plein" titre={mention.titre}>
+            {mention.texte}
+          </BandeauEtat>
+        )
+      }
+      note={
+        <>
           Ce lien est personnel. Il cesse de fonctionner à son expiration, ou
           dès que le cabinet le retire.
-        </p>
-      </div>
-    </div>
+        </>
+      }
+    >
+      {document.nature === "billing_document" ? (
+        <Piece d={document} />
+      ) : (
+        <Attestation d={document} />
+      )}
+    </CoqueDocument>
   );
 }
 

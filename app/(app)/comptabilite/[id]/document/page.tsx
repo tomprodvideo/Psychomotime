@@ -1,13 +1,12 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { formatCents } from "@/lib/money";
 import { frDate } from "@/lib/format";
 import { getCurrentPractice } from "@/lib/dossier/practice";
 import { getDocument } from "@/lib/compta/queries";
 import { KIND_LABELS } from "@/lib/compta/types";
 import type { DocumentSnapshot } from "@/lib/compta/types";
-import BoutonImprimer from "./BoutonImprimer";
+import { BandeauEtat, CoqueDocument, RefusBrouillon } from "@/components/Imprimable";
+import { mentionEtatPiece } from "@/lib/impression/mentions";
 
 import type { Metadata } from "next";
 /* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
@@ -51,19 +50,13 @@ export default async function DocumentPage({
     // Un brouillon ne s'imprime pas : il n'a ni numéro ni date, et sortirait
     // de l'imprimante indiscernable d'un document définitif.
     return (
-      <div className="p-8 max-w-2xl mx-auto">
-        <Link
-          href={`/comptabilite/${d.id}`}
-          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-4"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          Retour à la pièce
-        </Link>
-        <p className="text-slate-600">
-          Ce brouillon n&apos;a pas encore de numéro ni de date d&apos;émission.
-          Émettez-le pour obtenir le document à remettre.
-        </p>
-      </div>
+      <RefusBrouillon
+        retour={{ href: `/comptabilite/${d.id}`, libelle: "Retour à la pièce" }}
+        titre="Cette pièce est un brouillon"
+      >
+        Ce brouillon n&apos;a pas encore de numéro ni de date d&apos;émission.
+        Émettez-le pour obtenir le document à remettre.
+      </RefusBrouillon>
     );
   }
 
@@ -79,75 +72,21 @@ export default async function DocumentPage({
   const patientConcerne = payeurTiers ? s.patient?.nom?.trim() : null;
   const identifiants = (s.identifiants ?? []).filter((i) => i?.valeur);
 
-  /* ── CE DOCUMENT VAUT-IL ENCORE ? ────────────────────────────────────────
-   *
-   * Sept statuts existent ; cette page n'en traitait qu'UN — le brouillon,
-   * qu'elle refuse d'imprimer. Les cinq autres sortaient de l'imprimante
-   * strictement identiques à une pièce vivante. Une facture annulée par avoir,
-   * remise à une mutuelle, ne disait nulle part qu'elle était annulée.
-   *
-   * Le produit prend pourtant la peine de marquer l'annulation sur
-   * l'attestation et sur les quatre écrits cliniques. Il ne la marquait pas
-   * sur la seule pièce qui sert à se faire rembourser.
-   *
-   * CHAQUE MENTION DIT LA CONSÉQUENCE, ET LE RECOURS QUAND IL Y EN A UN.
-   * « Ce document est annulé » ne dit ni l'une ni l'autre : le lecteur ne sait
-   * ni ce qu'il ne peut plus faire, ni quelle pièce demander à la place.
-   *
-   * ELLE TIENT SANS COULEUR. Un mot en capitales, un trait de 2 px, et la
-   * teinte seulement en troisième — c'est la recette que l'attestation avait
-   * déjà trouvée. `print:bg-white` retire l'aplat : sur une imprimante
-   * monochrome, un fond teinté devient un gris qui dégrade le texte posé
-   * dessus. Le trait, lui, reste un trait.
-   */
-  const feminin = d.kind === "facture" || d.kind === "facture_de_remplacement";
-  const accord = feminin ? "e" : "";
-  /* « Ce avoir » : l'élision ne se déduit pas du genre. On la pose. */
-  const ce = feminin ? "Cette" : d.kind === "avoir" ? "Cet" : "Ce";
-  const nomPiece = KIND_LABELS[d.kind].toUpperCase();
-  /* La pièce qui rectifie celle-ci : c'est elle qu'il faut aller chercher. */
+  /* CE DOCUMENT VAUT-IL ENCORE ? La réponse n'est plus écrite ici : elle
+     vit dans `lib/impression/mentions.ts`, appelée AUSSI par la page publique
+     qu'un tiers ouvre depuis un lien. Les deux pages en avaient chacune une
+     version, et elles avaient divergé — un devis refusé ou expiré s'affichait
+     comme valide chez le destinataire. */
   const rectifiant =
     piece.rectifications.find((r) => r.status !== "brouillon") ?? null;
-  const refRectifiant = rectifiant?.number
-    ? `n° ${rectifiant.number}${
-        rectifiant.issued_on ? ` du ${frDate(rectifiant.issued_on)}` : ""
-      }`
-    : null;
-
-  const mention: { titre: string; texte: string } | null =
-    d.status === "annule_par_avoir"
-      ? {
-          titre: `${nomPiece} ANNULÉ${accord.toUpperCase()} PAR AVOIR`,
-          texte: refRectifiant
-            ? `Cette pièce a été annulée par l'avoir ${refRectifiant}. Elle ne peut pas servir de justificatif.`
-            : "Cette pièce a été annulée par un avoir. Elle ne peut pas servir de justificatif.",
-        }
-      : d.status === "remplace"
-        ? {
-            titre: `${nomPiece} REMPLACÉ${accord.toUpperCase()}`,
-            texte: refRectifiant
-              ? `Cette pièce a été remplacée par la pièce ${refRectifiant}, qui seule fait foi.`
-              : "Cette pièce a été remplacée. C'est la pièce de remplacement qui fait foi.",
-          }
-        : d.status === "refuse"
-          ? {
-              titre: `${nomPiece} REFUSÉ${accord.toUpperCase()}`,
-              texte: `${ce} ${KIND_LABELS[
-                d.kind
-              ].toLowerCase()} n'a pas été accepté${accord}. Les montants indiqués n'engagent personne.`,
-            }
-          : d.status === "expire"
-            ? {
-                titre: `${nomPiece} EXPIRÉ${accord.toUpperCase()}`,
-                texte: d.valid_until
-                  ? `${ce} ${KIND_LABELS[d.kind].toLowerCase()} était valable jusqu'au ${frDate(
-                      d.valid_until,
-                    )}. Les montants indiqués ne sont plus engageants.`
-                  : `${ce} ${KIND_LABELS[
-                      d.kind
-                    ].toLowerCase()} a dépassé sa durée de validité. Les montants indiqués ne sont plus engageants.`,
-              }
-            : null;
+  const mention = mentionEtatPiece({
+    kind: d.kind,
+    status: d.status,
+    validUntil: d.valid_until,
+    rectifiant: rectifiant
+      ? { numero: rectifiant.number, emiseLe: rectifiant.issued_on }
+      : null,
+  });
   const exonere = piece.lignes.every(
     (l) => l.vat_treatment === "exoneration_soins",
   );
@@ -166,31 +105,28 @@ export default async function DocumentPage({
       : null;
 
   return (
-    <div className="p-4 sm:p-8 max-w-3xl mx-auto">
-      <div className="flex items-center justify-between mb-5 no-print">
-        <Link
-          href={`/comptabilite/${d.id}`}
-          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          Retour à la pièce
-        </Link>
-        <BoutonImprimer />
-      </div>
-
-      <article className="print-area bg-white rounded-xl border border-slate-100 shadow-sm p-8 sm:p-10">
-        {mention && (
-          <p
-            className="border-2 border-arret-trait bg-arret-fond print:bg-white text-arret-encre text-center px-4 py-3 mb-8 rounded-lg"
-            style={{ breakInside: "avoid" }}
-          >
-            <span className="font-semibold uppercase tracking-wide text-sm">
-              {mention.titre}
-            </span>
-            <span className="block text-xs mt-1">{mention.texte}</span>
-          </p>
-        )}
-
+    <CoqueDocument
+      retour={{ href: `/comptabilite/${d.id}`, libelle: "Retour à la pièce" }}
+      rappel={{
+        nature: d.number ? `${KIND_LABELS[d.kind]} n° ${d.number}` : KIND_LABELS[d.kind],
+        personne: s.patient?.nom,
+        date: frDate(d.issued_on),
+      }}
+      bandeau={
+        mention && (
+          <BandeauEtat ton="arret" trait="plein" titre={mention.titre}>
+            {mention.texte}
+          </BandeauEtat>
+        )
+      }
+      note={
+        <>
+          Ce document est rendu à partir de l&apos;instantané figé à
+          l&apos;émission : il ne changera plus, quelles que soient les
+          modifications apportées ensuite au cabinet ou au dossier.
+        </>
+      }
+    >
         <header className="flex justify-between gap-8 mb-10">
           <div className="text-sm text-slate-700">
             {s.cabinet?.nom && (
@@ -351,13 +287,6 @@ export default async function DocumentPage({
             TVA non applicable — exonération des soins.
           </p>
         )}
-      </article>
-
-      <p className="text-xs text-slate-500 mt-4 no-print">
-        Ce document est rendu à partir de l&apos;instantané figé à
-        l&apos;émission : il ne changera plus, quelles que soient les
-        modifications apportées ensuite au cabinet ou au dossier.
-      </p>
-    </div>
+    </CoqueDocument>
   );
 }
