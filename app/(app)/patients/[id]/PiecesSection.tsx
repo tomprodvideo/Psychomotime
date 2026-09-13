@@ -3,6 +3,7 @@ import { FileText, Receipt } from "lucide-react";
 import { frDate } from "@/lib/format";
 import { formatCents } from "@/lib/money";
 import type { PieceBilan, PieceFacture } from "@/lib/dossier/queries";
+import NouvellePiece from "../../comptabilite/NouvellePiece";
 
 /**
  * Bilans et pièces comptables rattachés au dossier.
@@ -13,22 +14,44 @@ import type { PieceBilan, PieceFacture } from "@/lib/dossier/queries";
  * migrations de reprise garantissent, et ce que les tests vérifient.
  */
 export default function PiecesSection({
+  patientId,
   bilans,
   factures,
+  canWrite,
 }: {
+  patientId: string;
   bilans: PieceBilan[];
   factures: PieceFacture[];
+  canWrite: boolean;
 }) {
-  if (bilans.length === 0 && factures.length === 0) return null;
-
+  /* CETTE SECTION NE DISPARAÎT PLUS QUAND ELLE EST VIDE.
+   *
+   * Elle rendait `null` sans pièce — si bien qu'un patient jamais facturé
+   * n'avait AUCUN point d'entrée vers la facturation depuis sa propre fiche.
+   * Il fallait quitter le dossier, ouvrir la comptabilité, créer une facture,
+   * puis retrouver le nom dans une liste qu'on venait de parcourir : six
+   * gestes, dont une recherche déjà faite cinq minutes plus tôt.
+   *
+   * Relevé par la relecture d'interface du lot 8. */
   return (
     <section
       aria-labelledby="titre-pieces"
       className="bg-white rounded-xl border border-slate-100 shadow-sm p-5"
     >
-      <h2 id="titre-pieces" className="font-semibold text-slate-800 mb-3">
-        Bilans et pièces comptables
-      </h2>
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <h2 id="titre-pieces" className="font-semibold text-slate-800">
+          Bilans et pièces comptables
+        </h2>
+        {canWrite && <NouvellePiece patientId={patientId} compact />}
+      </div>
+
+      {bilans.length === 0 && factures.length === 0 && (
+        <p className="text-sm text-slate-500">
+          Aucune pièce pour ce dossier. « Facturer » ouvre un brouillon déjà
+          rattaché : aucun numéro n&apos;est consommé tant qu&apos;il n&apos;est
+          pas émis.
+        </p>
+      )}
 
       <div className="grid sm:grid-cols-2 gap-5">
         <div>

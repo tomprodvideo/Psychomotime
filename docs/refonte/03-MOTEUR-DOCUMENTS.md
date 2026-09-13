@@ -240,6 +240,34 @@ Douze questions de plus, sur la trame et sur la pratique, sont dans les rapports
 d'agents : elles s'ajoutent à `Q-201`–`Q-208` et aux dix questions d'attestation,
 toutes ouvertes depuis le 2026-09-11.
 
+## 6 bis. Les trois bilans orphelins : ce que la base dit
+
+Relevé en production le **2026-09-13**, en lecture seule, sans aucun nom :
+
+| Fait | Valeur |
+|---|---|
+| Bilans au total | 7 |
+| Rattachés à un dossier | 4 |
+| **Orphelins** | **3** |
+| Orphelins dont le nom libre correspond EXACTEMENT à un dossier existant | **0** |
+| Orphelins finalisés | 0 |
+
+**Ce relevé tranche une question qu'on allait trancher par hypothèse.** Un écran
+de réconciliation — proposer des dossiers candidats à un bilan orphelin —
+n'aurait **aucun candidat à proposer** : aucun des trois noms libres ne
+correspond à un dossier du produit. Ce sont donc, soit des bilans de
+démonstration, soit des bilans faits pour quelqu'un qui n'a pas de dossier — ce
+qui est légitime.
+
+**Ce qui a été fait** : rendre l'état VISIBLE, dans la liste et dans l'éditeur.
+Un bilan orphelin s'affichait exactement comme un bilan rattaché, puisque le
+nom libre est obligatoire.
+
+**Ce qui n'a PAS été fait, et pourquoi** : l'écran de rattachement après coup.
+Il se construira le jour où il y aura quelque chose à rattacher — et la garde
+serveur qu'il exige (`saveBilan` vérifie désormais que le dossier posté est
+bien celui de l'appelant) est déjà en place, écrite avant lui.
+
 ## 7. Ce que personne n'a vérifié
 
 - **Le poids relatif des postes de temps** s'appuie sur ce que le code rend

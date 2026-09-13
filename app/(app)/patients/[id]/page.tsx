@@ -379,7 +379,12 @@ export default async function FichePatientPage({
           </section>
         )}
 
-        <PiecesSection bilans={pieces.bilans} factures={pieces.factures} />
+        <PiecesSection
+          patientId={patient.id}
+          bilans={pieces.bilans}
+          factures={pieces.factures}
+          canWrite={practice.canWrite}
+        />
 
         <AttestationsSection
           patientId={patient.id}
