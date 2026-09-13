@@ -14,7 +14,8 @@ locataire n'est plus le compte : c'est le CABINET** (`practices` +
 `practice_members`, cinq rôles). C'est le changement structurant dont tout le
 reste découle.
 
-Vingt-cinq migrations (`0000` à `0024`) sont appliquées en production —
+Vingt-cinq migrations (`0000` à `0024`) sont appliquées en production ; `0025`
+est écrite et éprouvée en local —
 projet Supabase `sisummvlowhtfgiatwwf`, vérifié après chaque application.
 Depuis `0023`, la vérification ne se contente plus de compter les objets :
 **les empreintes des huit fonctions déployées sont comparées une à une à
@@ -31,7 +32,7 @@ mutation par le harnais de falsification — et non de la production.
 | L5 | Moteur comptable, charges, attestations | livré |
 | L7 | Transmissions par lien | livré |
 | L8 | Design, accessibilité, performance | en cours — performance faite, six manquements WCAG corrigés, socle de formulaire fait, `Bouton` et jetons à faire |
-| L4 | Écrits cliniques : note de séance, courrier, synthèse, écrit de fin | 4 des 7 écrits manquants livrés |
+| L4 | Écrits cliniques : note, courrier, synthèse, fin de prise en soin, écrit pour un tiers | 5 des 7 écrits manquants livrés |
 | L6, L9 | IA, préparation à la production | à faire |
 
 ## Ce qui est solide, et pourquoi on peut le dire

@@ -1,0 +1,270 @@
+{
+  "cible": "supabase/migrations/0025_ecrit_tiers_non_soignant.sql",
+  "mutations": [
+    {
+      "nom": "refus uniforme (oracle d'appartenance)",
+      "avant": "  if app.current_user_id() is not null\n     and not app.can_write(new.practice_id) then\n    raise exception 'Accès refusé.' using errcode = 'insufficient_privilege';\n  end if;",
+      "apres": ""
+    },
+    {
+      "nom": "le dossier appartient au cabinet",
+      "avant": "  if not exists (\n    select 1 from public.patients p\n     where p.id = new.patient_id and p.practice_id = new.practice_id\n  ) then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "le parcours est celui du dossier (garde)",
+      "avant": "  if new.pathway_id is not null and not exists (\n    select 1 from public.care_pathways cp\n     where cp.id = new.pathway_id\n       and cp.practice_id = new.practice_id\n       and cp.patient_id = new.patient_id\n  ) then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "le destinataire appartient au cabinet",
+      "avant": "  if new.recipient_contact_id is not null and not exists (\n    select 1 from public.contacts c\n     where c.id = new.recipient_contact_id and c.practice_id = new.practice_id\n  ) then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "destinataire et mode de remise s'accordent",
+      "avant": "  constraint tiers_remise_ck check (\n    (delivery_mode = 'destinataire') = (recipient_contact_id is not null)),",
+      "apres": "  constraint tiers_remise_ck check (true),"
+    },
+    {
+      "nom": "on ne nomme pas les professionnels sans le demander",
+      "avant": "  constraint tiers_professionnels_ck check (\n    detail_professionnels or professionnels is null)",
+      "apres": "  constraint tiers_professionnels_ck check (true)"
+    },
+    {
+      "nom": "un écrit sans observation ne part pas",
+      "avant": "  if btrim(coalesce(r.observed, '')) = '' then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "UN RETRAIT NE SE CONTOURNE PAS",
+      "avant": "  if v_accord = 'retire' then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "sans accord ni motif, on ne remet pas",
+      "avant": "  if v_accord <> 'accorde'\n     and btrim(coalesce(r.consent_override_reason, '')) = '' then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "un retrait l'emporte sur un accord (règle partagée)",
+      "avant": "    when bool_or(pc.withdrawn_on is not null) then 'retire'\n",
+      "apres": ""
+    },
+    {
+      "nom": "un accord sans date ne compte pas",
+      "avant": "    when bool_or(pc.granted_on is not null and pc.withdrawn_on is null) then 'accorde'",
+      "apres": "    when bool_or(pc.withdrawn_on is null) then 'accorde'"
+    },
+    {
+      "nom": "l'écrit ne se date pas du futur",
+      "avant": "  if v_emission > current_date then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "la lecture est clinique, pas simplement membre",
+      "avant": "  using (practice_id in (select app.mes_cabinets_cliniques()));",
+      "apres": "  using (practice_id in (select app.mes_cabinets()));"
+    },
+    {
+      "nom": "le contenu clinique n'est pas lisible par un assistant",
+      "avant": "  if not app.can_read_clinical(v_practice) then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "le parcours est celui du dossier (faits)",
+      "avant": "  if p_pathway_id is not null and not exists (\n    select 1 from public.care_pathways cp\n     where cp.id = p_pathway_id\n       and cp.patient_id = p_patient_id\n       and cp.practice_id = v_practice\n  ) then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "l'écran voit l'état de l'accord",
+      "avant": "    'accord_partage', app.etat_accord_partage(v_practice, p_patient_id));",
+      "apres": "    'accord_retire_de_l_ecran', app.etat_accord_partage(v_practice, p_patient_id));"
+    },
+    {
+      "nom": "l'avertissement hors parcours est calculé",
+      "avant": "    'honorees_hors_parcours', (",
+      "apres": "    'honorees_hors_parcours_retire', ("
+    },
+    {
+      "nom": "les avertissements ne partent pas avec le document",
+      "avant": "             - 'honorees_hors_parcours' - 'motif_demande_a_reprendre'\n             - 'accord_partage'\n",
+      "apres": "             "
+    },
+    {
+      "nom": "le non-dit des comptes n'est pas conservé",
+      "avant": "             - (case when r.detail_seances then array[]::text[]\n                     else array['seances_honorees'] end)\n",
+      "apres": ""
+    },
+    {
+      "nom": "le non-dit des objectifs n'est pas conservé",
+      "avant": "             - (case when r.detail_objectifs then array[]::text[]\n                     else array['objectifs'] end)\n",
+      "apres": ""
+    },
+    {
+      "nom": "le non-dit du prescripteur n'est pas conservé",
+      "avant": "             - (case when r.detail_prescripteur then array[]::text[]\n                     else array['prescripteur'] end)",
+      "apres": ""
+    },
+    {
+      "nom": "la mention « remis pour transmission » est figée",
+      "avant": "               when 'remis_pour_transmission' then",
+      "apres": "               when 'jamais_ce_cas' then"
+    },
+    {
+      "nom": "le journal distingue une remise sans accord",
+      "avant": "    case when v_accord = 'accorde' then 'third_party_report.issue'\n         else 'third_party_report.issue_without_consent' end,",
+      "apres": "    'third_party_report.issue',"
+    },
+    {
+      "nom": "qui a donné l'accord est figé",
+      "avant": "           'consentement_donne_par', (",
+      "apres": "           'consentement_donne_par_retire', ("
+    },
+    {
+      "nom": "une annulation ne se défait pas",
+      "avant": "    if not (old.status = 'emis' and new.status = 'annule') then",
+      "apres": "    if false then"
+    },
+    {
+      "nom": "le motif d'annulation ne se pose pas d'avance",
+      "avant": "  if new.cancellation_reason is distinct from old.cancellation_reason\n     and new.status <> 'annule' then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "un écrit remis ne se supprime pas",
+      "avant": "  if old.status <> 'brouillon' then\n    raise exception\n      'Un écrit remis ne se supprime pas",
+      "apres": "  if false then\n    raise exception\n      'Un écrit remis ne se supprime pas"
+    },
+    {
+      "nom": "[contre-contrôle] une clé ajoutée à l'instantané est vue",
+      "avant": "           'emis_le', v_emission,\n           'usage', r.intended_use,",
+      "apres": "           'emis_le', v_emission, 'cle_en_trop', 'x',\n           'usage', r.intended_use,"
+    },
+    {
+      "nom": "figé après remise — intended_use",
+      "avant": "  if new.intended_use is distinct from old.intended_use\n     or",
+      "apres": "  if"
+    },
+    {
+      "nom": "figé après remise — context",
+      "avant": "     or new.context is distinct from old.context\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — observation_setting",
+      "avant": "     or new.observation_setting is distinct from old.observation_setting\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — observed",
+      "avant": "     or new.observed is distinct from old.observed\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — daily_impact",
+      "avant": "     or new.daily_impact is distinct from old.daily_impact\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — what_helps",
+      "avant": "     or new.what_helps is distinct from old.what_helps\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — proposals",
+      "avant": "     or new.proposals is distinct from old.proposals\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — limits_note",
+      "avant": "     or new.limits_note is distinct from old.limits_note\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — note",
+      "avant": "     or new.note is distinct from old.note\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — detail_scores",
+      "avant": "     or new.detail_scores is distinct from old.detail_scores\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — detail_objectifs",
+      "avant": "     or new.detail_objectifs is distinct from old.detail_objectifs\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — detail_seances",
+      "avant": "     or new.detail_seances is distinct from old.detail_seances\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — detail_prescripteur",
+      "avant": "     or new.detail_prescripteur is distinct from old.detail_prescripteur\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — detail_professionnels",
+      "avant": "     or new.detail_professionnels is distinct from old.detail_professionnels\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — professionnels",
+      "avant": "     or new.professionnels is distinct from old.professionnels\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — issued_on",
+      "avant": "     or new.issued_on is distinct from old.issued_on\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — snapshot",
+      "avant": "     or new.snapshot is distinct from old.snapshot\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — pathway_id",
+      "avant": "     or new.pathway_id is distinct from old.pathway_id\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — delivery_mode",
+      "avant": "     or new.delivery_mode is distinct from old.delivery_mode\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — recipient_contact_id",
+      "avant": "     or new.recipient_contact_id is distinct from old.recipient_contact_id\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — consent_override_reason",
+      "avant": "     or new.consent_override_reason is distinct from old.consent_override_reason\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — issued_by",
+      "avant": "     or new.issued_by is distinct from old.issued_by\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — created_by",
+      "avant": "     or new.created_by is distinct from old.created_by\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — patient_id",
+      "avant": "     or new.patient_id <> old.patient_id\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — created_at",
+      "avant": "     or new.created_at is distinct from old.created_at then",
+      "apres": "     or false then"
+    }
+  ]
+}

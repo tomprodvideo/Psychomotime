@@ -23,9 +23,11 @@ import {
 } from "@/lib/courriers/queries";
 import { listSyntheses } from "@/lib/syntheses/queries";
 import { listFins } from "@/lib/fins/queries";
+import { listEcritsTiers } from "@/lib/tiers/queries";
 import CourriersSection from "./CourriersSection";
 import SynthesesSection from "./SynthesesSection";
 import FinsSection from "./FinsSection";
+import EcritsTiersSection from "./EcritsTiersSection";
 import { ROLE_LABELS, contactName, patientName } from "@/lib/dossier/types";
 import { listAttestations } from "@/lib/attestations/queries";
 import PatientFormDialog from "../PatientFormDialog";
@@ -76,6 +78,7 @@ export default async function FichePatientPage({
     courriers,
     syntheses,
     fins,
+    ecritsTiers,
     consentementPartage,
   ] = await Promise.all([
     listPatientContacts(practice, patient.id),
@@ -91,6 +94,7 @@ export default async function FichePatientPage({
     listCourriers(practice, patient.id),
     listSyntheses(practice, patient.id),
     listFins(practice, patient.id),
+    listEcritsTiers(practice, patient.id),
     etatConsentementPartage(practice, patient.id),
   ]);
 
@@ -297,6 +301,39 @@ export default async function FichePatientPage({
             syntheses={syntheses.items}
             erreur={syntheses.erreur}
             consentement={consentementPartage}
+            canWrite={practice.canWrite}
+            parcours={parcours.map((p) => ({
+              id: p.id,
+              libelle:
+                p.label?.trim() ||
+                `Parcours ouvert le ${p.started_on ? frDate(p.started_on) : "—"}`,
+            }))}
+            destinataires={[
+              ...entourage.map((l) => ({
+                id: l.contact.id,
+                nom: contactName(l.contact),
+                role: ROLE_LABELS[l.role] ?? l.role,
+                groupe: "dossier" as const,
+              })),
+              ...contacts
+                .filter((c) => !entourage.some((l) => l.contact.id === c.id))
+                .map((c) => ({
+                  id: c.id,
+                  nom: contactName(c),
+                  groupe: "cabinet" as const,
+                })),
+            ]}
+          />
+
+          {/* L'ÉCRIT POUR UN TIERS VIENT APRÈS LE COURRIER, avec lequel on le
+              confond : il s'adresse à quelqu'un qui n'est PAS un professionnel
+              de santé, et c'est toute la différence. */}
+          <EcritsTiersSection
+            patientId={patient.id}
+            patientNom={patientName(patient)}
+            patientNeLe={patient.birth_date}
+            ecrits={ecritsTiers.items}
+            erreur={ecritsTiers.erreur}
             canWrite={practice.canWrite}
             parcours={parcours.map((p) => ({
               id: p.id,
