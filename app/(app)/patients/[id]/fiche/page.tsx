@@ -5,8 +5,7 @@ import { getSettings } from "@/lib/data";
 import type { Bilan } from "@/lib/types";
 import { BILAN_TYPE_ORDER, BILAN_TYPE_UI, bilanTypeOf } from "@/lib/constants";
 import { frDate } from "@/lib/format";
-import { formatAgeAt } from "@/lib/age";
-import { dateCivile } from "@/lib/dateCivile";
+import { editionEtAge } from "@/lib/age";
 import { getCurrentPractice } from "@/lib/dossier/practice";
 import {
   getPatient,
@@ -92,15 +91,15 @@ export default async function FichePatientImprimable({
 
   // Le document est daté du jour de son édition : l'âge s'y lit donc à cette
   // date, explicitement, et non par une lecture d'horloge cachée.
-  const edite = new Date();
-  const age = formatAgeAt(patient.birth_date, edite);
-  /* LA DATE D'ÉDITION, DANS LE FUSEAU DU CABINET — une seule fois.
-     Elle était calculée en UTC : une fiche éditée entre minuit et une heure du
-     matin l'hiver, deux heures l'été, portait la date de la VEILLE, en en-tête
-     comme dans le rappel imprimé en marge de chaque page — tandis que l'âge,
-     calculé sur l'instant, était juste. La date affichée pouvait contredire
-     l'âge imprimé à côté. Voir `lib/dateCivile.ts`. */
-  const editeLe = dateCivile(edite, practice.timezone);
+  /* LA DATE D'ÉDITION ET L'ÂGE, CALCULÉS ENSEMBLE, dans le fuseau du cabinet.
+     Dérivés séparément du même instant, ils pouvaient se contredire sur un
+     serveur UTC : date du 14, âge du 13, le jour même d'un anniversaire. Voir
+     `editionEtAge` dans `lib/age.ts`. */
+  const { editeLe, age } = editionEtAge(
+    patient.birth_date,
+    new Date(),
+    practice.timezone,
+  );
 
   const liensActifs = entourage.filter((l) => !l.valid_to);
   const notesPubliables = notes.filter((n) => !n.third_party_information);

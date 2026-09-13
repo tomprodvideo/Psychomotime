@@ -10,6 +10,8 @@
  * par défaut : oublier de la passer doit être impossible, pas silencieux.
  */
 
+import { dateCivile } from "@/lib/dateCivile";
+
 export interface Age {
   years: number;
   months: number;
@@ -80,4 +82,37 @@ export function formatAgeAt(
   at: string | Date,
 ): string {
   return formatAge(ageAt(birthDate, at));
+}
+
+/**
+ * LA DATE D'ÉDITION D'UN DOCUMENT ET L'ÂGE QU'IL IMPRIME — calculés ENSEMBLE.
+ *
+ * ── LE DÉFAUT QUE CETTE FONCTION REND IMPOSSIBLE ──────────────────────────
+ *
+ * La fiche patient dérivait ses deux valeurs du même instant, séparément :
+ * la date par un calcul de date civile, l'âge par `formatAgeAt(naissance,
+ * instant)`. Or un `Date` passé à `ageAt` est lu par `getFullYear`,
+ * `getMonth` et `getDate` — dans le fuseau du PROCESSUS serveur. Mesuré, pour
+ * un anniversaire (naissance fictive le 14/09/2018) à 00 h 30 le 14/09/2026 à
+ * Paris, sous un processus UTC :
+ *
+ *     en-tête « Éditée le 14/09/2026 »   âge imprimé « 7 ans 11 mois »
+ *
+ * Avant tout correctif, sur un serveur UTC, la date ET l'âge étaient ceux de la
+ * veille : faux, mais cohérents entre eux. Le premier correctif (`88b5fd6`) a
+ * rendu la date juste sans l'âge — il a CRÉÉ la contradiction qu'il décrivait.
+ * Sur une machine réglée sur Paris, rien ne se voyait. Relevé par une seconde
+ * session de travail, puis mesuré ici sous trois fuseaux avant d'être corrigé.
+ *
+ * La chaîne « AAAA-MM-JJ », elle, est relue à minuit LOCAL par `parseDate`,
+ * puis rendue par les mêmes accesseurs : elle retombe sur le même jour civil,
+ * quel que soit le fuseau du processus. L'âge est donc calculé sur ELLE.
+ */
+export function editionEtAge(
+  birthDate: string | null | undefined,
+  instant: Date,
+  fuseau: string | null | undefined,
+): { editeLe: string; age: string } {
+  const editeLe = dateCivile(instant, fuseau);
+  return { editeLe, age: formatAgeAt(birthDate, editeLe) };
 }

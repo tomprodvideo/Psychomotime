@@ -12,8 +12,14 @@
  * — deux heures l'été — c'est donc la date de la VEILLE. Mesuré : à 00 h 30 le
  * 13 mars 2026 à Paris, l'expression rend « 2026-03-12 ». La fiche patient
  * imprimée à cette heure-là portait la veille en en-tête et dans le rappel de
- * chaque page — alors que l'âge, calculé sur l'instant, était juste : la date
- * affichée pouvait contredire l'âge imprimé à côté.
+ * chaque page.
+ *
+ * UNE DATE CIVILE NE SE CALCULE PAS À CÔTÉ D'UN ÂGE : ELLE LE NOURRIT. Le
+ * premier usage de ce module rendait la date juste sans l'âge, encore calculé
+ * sur l'instant — donc dans le fuseau du processus. Sur un serveur UTC, il
+ * imprimait « Éditée le 14/09 » à côté de l'âge du 13/09, le jour même d'un
+ * anniversaire : la contradiction même qu'il prétendait corriger. Pour un
+ * document daté, passer par `editionEtAge` (`lib/age.ts`).
  *
  * ── LE FUSEAU N'EST PAS UNE HYPOTHÈSE ─────────────────────────────────────
  *

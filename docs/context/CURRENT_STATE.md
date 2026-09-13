@@ -364,17 +364,26 @@ peine de le garder.
   affiché.
 
 
-- **La date d'édition de la fiche patient est calculée dans le fuseau du
-  cabinet depuis le 2026-09-13.** Elle l'était en UTC : éditée entre minuit
-  et une heure du matin l'hiver — deux heures l'été —, la fiche portait la date
-  de la VEILLE, en en-tête et dans le rappel de chaque page, à côté d'un âge
-  juste. `practices.timezone` existait depuis la migration `0001` et n'était lu
-  nulle part : `getCurrentPractice()` le transmet désormais, et
-  `lib/dateCivile.ts` calcule la date civile, avec retour au défaut de la
-  colonne si sa valeur est illisible — aucune contrainte ne la valide. Sept
-  contrôles, verts sous un processus UTC, Paris ou Los Angeles ; trois gardes
-  falsifiées. **Ce correctif ne vaut que pour la fiche**, qui affiche sa date
-  sans l'enregistrer. Le même défaut existe en dix-neuf autres endroits, et
+- **La date d'édition de la fiche patient ET l'âge qu'elle imprime sont
+  calculés ensemble, dans le fuseau du cabinet, depuis le 2026-09-13.** La date
+  l'était en UTC : éditée entre minuit et une heure du matin l'hiver — deux
+  heures l'été —, la fiche portait la date de la VEILLE, en en-tête et dans le
+  rappel de chaque page. `practices.timezone` existait depuis la migration
+  `0001` et n'était lu nulle part : `getCurrentPractice()` le transmet.
+
+  **Le premier correctif (`88b5fd6`) était défectueux, et il a été poussé.** Il
+  rendait la date juste sans l'âge, encore calculé sur l'instant — donc dans le
+  fuseau du processus serveur. Sous un processus UTC, pour un anniversaire à
+  00 h 30 à Paris, la fiche imprimait « Éditée le 14/09/2026 » à côté de « 7 ans
+  11 mois » : il CRÉAIT la contradiction qu'il décrivait. Avant lui, date et âge
+  étaient tous deux ceux de la veille — faux, mais cohérents. Invisible sur la
+  machine de développement, réglée sur Paris, et invisible à `npm run verify`,
+  qui y tourne. **Relevé par une seconde session de travail**, mesuré ici sous
+  trois fuseaux, corrigé : `editionEtAge` (`lib/age.ts`) calcule les deux à
+  partir de la même date civile. Le contrôle qui manquait se place LUI-MÊME en
+  UTC ; falsifié sur la machine réglée sur Paris, il échoue.
+
+  Ce correctif ne vaut que pour la fiche. Le même défaut existe ailleurs, et
   il n'est PAS corrigeable par simple remplacement : voir `Q-507`.
 
 ## Risques ouverts
