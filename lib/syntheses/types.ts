@@ -159,6 +159,31 @@ export function periodeParDefaut(aujourdhui = new Date()): {
   return { du: isoJour(du), au: isoJour(au) };
 }
 
+/**
+ * Les synthèses DÉJÀ REMISES dont la période recouvre celle-ci.
+ *
+ * Deux synthèses qui se chevauchent recomptent les mêmes séances. Ce n'est pas
+ * une faute — une synthèse de fin d'année peut légitimement reprendre un
+ * semestre déjà couvert — mais c'est une chose à savoir AVANT de remettre, pas
+ * à découvrir quand le destinataire le fait remarquer.
+ *
+ * Les brouillons ne comptent pas : rien n'est parti.
+ */
+export function chevauchements<
+  T extends Pick<Synthese, "id" | "status" | "period_start" | "period_end">,
+>(existantes: T[], du: string, au: string, saufId?: string | null): T[] {
+  if (!du || !au) return [];
+  return existantes.filter(
+    (s) =>
+      s.id !== saufId &&
+      s.status !== "brouillon" &&
+      // Deux intervalles se recouvrent si chacun commence avant que l'autre
+      // ne finisse. Bornes incluses des deux côtés, comme en base.
+      s.period_start <= au &&
+      du <= s.period_end,
+  );
+}
+
 function isoJour(d: Date): string {
   const m = `${d.getMonth() + 1}`.padStart(2, "0");
   const j = `${d.getDate()}`.padStart(2, "0");

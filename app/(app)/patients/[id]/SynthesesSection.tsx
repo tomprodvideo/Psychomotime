@@ -9,6 +9,7 @@ import {
   MENTION_COMPTE_SEANCES,
   OBJECTIF_STATUS_IMPRIME,
   SYNTHESE_STATUS_LABELS,
+  chevauchements,
   periodeParDefaut,
   type FaitsPeriode,
 } from "@/lib/syntheses/types";
@@ -129,6 +130,7 @@ export default function SynthesesSection({
         <DialogueSynthese
           patientId={patientId}
           synthese={edite === "nouveau" ? null : edite}
+          existantes={syntheses}
           parcours={parcours}
           destinataires={destinataires}
           onClose={() => setEdite(null)}
@@ -413,12 +415,14 @@ function ReleveDeLaPeriode({
 function DialogueSynthese({
   patientId,
   synthese,
+  existantes,
   parcours,
   destinataires,
   onClose,
 }: {
   patientId: string;
   synthese: SyntheseAvecDestinataire | null;
+  existantes: SyntheseAvecDestinataire[];
   parcours: OptionParcours[];
   destinataires: OptionDestinataire[];
   onClose: () => void;
@@ -469,6 +473,7 @@ function DialogueSynthese({
   }, [patientId, parcoursId, du, au, cle, periodeValide]);
 
   const aJour = releve?.cle === cle ? releve : null;
+  const recouvertes = chevauchements(existantes, du, au, synthese?.id);
 
   const soumettre = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -549,6 +554,23 @@ function DialogueSynthese({
             />
           </div>
         </div>
+
+        {/* DEUX SYNTHÈSES QUI SE CHEVAUCHENT RECOMPTENT LES MÊMES SÉANCES. Ce
+            n'est pas une faute — une synthèse annuelle peut légitimement
+            reprendre un semestre déjà couvert — mais c'est une chose à savoir
+            avant de remettre, pas à découvrir quand le destinataire le fait
+            remarquer. On le DIT ; on ne bloque pas. */}
+        {recouvertes.length > 0 && (
+          <p className="text-xs text-amber-900 bg-amber-50 ring-1 ring-amber-200 rounded-lg px-3 py-2">
+            {recouvertes.length === 1
+              ? "Une synthèse déjà remise couvre une partie de cette période"
+              : `${recouvertes.length} synthèses déjà remises couvrent une partie de cette période`}{" "}
+            ({recouvertes
+              .map((r) => `${frDate(r.period_start)} – ${frDate(r.period_end)}`)
+              .join(", ")}
+            ). Les mêmes séances y seront comptées deux fois.
+          </p>
+        )}
 
         <ReleveDeLaPeriode
           faits={aJour?.faits ?? null}
