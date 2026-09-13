@@ -6,6 +6,7 @@ import type { Bilan } from "@/lib/types";
 import { BILAN_TYPE_ORDER, BILAN_TYPE_UI, bilanTypeOf } from "@/lib/constants";
 import { frDate } from "@/lib/format";
 import { formatAgeAt } from "@/lib/age";
+import { dateCivile } from "@/lib/dateCivile";
 import { getCurrentPractice } from "@/lib/dossier/practice";
 import {
   getPatient,
@@ -93,6 +94,13 @@ export default async function FichePatientImprimable({
   // date, explicitement, et non par une lecture d'horloge cachée.
   const edite = new Date();
   const age = formatAgeAt(patient.birth_date, edite);
+  /* LA DATE D'ÉDITION, DANS LE FUSEAU DU CABINET — une seule fois.
+     Elle était calculée en UTC : une fiche éditée entre minuit et une heure du
+     matin l'hiver, deux heures l'été, portait la date de la VEILLE, en en-tête
+     comme dans le rappel imprimé en marge de chaque page — tandis que l'âge,
+     calculé sur l'instant, était juste. La date affichée pouvait contredire
+     l'âge imprimé à côté. Voir `lib/dateCivile.ts`. */
+  const editeLe = dateCivile(edite, practice.timezone);
 
   const liensActifs = entourage.filter((l) => !l.valid_to);
   const notesPubliables = notes.filter((n) => !n.third_party_information);
@@ -109,7 +117,7 @@ export default async function FichePatientImprimable({
       rappel={{
         nature: "Fiche patient",
         personne: patientName(patient),
-        date: `éditée le ${frDate(edite.toISOString().slice(0, 10))}`,
+        date: `éditée le ${frDate(editeLe)}`,
       }}
       style={{ ["--accent" as string]: accent } as React.CSSProperties}
     >
@@ -143,7 +151,7 @@ export default async function FichePatientImprimable({
               FICHE PATIENT
             </h1>
             <p className="text-center text-[11px] text-slate-500 mt-1">
-              Éditée le {frDate(edite.toISOString().slice(0, 10))}
+              Éditée le {frDate(editeLe)}
               {patient.status === "archive" && " · dossier archivé"}
             </p>
           </header>

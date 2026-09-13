@@ -34,6 +34,12 @@ export interface PracticeContext {
   canReadClinical: boolean;
   /** Peut administrer le cabinet : membres, entité juridique, fiscalité. */
   canAdminister: boolean;
+  /**
+   * Le fuseau du cabinet (`practices.timezone`). La colonne existait depuis la
+   * migration `0001` et n'était lue NULLE PART côté application : la « date du
+   * jour » y était calculée en UTC. Toujours passer par `dateCivile`.
+   */
+  timezone: string;
 }
 
 /* ==========================================================================

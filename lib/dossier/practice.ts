@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { PracticeContext, PracticeRole } from "./types";
+import { fuseauUtilisable } from "@/lib/dateCivile";
 
 /**
  * Cabinet courant de l'utilisateur connecté.
@@ -48,7 +49,7 @@ export async function getCurrentPractice(): Promise<PracticeContext | null> {
   // membre actif : le filtre ci-dessous est une précision, pas la protection.
   const { data, error } = await supabase
     .from("practice_members")
-    .select("id, role, practice_id, practices(id, name)")
+    .select("id, role, practice_id, practices(id, name, timezone)")
     .eq("user_id", user.id)
     .eq("status", "active")
     .order("created_at", { ascending: true })
@@ -67,7 +68,10 @@ export async function getCurrentPractice(): Promise<PracticeContext | null> {
     id: string;
     role: PracticeRole;
     practice_id: string;
-    practices: { id: string; name: string } | { id: string; name: string }[] | null;
+    practices:
+      | { id: string; name: string; timezone: string | null }
+      | { id: string; name: string; timezone: string | null }[]
+      | null;
   };
   const cabinet = Array.isArray(brut.practices) ? brut.practices[0] : brut.practices;
 
@@ -79,5 +83,6 @@ export async function getCurrentPractice(): Promise<PracticeContext | null> {
     canWrite: canWrite(brut.role),
     canReadClinical: canReadClinical(brut.role),
     canAdminister: brut.role === "owner",
+    timezone: fuseauUtilisable(cabinet?.timezone),
   };
 }
