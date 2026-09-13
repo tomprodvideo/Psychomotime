@@ -2,7 +2,12 @@ import Link from "next/link";
 import { CalendarDays } from "lucide-react";
 import { PageHeader } from "@/components/ui";
 import { getCurrentPractice } from "@/lib/dossier/practice";
-import { listAppointments, listAppointmentsToQualify, listPatients } from "@/lib/dossier/queries";
+import {
+  listAppointments,
+  listAppointmentsToQualify,
+  listPatients,
+  seancesAvecNote,
+} from "@/lib/dossier/queries";
 import AgendaVue from "./AgendaVue";
 
 import type { Metadata } from "next";
@@ -81,6 +86,15 @@ export default async function AgendaPage({
     listPatients(practice, { status: "actif", pageSize: 100 }),
   ]);
 
+  /* Les séances qui portent déjà une note. Chargée APRÈS, parce qu'elle dépend
+   * des identifiants qu'on vient d'obtenir — et en une seule requête, qui ne
+   * rapporte que des identifiants : le corps d'une note clinique n'a rien à
+   * faire dans la charge d'une page d'agenda. */
+  const notees = await seancesAvecNote(practice, [
+    ...rendezVous.map((r) => r.id),
+    ...aQualifier.map((r) => r.id),
+  ]);
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
       <PageHeader
@@ -99,6 +113,7 @@ export default async function AgendaPage({
         maintenant={maintenant.toISOString()}
         rendezVous={rendezVous}
         aQualifier={aQualifier}
+        seancesNotees={[...notees]}
         patients={patients.items}
         canWrite={practice.canWrite}
       />

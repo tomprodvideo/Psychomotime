@@ -493,6 +493,11 @@ export async function saveNote(formData: FormData): Promise<Guarded<true>> {
   if (!verdict.ok) return verdict;
 
   revalidatePath(`/patients/${patientId}`);
+  /* Une note s'écrit aussi depuis l'agenda, et l'agenda dit quelles séances en
+   * portent déjà une. Sans ce rafraîchissement, on viendrait d'écrire une note
+   * et l'écran continuerait d'afficher « Note de séance » — on la réécrirait. */
+  revalidatePath("/agenda");
+  revalidatePath("/");
   return { ok: true, value: true };
 }
 

@@ -385,6 +385,46 @@ export async function listAppointmentsToQualify(
 }
 
 /** Historique des rendez-vous d'un patient, le plus récent d'abord. */
+/**
+ * Quelles séances portent déjà une note.
+ *
+ * POURQUOI CETTE LECTURE EXISTE. Écrire une note depuis l'agenda ne sert à
+ * rien si l'on ne voit pas ce qu'on a déjà écrit : on relit chaque séance pour
+ * savoir laquelle reste à renseigner. C'est le même raisonnement que pour les
+ * rendez-vous à qualifier — le produit doit montrer ce qui reste à faire, pas
+ * obliger à s'en souvenir.
+ *
+ * UNE SEULE REQUÊTE, et elle ne rapporte que des identifiants : le CORPS des
+ * notes n'a rien à faire dans une charge de page d'agenda. Une note clinique
+ * ne se transporte pas pour afficher une pastille.
+ */
+export async function seancesAvecNote(
+  practice: PracticeContext,
+  appointmentIds: string[],
+): Promise<Set<string>> {
+  if (!practice.canReadClinical || appointmentIds.length === 0) return new Set();
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("patient_notes")
+    .select("appointment_id")
+    .eq("practice_id", practice.practiceId)
+    .in("appointment_id", appointmentIds);
+
+  if (error) {
+    /* En cas d'échec on ne prétend pas qu'aucune séance n'a de note : on rend
+     * un ensemble vide, donc aucune pastille. Afficher « pas de note » sur une
+     * séance qui en a une serait pire que de ne rien afficher. */
+    console.error("[agenda] lecture des notes de séance refusée :", error);
+    return new Set();
+  }
+  return new Set(
+    (data ?? [])
+      .map((r) => (r as { appointment_id: string | null }).appointment_id)
+      .filter((id): id is string => id !== null),
+  );
+}
+
 export async function listPatientAppointments(
   practice: PracticeContext,
   patientId: string,

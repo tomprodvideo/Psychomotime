@@ -15,6 +15,7 @@ import {
 import type { PatientListItem } from "@/lib/dossier/queries";
 import AppointmentDialog from "./AppointmentDialog";
 import AttendanceControl from "./AttendanceControl";
+import NoteSeanceBouton from "./NoteSeanceBouton";
 
 /** Couleur de l'issue. Jamais la SEULE porteuse de l'information : le libellé
  *  est toujours écrit à côté (WCAG 1.4.1). */
@@ -49,6 +50,7 @@ export default function AgendaVue({
   maintenant,
   rendezVous,
   aQualifier,
+  seancesNotees,
   patients,
   canWrite,
 }: {
@@ -58,11 +60,14 @@ export default function AgendaVue({
   maintenant: string;
   rendezVous: AppointmentWithPatient[];
   aQualifier: AppointmentWithPatient[];
+  /** Identifiants des séances portant déjà une note. */
+  seancesNotees: string[];
   patients: PatientListItem[];
   canWrite: boolean;
 }) {
   const router = useRouter();
   const [edite, setEdite] = useState<Appointment | "nouveau" | null>(null);
+  const notees = new Set(seancesNotees);
 
   const d = new Date(debut);
   const f = new Date(fin);
@@ -133,7 +138,15 @@ export default function AgendaVue({
                     {heure.format(new Date(rdv.starts_at))}
                   </span>
                 </div>
-                {canWrite && <AttendanceControl appointment={rdv} compact />}
+                {canWrite && (
+                  <div className="flex items-center gap-1">
+                    <AttendanceControl appointment={rdv} compact />
+                    <NoteSeanceBouton
+                      appointment={rdv}
+                      aDejaUneNote={notees.has(rdv.id)}
+                    />
+                  </div>
+                )}
               </li>
             ))}
           </ul>
@@ -222,6 +235,7 @@ export default function AgendaVue({
                     rdv={rdv}
                     maintenant={maintenant}
                     canWrite={canWrite}
+                    aDejaUneNote={notees.has(rdv.id)}
                     onEdit={() => setEdite(rdv)}
                   />
                 ))}
@@ -247,11 +261,13 @@ function LigneRendezVous({
   rdv,
   maintenant,
   canWrite,
+  aDejaUneNote,
   onEdit,
 }: {
   rdv: AppointmentWithPatient;
   maintenant: string;
   canWrite: boolean;
+  aDejaUneNote: boolean;
   onEdit: () => void;
 }) {
   const debut = new Date(rdv.starts_at);
@@ -308,6 +324,13 @@ function LigneRendezVous({
           {canWrite && (
             <>
               {passe && <AttendanceControl appointment={rdv} compact />}
+              {/* La note s'écrit ICI, quand ce qu'on a travaillé est encore
+                  frais. Passer par la fiche du dossier suppose de quitter
+                  l'agenda, de retrouver le dossier, puis la séance dans une
+                  liste — trois gestes à un moment où l'on en enchaîne dix. */}
+              {passe && (
+                <NoteSeanceBouton appointment={rdv} aDejaUneNote={aDejaUneNote} />
+              )}
               <button
                 type="button"
                 onClick={onEdit}
