@@ -50,6 +50,7 @@ export default function AgendaVue({
   maintenant,
   rendezVous,
   aQualifier,
+  totalAQualifier,
   seancesNotees,
   patients,
   canWrite,
@@ -60,6 +61,8 @@ export default function AgendaVue({
   maintenant: string;
   rendezVous: AppointmentWithPatient[];
   aQualifier: AppointmentWithPatient[];
+  /** Le compte RÉEL, non plafonné. `null` quand il n'a pas pu être fait. */
+  totalAQualifier: number | null;
   /** Identifiants des séances portant déjà une note. */
   seancesNotees: string[];
   patients: PatientListItem[];
@@ -114,14 +117,22 @@ export default function AgendaVue({
             className="flex items-center gap-2 font-medium text-amber-900"
           >
             <AlertCircle className="h-4 w-4" aria-hidden="true" />
-            {aQualifier.length} rendez-vous passé{aQualifier.length > 1 ? "s" : ""} à
-            renseigner
+            {totalAQualifier ?? aQualifier.length} rendez-vous passé
+            {(totalAQualifier ?? aQualifier.length) > 1 ? "s" : ""} à renseigner
           </h2>
           <p className="text-sm text-amber-800 mt-1">
             Tant qu&apos;un créneau n&apos;est pas renseigné, il ne compte ni comme
             séance réalisée, ni comme absence — et il ne peut nourrir aucune
             attestation de présence.
           </p>
+          {/* LE COMPTE ET LA LISTE SONT DEUX CHOSES. La liste est plafonnée ;
+              le compte ne l'est pas. Quand ils divergent, on le DIT — sans quoi
+              l'écran annoncerait un arriéré stable pendant qu'il grossit. */}
+          {totalAQualifier !== null && totalAQualifier > aQualifier.length && (
+            <p className="text-sm text-amber-900 font-medium mt-1">
+              Les {aQualifier.length} plus anciens sont listés ci-dessous.
+            </p>
+          )}
           <ul className="mt-3 space-y-2 list-none p-0 m-0">
             {aQualifier.map((rdv) => (
               <li

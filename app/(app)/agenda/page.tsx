@@ -5,6 +5,7 @@ import { getCurrentPractice } from "@/lib/dossier/practice";
 import {
   listAppointments,
   listAppointmentsToQualify,
+  countAppointmentsToQualify,
   listPatients,
   seancesAvecNote,
 } from "@/lib/dossier/queries";
@@ -80,9 +81,10 @@ export default async function AgendaPage({
 
   const maintenant = new Date();
 
-  const [rendezVous, aQualifier, patients] = await Promise.all([
+  const [rendezVous, aQualifier, totalAQualifier, patients] = await Promise.all([
     listAppointments(practice, debut, fin),
     listAppointmentsToQualify(practice, maintenant),
+    countAppointmentsToQualify(practice, maintenant),
     listPatients(practice, { status: "actif", pageSize: 100 }),
   ]);
 
@@ -113,6 +115,7 @@ export default async function AgendaPage({
         maintenant={maintenant.toISOString()}
         rendezVous={rendezVous}
         aQualifier={aQualifier}
+        totalAQualifier={totalAQualifier}
         seancesNotees={[...notees]}
         patients={patients.items}
         canWrite={practice.canWrite}

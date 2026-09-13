@@ -1241,8 +1241,15 @@ function TemplatesMenu({
               <h2 className="font-semibold text-slate-800 flex-1 truncate">
                 {current ? current.name : "Modèles"}
               </h2>
-              <button type="button" onClick={() => setOpen(false)}>
-                <X className="h-5 w-5 text-slate-500" />
+              {/* Ni texte, ni `aria-label`, ni `title` : le nom accessible
+                  était VIDE. `lucide-react` ne pose pas `aria-hidden` de
+                  lui-même, et un `<svg>` sans titre ne nomme rien. */}
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                aria-label="Fermer les modèles"
+              >
+                <X className="h-5 w-5 text-slate-500" aria-hidden="true" />
               </button>
             </div>
 

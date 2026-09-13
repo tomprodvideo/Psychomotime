@@ -30,7 +30,7 @@ mutation par le harnais de falsification — et non de la production.
 | L3 | Registre d'instruments et règle de cotation unique | partiel — le moteur de bilans reste sur le modèle v1 |
 | L5 | Moteur comptable, charges, attestations | livré |
 | L7 | Transmissions par lien | livré |
-| L8 | Design, accessibilité, performance | en cours — performance faite, accessibilité en audit |
+| L8 | Design, accessibilité, performance | en cours — performance faite, cinq manquements WCAG corrigés, socle de composants à faire |
 | L4 | Écrits cliniques : note de séance, courrier, synthèse, écrit de fin | 4 des 7 écrits manquants livrés |
 | L6, L9 | IA, préparation à la production | à faire |
 
@@ -131,6 +131,13 @@ peine de le garder.
 - **Le design system n'existe pas** : 58 lignes de CSS, 108 lignes de
   composants partagés.
 - **Aucune durée de conservation n'est tranchée**, pour aucune donnée.
+- **Le socle de composants n'existe toujours pas.** Le style de champ est
+  redéclaré **33 fois dans 29 fichiers**, en trois variantes divergentes — et
+  les plus récentes sont celles des derniers écrans écrits, donc la dérive est
+  active. `aria-invalid` n'apparaît **nulle part** : les erreurs de formulaire
+  s'affichent en bas, sans lien avec le champ fautif. Le chemin est tracé
+  (`Champ`, `SectionDossier`, `Bouton`) et il commence par élargir le contrat
+  de retour des actions serveur, qui ne rendent aujourd'hui qu'une chaîne.
 
 ## Risques ouverts
 

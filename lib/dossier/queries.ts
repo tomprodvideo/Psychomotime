@@ -361,6 +361,15 @@ export async function listAppointments(
  * C'est la première chose qu'un tableau de bord doit montrer : tant qu'un
  * créneau n'est pas qualifié, il ne compte ni comme séance réalisée, ni comme
  * absence, et il ne peut nourrir aucune attestation.
+ *
+ * LES PLUS ANCIENS D'ABORD, et c'était l'inverse. Trié du plus récent au plus
+ * ancien et plafonné, l'arriéré sortait par le bas : au vingt-et-unième
+ * créneau non qualifié, les plus vieux quittaient la liste et n'y revenaient
+ * jamais. Or une séance restée « à venir » n'est ni honorée ni absente — elle
+ * ne peut nourrir aucune facture et aucune attestation. Ce sont précisément
+ * les plus anciennes qu'il faut remonter.
+ *
+ * Relevé par la relecture d'interface du lot 8.
  */
 export async function listAppointmentsToQualify(
   practice: PracticeContext,
@@ -374,7 +383,7 @@ export async function listAppointmentsToQualify(
     .eq("practice_id", practice.practiceId)
     .eq("attendance", "a_venir")
     .lt("starts_at", now.toISOString())
-    .order("starts_at", { ascending: false })
+    .order("starts_at", { ascending: true })
     .limit(limit);
 
   if (error) {
@@ -423,6 +432,36 @@ export async function seancesAvecNote(
       .map((r) => (r as { appointment_id: string | null }).appointment_id)
       .filter((id): id is string => id !== null),
   );
+}
+
+/**
+ * COMBIEN il y en a, indépendamment de combien on en affiche.
+ *
+ * LE DÉFAUT : l'écran annonçait `aQualifier.length`, c'est-à-dire la taille de
+ * la page affichée. Au-delà du plafond, il affichait « 20 » de façon stable
+ * pendant que l'arriéré grossissait — un compteur qui ment par plafonnement,
+ * et qui ment dans le sens rassurant.
+ *
+ * Rend `null` quand le compte échoue : un zéro se lirait « rien à faire », et
+ * ce serait exactement l'inverse de ce qu'il faut savoir.
+ */
+export async function countAppointmentsToQualify(
+  practice: PracticeContext,
+  now: Date,
+): Promise<number | null> {
+  const supabase = await createClient();
+  const { count, error } = await supabase
+    .from("appointments")
+    .select("id", { count: "exact", head: true })
+    .eq("practice_id", practice.practiceId)
+    .eq("attendance", "a_venir")
+    .lt("starts_at", now.toISOString());
+
+  if (error) {
+    console.error("[agenda] comptage des rendez-vous à qualifier refusé :", error);
+    return null;
+  }
+  return count ?? null;
 }
 
 export async function listPatientAppointments(
@@ -622,8 +661,10 @@ export async function validateBandSet(bandSetId: string): Promise<string[]> {
 export interface JourneeResume {
   /** Rendez-vous du jour demandé, dans l'ordre. */
   aujourdhui: AppointmentWithPatient[];
-  /** Créneaux passés dont l'issue n'a pas été constatée. */
+  /** Créneaux passés dont l'issue n'a pas été constatée — les dix plus anciens. */
   aQualifier: AppointmentWithPatient[];
+  /** COMBIEN il y en a, sans plafond. `null` quand le compte a échoué. */
+  aQualifierTotal: number | null;
   /** Rendez-vous à venir sur les sept jours suivants. */
   semaineCount: number;
   /** Parcours en liste d'attente, le plus ancien d'abord. */
@@ -660,10 +701,18 @@ export async function getJourneeResume(
   const finSemaine = new Date(debutJour);
   finSemaine.setDate(finSemaine.getDate() + 7);
 
-  const [aujourdhui, aQualifier, semaine, attente, parcoursActifs, patientsActifs] =
-    await Promise.all([
+  const [
+    aujourdhui,
+    aQualifier,
+    aQualifierTotal,
+    semaine,
+    attente,
+    parcoursActifs,
+    patientsActifs,
+  ] = await Promise.all([
       listAppointments(practice, debutJour, finJour),
       listAppointmentsToQualify(practice, maintenant, 10),
+      countAppointmentsToQualify(practice, maintenant),
       supabase
         .from("appointments")
         .select("id", { count: "exact", head: true })
@@ -705,6 +754,7 @@ export async function getJourneeResume(
   return {
     aujourdhui,
     aQualifier,
+    aQualifierTotal,
     semaineCount: semaine,
     attente,
     parcoursActifs,

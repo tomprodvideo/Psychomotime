@@ -108,8 +108,12 @@ export default async function AccueilPage() {
             className="flex items-center gap-2 font-medium text-amber-900"
           >
             <AlertCircle className="h-4 w-4" aria-hidden="true" />
-            {resume.aQualifier.length} rendez-vous passé
-            {resume.aQualifier.length > 1 ? "s" : ""} à renseigner
+            {/* LE COMPTE RÉEL, PAS LA TAILLE DE LA PAGE. La liste est
+                plafonnée à dix ; l'écran affichait « 10 » de façon stable
+                pendant que l'arriéré grossissait. */}
+            {resume.aQualifierTotal ?? resume.aQualifier.length} rendez-vous
+            passé{(resume.aQualifierTotal ?? resume.aQualifier.length) > 1 ? "s" : ""}{" "}
+            à renseigner
           </h2>
           <p className="text-sm text-amber-800 mt-1">
             Tant qu&apos;un créneau n&apos;est pas renseigné, il ne compte ni
@@ -135,12 +139,13 @@ export default async function AccueilPage() {
               </li>
             ))}
           </ul>
-          {resume.aQualifier.length > 5 && (
+          {(resume.aQualifierTotal ?? resume.aQualifier.length) > 5 && (
             <Link
               href="/agenda"
               className="inline-block text-sm font-medium text-amber-900 underline mt-2"
             >
-              Voir les {resume.aQualifier.length - 5} autres
+              Voir les {(resume.aQualifierTotal ?? resume.aQualifier.length) - 5}{" "}
+              autres
             </Link>
           )}
         </section>

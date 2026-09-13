@@ -76,12 +76,27 @@ export default function Sidebar({
             )}
           </div>
         </div>
-        <button onClick={() => setOpen(!open)} aria-label="Menu">
-          {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+        {/* L'ÉTAT EST EXPOSÉ, PAS SEULEMENT DESSINÉ. L'échange d'icône dit
+            « ouvert » à qui voit ; `aria-expanded` le dit à qui écoute, et le
+            nom change avec l'état plutôt que de rester « Menu » sur un bouton
+            qui ferme. */}
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          aria-expanded={open}
+          aria-controls="navigation-principale"
+          aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}
+        >
+          {open ? (
+            <X className="h-6 w-6" aria-hidden="true" />
+          ) : (
+            <Menu className="h-6 w-6" aria-hidden="true" />
+          )}
         </button>
       </div>
 
       <aside
+        id="navigation-principale"
         className={`${
           open ? "block" : "hidden"
         } md:flex md:flex-col fixed md:static inset-x-0 top-[57px] md:top-0 z-20 md:w-64 bg-white md:bg-brand-900 border-b md:border-0 border-slate-200 md:min-h-screen no-print`}
@@ -138,7 +153,11 @@ export default function Sidebar({
 
         <div className="p-3 md:p-4 border-t border-slate-200 md:border-white/10">
           <div className="px-3 py-2 mb-1">
-            <p className="text-xs text-slate-500 md:text-white/40">Connectée</p>
+            {/* `white/40` composé sur `brand-900` donne 3,29:1 — sous les 4,5:1
+                exigés pour du texte de 12 px. `white/70`, employé juste
+                au-dessus pour les liens, est à 6,83:1. Calcul, pas estimation :
+                les deux couleurs sont des littéraux. */}
+            <p className="text-xs text-slate-500 md:text-white/70">Connectée</p>
             <p className="text-sm font-medium text-slate-700 md:text-white truncate">
               {displayName}
             </p>

@@ -106,6 +106,19 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=…`}
 
   return (
     <div className="md:flex min-h-screen">
+      {/* LE LIEN D'ÉVITEMENT, PREMIER ARRÊT DU CLAVIER.
+          Sans lui, chaque page fait traverser les huit ou neuf liens de la
+          barre latérale avant d'atteindre le contenu — à chaque navigation
+          entre deux dossiers, plusieurs fois par jour. `sr-only` le garde
+          invisible tant qu'il n'a pas le focus ; `focus:not-sr-only` le montre
+          alors franchement, parce qu'un lien d'évitement qu'on ne voit pas
+          quand on l'atteint ne sert à personne. */}
+      <a
+        href="#contenu"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-2 focus:left-2 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-brand-800 focus:shadow-lg"
+      >
+        Aller au contenu
+      </a>
       <Sidebar
         displayName={displayName}
         signOutAction={signOut}
@@ -113,7 +126,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=…`}
         planLabel={planLabel}
         planActive={planActive}
       />
-      <main className="flex-1 min-w-0">
+      <main id="contenu" tabIndex={-1} className="flex-1 min-w-0">
         {access.trialDaysLeft !== null && (
           <div className="bg-amber-50 border-b border-amber-200 text-amber-800 text-sm px-4 py-2 text-center no-print">
             Période d&apos;essai — il vous reste{" "}
