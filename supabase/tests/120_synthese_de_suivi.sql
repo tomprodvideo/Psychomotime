@@ -61,9 +61,24 @@ begin
       date '2026-07-01', date '2026-10-31') ->> 'seances_honorees')::int, 7,
     '…et la synthèse n''en retient que les sept qui ont eu lieu.');
 
-  -- LES OBJECTIFS TELS QU'ELLE LES A POSÉS, sans requalification.
-  perform tests.assert_equals(jsonb_array_length(v_aout -> 'objectifs'), 3,
-    'Les trois objectifs du parcours sont repris.');
+  /* LES OBJECTIFS TELS QU'ELLE LES A POSÉS, sans requalification.
+   *
+   * ON ASSERTE LES INTITULÉS, PAS LEUR NOMBRE. Le jeu fictif porte désormais
+   * des objectifs sur DEUX parcours du même cabinet : compter n'aurait pas
+   * distingué « les objectifs de ce parcours » de « tous les objectifs du
+   * cabinet ». La relecture de sécurité a mesuré qu'en retirant le filtre par
+   * parcours, la suite entière restait verte. */
+  perform tests.assert_equals(
+    (select string_agg(o ->> 'intitule', ' | ')
+       from jsonb_array_elements(v_aout -> 'objectifs') o),
+    'Tenir une ligne d''écriture sur dix minutes sans changer de prise | ' ||
+    'Se repérer dans l''enchaînement des consignes en classe | ' ||
+    'Reprendre la course en récréation sans appréhension',
+    'La synthèse reprend les objectifs DE CE PARCOURS, dans leur ordre, et aucun autre.');
+  perform tests.assert_rows(
+    'select 1 from public.care_objectives
+      where practice_id = ''a1111111-1111-4111-8111-111111111111''', 5,
+    'Le cabinet en porte cinq au total : sans cet écart, l''assertion ci-dessus ne prouverait rien.');
   perform tests.assert_equals(
     v_aout -> 'objectifs' -> 2 ->> 'statut', 'atteint',
     'Un objectif atteint est recopié atteint : le logiciel ne rejuge rien.');
@@ -152,6 +167,7 @@ select tests.authenticate_as(:alpha::uuid);
 do $$
 declare
   v_s uuid;
+  v_libre uuid;
   v_instantane jsonb;
   v_objectif uuid;
 begin
@@ -217,6 +233,70 @@ begin
   perform tests.assert_fails(
     format('update public.follow_up_summaries set detail_absences = true where id = %L', v_s),
     'Une synthèse remise n''ajoute pas les absences après coup.');
+  perform tests.assert_fails(
+    format('update public.follow_up_summaries set adjustments = ''Autre chose.'' where id = %L', v_s),
+    'Les ajustements ne se réécrivent pas après la remise.');
+  perform tests.assert_fails(
+    format('update public.follow_up_summaries set note = ''Autre mention.'' where id = %L', v_s),
+    'La mention imprimée ne se réécrit pas.');
+  perform tests.assert_fails(
+    format('update public.follow_up_summaries set period_start = date ''2026-07-01'' where id = %L', v_s),
+    'Une synthèse remise ne change pas de date de début.');
+  perform tests.assert_fails(
+    format('update public.follow_up_summaries set issued_on = date ''2026-01-01'' where id = %L', v_s),
+    'Une synthèse remise ne se redate pas.');
+  /* CE QUI RATTACHE LA PIÈCE. Le document imprimé ne bougeait pas — il lit
+   * l'instantané — mais son IMPUTATION se déplaçait : à quel dossier, à quel
+   * parcours, qui a signé, quand elle a été créée. Six clauses de cette liste
+   * ne faisaient échouer aucun contrôle ; la relecture de sécurité l'a mesuré
+   * en les désarmant une par une. */
+  perform tests.assert_fails(
+    format('update public.follow_up_summaries set recipient_contact_id = %L where id = %L',
+           (select id from public.contacts
+             where practice_id = 'a1111111-1111-4111-8111-111111111111' limit 1), v_s),
+    'Une synthèse remise ne change pas de destinataire.');
+  perform tests.assert_fails(
+    format('update public.follow_up_summaries set pathway_id = null where id = %L', v_s),
+    'Une synthèse remise ne se détache pas de son parcours.');
+
+  /* CHANGER DE DOSSIER ET CHANGER DE MODE DE REMISE se vérifient sur une AUTRE
+   * synthèse, sans parcours et avec un destinataire nommé. Sur celle-ci, les
+   * deux écritures butaient d'abord sur la garde de COHÉRENCE — le parcours
+   * n'est pas celui du nouveau dossier, et retirer la remise au patient ne
+   * laissait plus personne — et les contrôles constataient un refus sans
+   * jamais atteindre la garde d'immuabilité qu'ils prétendaient éprouver.
+   * Mesuré en désarmant : la suite restait verte. */
+  insert into public.follow_up_summaries
+    (practice_id, patient_id, recipient_contact_id, recipient_is_patient,
+     period_start, period_end, observed_evolution)
+  values ('a1111111-1111-4111-8111-111111111111',
+          'a6000000-0000-4000-8000-000000000001',
+          (select id from public.contacts
+            where practice_id = 'a1111111-1111-4111-8111-111111111111' limit 1),
+          true, date '2026-08-01', date '2026-08-31', 'Texte.')
+  returning id into v_libre;
+  perform public.issue_follow_up_summary(v_libre);
+
+  perform tests.assert_fails(
+    format('update public.follow_up_summaries set patient_id = %L where id = %L',
+           'a6000000-0000-4000-8000-000000000002', v_libre),
+    'Une synthèse remise ne change pas de dossier.');
+  perform tests.assert_fails(
+    format('update public.follow_up_summaries set recipient_is_patient = false where id = %L', v_libre),
+    'Une synthèse remise ne change pas de mode de remise.');
+  perform tests.assert_fails(
+    format('update public.follow_up_summaries set issued_by = null where id = %L', v_s),
+    'On ne réécrit pas qui a signé une synthèse remise.');
+  perform tests.assert_fails(
+    format('update public.follow_up_summaries set created_by = null where id = %L', v_s),
+    'Ni qui l''a rédigée.');
+  perform tests.assert_fails(
+    format('update public.follow_up_summaries set created_at = now() + interval ''1 hour'' where id = %L', v_s),
+    'Ni quand elle a été créée.');
+  perform tests.assert_fails(
+    format('update public.follow_up_summaries set cancellation_reason = ''Motif posé d''''avance.'' where id = %L', v_s),
+    'Un motif d''annulation ne se pose pas d''avance sur une synthèse remise.');
+
   perform tests.assert_fails(
     format('update public.follow_up_summaries set status = ''brouillon'' where id = %L', v_s),
     'Une synthèse remise ne redevient pas un brouillon.');
@@ -646,12 +726,17 @@ begin
     'cabinet,destinataire,emis_le,entite_juridique,faits,identifiants,mentions,patient,periode,praticien,remise',
     'L''instantané d''une synthèse a une liste de clés CLOSE. En ajouter une est une décision, pas un détail.');
 
+  /* LES FAITS ONT DEUX FORMES, ET C'EST LA RÈGLE « UN DOCUMENT NE CONSERVE PAS
+   * CE QU'IL N'A PAS DIT ». Taire les rendez-vous non honorés au seul rendu
+   * laissait l'instantané porter une donnée que le destinataire n'a jamais
+   * reçue : tout export, toute lecture d'API la restituait. Trouvé par la
+   * relecture de sécurité du rang 3. */
   select string_agg(k, ',' order by k) into v_cles_faits
     from jsonb_object_keys(
       (select snapshot -> 'faits' from public.follow_up_summaries where id = v_s)) k;
   perform tests.assert_equals(v_cles_faits,
-    'absences,annulees_par_le_cabinet,objectifs,parcours_ouvert_le,seances_honorees',
-    'Les FAITS aussi ont une liste close : c''est la moitié du document que la praticienne n''écrit pas.');
+    'objectifs,parcours_ouvert_le,seances_honorees',
+    'Sans la case cochée, les comptes de rendez-vous non honorés ne sont pas même conservés.');
 
   /* CHAQUE OBJECTIF AUSSI a son jeu de clés fermé. `note_de_reevaluation`
    * y est parce que le STATUT est un mot du logiciel, choisi dans une
@@ -672,6 +757,133 @@ begin
   perform tests.assert(
     (v_texte::jsonb -> 'mentions' ->> 'comptes') like '%attestation de présence%',
     'La mention qui encadre les comptes est figée avec le document, et renvoie au document vérifiable.');
+
+  /* LE CONTRE-CONTRÔLE : avec la case cochée, les deux comptes SONT figés.
+   * Sans lui, une fonction qui ne les calculerait jamais passerait le contrôle
+   * ci-dessus tout aussi bien. */
+  insert into public.follow_up_summaries
+    (practice_id, patient_id, pathway_id, period_start, period_end,
+     observed_evolution, detail_absences)
+  values ('a1111111-1111-4111-8111-111111111111',
+          'a6000000-0000-4000-8000-000000000001',
+          'a7000000-0000-4000-8000-000000000001',
+          date '2026-08-01', date '2026-08-31', 'Texte.', true)
+  returning id into v_s;
+  perform public.issue_follow_up_summary(v_s);
+  select string_agg(k, ',' order by k) into v_cles_faits
+    from jsonb_object_keys(
+      (select snapshot -> 'faits' from public.follow_up_summaries where id = v_s)) k;
+  perform tests.assert_equals(v_cles_faits,
+    'absences,annulees_par_le_cabinet,objectifs,parcours_ouvert_le,seances_honorees',
+    'Avec la case cochée, les deux comptes sont figés — et les DEUX, pas seulement les absences.');
+end
+$$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+--  15. Le refus est le MÊME, que le dossier existe ailleurs ou n'existe pas
+-- ---------------------------------------------------------------------------
+--  LE DÉFAUT, démontré par la relecture de sécurité : PostgreSQL exécute les
+--  déclencheurs BEFORE ROW avant la clause `with check` de la RLS. Le
+--  déclencheur de cohérence, `security definer`, contourne la RLS et répondait
+--  donc le premier — avec un code et un message DIFFÉRENTS selon que la
+--  ressource appartenait ou non au cabinet visé. Cela suffisait à confirmer
+--  une appartenance sans être membre.
+--
+--  Aucun contenu ne fuyait, seulement l'appartenance. Le scénario réaliste
+--  n'est pas l'inconnu — `anon` est refusé au niveau privilège — mais le
+--  MEMBRE RÉVOQUÉ, à qui la perte du statut actif retire toute lecture en lui
+--  laissant ce sondage.
+begin;
+do $$
+declare
+  v_patient_a uuid := 'a6000000-0000-4000-8000-000000000001';
+  v_inexistant uuid := '00000000-0000-4000-8000-00000000dead';
+  v_reel text;
+  v_faux text;
+  v_ok boolean;
+begin
+  -- Beta, propriétaire du cabinet B, écrit vers le cabinet A.
+  perform tests.authenticate_as('b0000000-0000-4000-8000-000000000001'::uuid);
+
+  begin
+    insert into public.follow_up_summaries
+      (practice_id, patient_id, period_start, period_end, observed_evolution)
+    values ('a1111111-1111-4111-8111-111111111111', v_patient_a,
+            date '2026-08-01', date '2026-08-31', 'Texte.');
+    v_reel := 'AUCUN REFUS';
+  exception when others then v_reel := sqlstate || ' ' || sqlerrm;
+  end;
+
+  begin
+    insert into public.follow_up_summaries
+      (practice_id, patient_id, period_start, period_end, observed_evolution)
+    values ('a1111111-1111-4111-8111-111111111111', v_inexistant,
+            date '2026-08-01', date '2026-08-31', 'Texte.');
+    v_faux := 'AUCUN REFUS';
+  exception when others then v_faux := sqlstate || ' ' || sqlerrm;
+  end;
+
+  perform tests.assert_equals(v_reel, v_faux,
+    'Un dossier RÉEL d''un autre cabinet et un dossier INEXISTANT doivent être refusés de la même façon : sinon la différence dit lequel existe.');
+  perform tests.assert(v_reel <> 'AUCUN REFUS',
+    'Et les deux doivent bien être refusés : sans quoi l''égalité ci-dessus ne prouverait rien.');
+
+  -- LE CONTRE-CONTRÔLE : la praticienne du cabinet A, elle, écrit.
+  reset role;
+  perform tests.authenticate_as('a0000000-0000-4000-8000-000000000001'::uuid);
+  perform tests.assert_affects_rows(
+    format('insert into public.follow_up_summaries
+              (practice_id, patient_id, period_start, period_end, observed_evolution)
+            values (%L, %L, date ''2026-08-01'', date ''2026-08-31'', ''Texte.'')',
+           'a1111111-1111-4111-8111-111111111111', v_patient_a),
+    1, 'Le membre habilité écrit toujours : le refus uniforme n''a rien fermé de légitime.');
+
+  /* LA MÊME LACUNE EXISTAIT SUR LES DEUX ÉCRITS DÉJÀ LIVRÉS. Elle est corrigée
+   * dans la même migration, parce que c'est UNE décision et non trois. */
+  reset role;
+  perform tests.authenticate_as('b0000000-0000-4000-8000-000000000001'::uuid);
+
+  begin
+    insert into public.liaison_letters
+      (practice_id, patient_id, recipient_contact_id, subject, body)
+    values ('a1111111-1111-4111-8111-111111111111', v_patient_a,
+            (select id from public.contacts
+              where practice_id = 'a1111111-1111-4111-8111-111111111111' limit 1),
+            'Objet', 'Corps');
+    v_reel := 'AUCUN REFUS';
+  exception when others then v_reel := sqlstate || ' ' || sqlerrm;
+  end;
+  begin
+    insert into public.liaison_letters
+      (practice_id, patient_id, recipient_contact_id, subject, body)
+    values ('a1111111-1111-4111-8111-111111111111', v_inexistant,
+            v_inexistant, 'Objet', 'Corps');
+    v_faux := 'AUCUN REFUS';
+  exception when others then v_faux := sqlstate || ' ' || sqlerrm;
+  end;
+  perform tests.assert_equals(v_reel, v_faux,
+    'Le courrier de liaison refuse de la même façon, lui aussi.');
+
+  begin
+    insert into public.attestations (practice_id, kind, patient_id)
+    values ('a1111111-1111-4111-8111-111111111111', 'presence', v_patient_a);
+    v_reel := 'AUCUN REFUS';
+  exception when others then v_reel := sqlstate || ' ' || sqlerrm;
+  end;
+  begin
+    insert into public.attestations (practice_id, kind, patient_id)
+    values ('a1111111-1111-4111-8111-111111111111', 'presence', v_inexistant);
+    v_faux := 'AUCUN REFUS';
+  exception when others then v_faux := sqlstate || ' ' || sqlerrm;
+  end;
+  perform tests.assert_equals(v_reel, v_faux,
+    'L''attestation aussi.');
+  perform tests.assert(v_reel <> 'AUCUN REFUS',
+    'Et toutes refusent bien : sans quoi les égalités ci-dessus ne prouveraient rien.');
+
+  v_ok := true;
+  perform tests.assert(v_ok, 'Bloc exécuté.');
 end
 $$;
 rollback;

@@ -111,6 +111,22 @@ create index idx_follow_up_patient on public.follow_up_summaries (patient_id);
 create trigger follow_up_updated_at before update on public.follow_up_summaries
   for each row execute function app.set_updated_at();
 
+/* QUI A RÉDIGÉ, ET PAS SEULEMENT QUI A SIGNÉ.
+ *
+ * `created_by` était déclaré et jamais écrit : ni valeur par défaut, ni
+ * écriture applicative. Dans un cabinet à plusieurs membres, rien ne disait
+ * qui avait rédigé la pièce — `issued_by`, lui, est renseigné par l'émission.
+ *
+ * `0018` avait posé exactement ce défaut sur `shared_links`, pour exactement
+ * cette raison. Les trois autres écrits l'ont manqué ; ils sont rattrapés ici,
+ * sur la même ligne. Trouvé par la relecture de sécurité du rang 3. */
+alter table public.follow_up_summaries
+  alter column created_by set default app.current_user_id();
+alter table public.liaison_letters
+  alter column created_by set default app.current_user_id();
+alter table public.attestations
+  alter column created_by set default app.current_user_id();
+
 -- ---------------------------------------------------------------------------
 --  Cohérence
 -- ---------------------------------------------------------------------------
@@ -121,6 +137,41 @@ security definer
 set search_path = public, pg_temp
 as $$
 begin
+  /* ON REFUSE D'ABORD, ON RENSEIGNE ENSUITE — ET DANS CET ORDRE-LÀ.
+   *
+   * LE DÉFAUT, démontré par la relecture de sécurité du rang 3 : PostgreSQL
+   * exécute les déclencheurs BEFORE ROW *avant* la clause `with check` de la
+   * politique RLS. Ce déclencheur est `security definer` : il contourne la
+   * RLS et répondait donc le premier. Un compte d'un autre cabinet obtenait
+   * alors deux réponses différentes selon le cas —
+   *
+   *   dossier appartenant AU cabinet visé  → 42501, refus de la RLS
+   *   dossier inexistant ou d'un tiers     → 23503, « n'appartient pas »
+   *
+   * — soit un oracle d'appartenance : avec un identifiant de cabinet et un
+   * identifiant candidat, on confirmait le lien sans être membre. Aucun
+   * contenu ne fuyait, seulement l'appartenance ; et le scénario réaliste
+   * n'est pas l'inconnu — `anon` est refusé au niveau privilège — mais le
+   * MEMBRE RÉVOQUÉ, à qui `status <> 'active'` retire toute lecture en lui
+   * laissant ce sondage.
+   *
+   * Ce refus initial ne restreint rien : les politiques d'écriture de cette
+   * table exigent déjà `can_write`. Il rend seulement le refus UNIFORME, et
+   * antérieur à tout ce qui pourrait le nuancer.
+   *
+   * IL NE PORTE QUE SUR LES REQUÊTES QUI ONT UNE SESSION, c'est-à-dire celles
+   * qui viennent du produit — les seules à pouvoir sonder. Sans session, on
+   * est en migration, en semence ou en maintenance : il n'y a pas de rôle à
+   * vérifier, la RLS ne s'applique pas davantage, et exiger `can_write` ne
+   * fermerait rien tout en cassant toute reprise de données.
+   *
+   * La même lacune existait sur l'attestation et le courrier de liaison :
+   * elles sont corrigées plus bas, dans cette même migration. */
+  if app.current_user_id() is not null
+     and not app.can_write(new.practice_id) then
+    raise exception 'Accès refusé.' using errcode = 'insufficient_privilege';
+  end if;
+
   if not exists (
     select 1 from public.patients p
      where p.id = new.patient_id and p.practice_id = new.practice_id
@@ -190,6 +241,12 @@ begin
    * annulation. La fonction d'annulation, elle, l'écrit en passant de « emis »
    * à « annule » — ce chemin-là reste ouvert. [Point transverse : la même
    * lacune existe sur l'attestation et le courrier de liaison. Consignée.] */
+  if new.cancellation_reason is distinct from old.cancellation_reason
+     and new.status <> 'annule' then
+    raise exception
+      'Un motif d''annulation ne se pose que sur une annulation.'
+      using errcode = 'check_violation';
+  end if;
   if old.status = 'annule'
      and new.cancellation_reason is distinct from old.cancellation_reason then
     raise exception
@@ -209,7 +266,26 @@ begin
      or new.detail_absences is distinct from old.detail_absences
      or new.patient_id <> old.patient_id
      or new.recipient_contact_id is distinct from old.recipient_contact_id
-     or new.recipient_is_patient is distinct from old.recipient_is_patient then
+     or new.recipient_is_patient is distinct from old.recipient_is_patient
+     /* CE QUI RATTACHE LA PIÈCE, et qui manquait à cette liste. Le document
+      * imprimé ne bougeait pas — il lit l'instantané — mais son IMPUTATION,
+      * elle, se déplaçait : à quel cabinet, à quel parcours, qui a signé,
+      * quand elle a été créée et par qui. `issued_by` n'a de contrainte que
+      * vers `auth.users` : on pouvait y inscrire quelqu'un d'un autre
+      * cabinet. Trouvé par la relecture de sécurité du rang 3. */
+     /* `practice_id` EST REDONDANT, ET C'EST DIT PLUTÔT QUE SOUS-ENTENDU.
+      * Aucun contrôle ne peut l'atteindre seul : déplacer une synthèse vers un
+      * autre cabinet bute d'abord sur la garde de cohérence — le rôle n'y écrit
+      * pas, ou le dossier n'y appartient pas — et la déplacer AVEC son dossier
+      * bute sur `patient_id`. Désarmer cette ligne ne fait échouer aucun
+      * contrôle, et j'ai renoncé à en fabriquer un qui ne mettrait en scène que
+      * lui. Elle reste comme second verrou : le jour où la cohérence change,
+      * c'est elle qui rattrapera. */
+     or new.practice_id is distinct from old.practice_id
+     or new.pathway_id is distinct from old.pathway_id
+     or new.issued_by is distinct from old.issued_by
+     or new.created_by is distinct from old.created_by
+     or new.created_at is distinct from old.created_at then
     raise exception
       'Une synthèse remise ne se modifie pas : elle est déjà entre les mains de son destinataire. Annulez-la, avec un motif, et établissez-en une autre.'
       using errcode = 'check_violation';
@@ -459,6 +535,9 @@ begin
      set status = 'emis',
          issued_on = v_emission,
          issued_by = app.current_user_id(),
+         -- Un brouillon a pu porter un motif d'annulation ; il n'a plus de
+         -- sens sur une pièce qu'on remet.
+         cancellation_reason = null,
          snapshot = jsonb_build_object(
            'emis_le', v_emission,
            'periode', jsonb_build_object('du', s.period_start, 'au', s.period_end),
@@ -529,7 +608,21 @@ begin
             * ce qu'il n'a pas dit. */
            'faits', public.follow_up_facts(
              s.patient_id, s.pathway_id, s.period_start, s.period_end)
-             - 'honorees_sans_parcours')
+             - 'honorees_sans_parcours'
+             /* ET LES COMPTES QU'ELLE A CHOISI DE NE PAS DIRE.
+              *
+              * Les taire au seul rendu laissait le document figé porter une
+              * donnée que son destinataire n'a jamais reçue : tout export,
+              * toute lecture d'API, toute assistance qui ouvre l'instantané la
+              * restituait. C'est la même règle que pour l'avertissement
+              * ci-dessus, appliquée au non-dit de la praticienne. Les chiffres
+              * restent calculables depuis l'agenda ; rien n'est perdu.
+              *
+              * Trouvé par la relecture de sécurité du rang 3. [Réversible :
+              * si elle veut retrouver ce qu'elle n'a pas dit, c'est une
+              * décision produit, pas un défaut à corriger.] */
+             - (case when s.detail_absences then array[]::text[]
+                     else array['absences', 'annulees_par_le_cabinet'] end))
    where id = p_summary_id;
 
   perform public.log_audit_event(
@@ -581,3 +674,95 @@ end;
 $$;
 revoke all on function public.cancel_follow_up_summary(uuid, text) from public, anon;
 grant execute on function public.cancel_follow_up_summary(uuid, text) to authenticated;
+
+-- ============================================================================
+--  LA MÊME CORRECTION, SUR LES DEUX ÉCRITS DÉJÀ LIVRÉS
+-- ============================================================================
+--  L'oracle d'appartenance décrit plus haut n'est pas propre à la synthèse :
+--  l'attestation (`0016`) et le courrier de liaison (`0022`) portent le même
+--  déclencheur de cohérence, `security definer`, exécuté avant la clause
+--  `with check` de la RLS. Les trois répondaient différemment selon que la
+--  ressource visée appartenait ou non au cabinet — 42501 dans un cas, 23503
+--  dans l'autre.
+--
+--  C'est UNE décision, pas trois : on la prend ici, en une fois. Les corps
+--  sont recopiés à l'identique de leur migration d'origine, à ce refus initial
+--  près. C'est la contrepartie assumée d'un `create or replace` : lire `0016`
+--  ou `0022` ne montre plus la fonction qui s'exécute.
+-- ============================================================================
+
+create or replace function app.guard_attestation_coherence()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  -- On refuse d'abord, on renseigne ensuite. Voir l'en-tête de cette section.
+  if app.current_user_id() is not null
+     and not app.can_write(new.practice_id) then
+    raise exception 'Accès refusé.' using errcode = 'insufficient_privilege';
+  end if;
+
+  if not exists (
+    select 1 from public.patients p
+    where p.id = new.patient_id and p.practice_id = new.practice_id
+  ) then
+    raise exception 'Le patient n''appartient pas à ce cabinet.'
+      using errcode = 'foreign_key_violation';
+  end if;
+
+  if new.recipient_contact_id is not null and not exists (
+    select 1 from public.contacts c
+    where c.id = new.recipient_contact_id and c.practice_id = new.practice_id
+  ) then
+    raise exception 'Le destinataire n''appartient pas à ce cabinet.'
+      using errcode = 'foreign_key_violation';
+  end if;
+
+  return new;
+end;
+$$;
+
+create or replace function app.guard_liaison_letter_coherence()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  -- On refuse d'abord, on renseigne ensuite. Voir l'en-tête de cette section.
+  if app.current_user_id() is not null
+     and not app.can_write(new.practice_id) then
+    raise exception 'Accès refusé.' using errcode = 'insufficient_privilege';
+  end if;
+
+  if not exists (
+    select 1 from public.patients p
+     where p.id = new.patient_id and p.practice_id = new.practice_id
+  ) then
+    raise exception 'Le dossier n''appartient pas à ce cabinet.'
+      using errcode = 'foreign_key_violation';
+  end if;
+
+  if not exists (
+    select 1 from public.contacts c
+     where c.id = new.recipient_contact_id and c.practice_id = new.practice_id
+  ) then
+    raise exception 'Le destinataire n''appartient pas à ce cabinet.'
+      using errcode = 'foreign_key_violation';
+  end if;
+
+  if new.pathway_id is not null and not exists (
+    select 1 from public.care_pathways cp
+     where cp.id = new.pathway_id
+       and cp.practice_id = new.practice_id
+       and cp.patient_id = new.patient_id
+  ) then
+    raise exception 'Ce parcours n''est pas celui de ce dossier.'
+      using errcode = 'check_violation';
+  end if;
+
+  return new;
+end;
+$$;

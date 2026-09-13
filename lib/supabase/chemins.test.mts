@@ -1,10 +1,30 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  CHEMINS_PUBLICS,
   estSousChemin,
   estCheminPublic,
   estConsultationPublique,
 } from "@/lib/supabase/chemins";
+
+test("la liste des chemins ouverts sans compte est CLOSE", () => {
+  /* UN JEU EXACT, PAS UNE LISTE DE CAS. Les contrôles ci-dessous vérifient des
+   * chemins nommés un par un : ils ne voient pas une entrée AJOUTÉE. Une page
+   * de vérification temporaire s'y est glissée le temps d'une session, et les
+   * 134 contrôles unitaires sont passés sans rien dire — elle ne recevait
+   * pourtant aucun des en-têtes de protection du produit, ni `no-store`, ni
+   * `no-referrer`, ni `X-Robots-Tag: noindex`.
+   *
+   * Ouvrir un chemin au public est une décision. Elle passe par ici.
+   *
+   * Trouvé par la relecture de sécurité du rang 3. */
+  assert.deepEqual([...CHEMINS_PUBLICS], [
+    "/login",
+    "/auth",
+    "/document",
+    "/mot-de-passe",
+  ]);
+});
 
 test("un préfixe n'est pas un segment de chemin", () => {
   /* LE DÉFAUT D'ORIGINE, en un contrôle. Avec `startsWith`, le module

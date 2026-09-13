@@ -254,6 +254,25 @@ values
    'a7000000-0000-4000-8000-000000000001',
    'Reprendre la course en récréation sans appréhension',
    null, 'atteint', 3, date '2026-01-22',
+   'a0000000-0000-4000-8000-000000000001'),
+
+  /* UN SECOND PARCOURS DU MÊME CABINET, PORTEUR D'OBJECTIFS. Il n'est pas là
+   * pour faire nombre : sans lui, le cabinet A n'avait d'objectifs que sur un
+   * seul parcours, et tout contrôle « la synthèse reprend trois objectifs »
+   * rendait le même verdict que le filtre par parcours existe ou non. Les
+   * contrôles validaient leur propre mise en scène.
+   *
+   * Trouvé par la relecture de sécurité du rang 3, qui a mesuré qu'en retirant
+   * `and o.pathway_id = p_pathway_id` la suite entière restait verte. */
+  ('a1111111-1111-4111-8111-111111111111',
+   'a7000000-0000-4000-8000-000000000002',
+   'Accepter le contact des matières granuleuses sur les mains',
+   null, 'en_cours', 1, date '2026-02-18',
+   'a0000000-0000-4000-8000-000000000001'),
+  ('a1111111-1111-4111-8111-111111111111',
+   'a7000000-0000-4000-8000-000000000002',
+   'Rester attablée le temps du repas familial',
+   null, 'partiellement_atteint', 2, date '2026-02-18',
    'a0000000-0000-4000-8000-000000000001');
 
 -- ===========================================================  NOTES CLINIQUES

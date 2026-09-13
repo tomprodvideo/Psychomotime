@@ -23,18 +23,54 @@ declare
   v_cab uuid := 'a1111111-1111-4111-8111-111111111111';
   v_pat uuid;
   v_doc uuid;
+  v_att uuid;
+  v_lettre uuid;
+  v_synthese uuid;
   v_dossiers bigint;
   v_resultat jsonb;
 begin
   -- Une facture ÉMISE, que la garde d'immuabilité refuse normalement de
   -- supprimer. Sans elle, ce test passerait sans rien prouver.
-  select id into v_pat from public.patients where practice_id = v_cab limit 1;
+  -- Un dossier qui porte au moins une séance honorée : l'attestation de
+  -- présence, plus bas, refuse d'affirmer ce qu'elle ne peut pas montrer.
+  select r.patient_id into v_pat from public.realised_sessions r
+   where r.practice_id = v_cab limit 1;
   insert into public.billing_documents (practice_id, kind, patient_id, payer_is_patient)
   values (v_cab, 'facture', v_pat, true) returning id into v_doc;
   insert into public.billing_lines
     (practice_id, document_id, position, label, unit_price_cents, amount_cents)
   values (v_cab, v_doc, 1, 'Séance de psychomotricité', 4500, 4500);
   perform public.issue_billing_document(v_doc);
+
+  /* ET LES TROIS ÉCRITS CLINIQUES REMIS, pour la même raison. Chacun porte une
+   * garde qui refuse la suppression d'une pièce remise, et chacune de ces
+   * gardes fait une DÉROGATION quand le cabinet lui-même disparaît : il n'y a
+   * alors plus de série à tenir ni personne à qui rendre des comptes.
+   *
+   * Ces dérogations portent la promesse d'effacement du compte, et aucune
+   * n'était contrôlée : les désarmer laissait la suite entièrement verte
+   * pendant que `delete_my_account` échouait. Mesuré par la relecture de
+   * sécurité du rang 3. */
+  insert into public.attestations (practice_id, kind, patient_id)
+  values (v_cab, 'presence', v_pat) returning id into v_att;
+  insert into public.attestation_sessions (attestation_id, appointment_id, practice_id)
+  select v_att, r.appointment_id, v_cab from public.realised_sessions r
+   where r.patient_id = v_pat limit 1;
+  perform public.issue_attestation(v_att);
+
+  insert into public.liaison_letters
+    (practice_id, patient_id, recipient_contact_id, subject, body)
+  values (v_cab, v_pat,
+          (select id from public.contacts where practice_id = v_cab limit 1),
+          'Objet', 'Corps')
+  returning id into v_lettre;
+  perform public.issue_liaison_letter(v_lettre);
+
+  insert into public.follow_up_summaries
+    (practice_id, patient_id, period_start, period_end, observed_evolution)
+  values (v_cab, v_pat, date '2026-08-01', date '2026-08-31', 'Texte.')
+  returning id into v_synthese;
+  perform public.issue_follow_up_summary(v_synthese);
 
   select count(*) into v_dossiers from public.patients where practice_id = v_cab;
   perform tests.assert(v_dossiers > 0, 'Le cabinet doit porter des dossiers avant le test.');

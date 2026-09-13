@@ -227,6 +227,7 @@ quelle que soit la réponse.
 | D-i | Faut-il EXIGER un accord de partage avant de remettre un courrier ou une synthèse, ou seulement le DIRE ? *(Le produit dit, aujourd'hui. Une synthèse emporte les objectifs, donc davantage qu'un courrier.)* | psychomotricienne | non |
 | D-j | Le vocabulaire IMPRIMÉ des statuts d'objectif. « Abandonné » se lit comme un constat sur une personne dans un document que liront une famille ou un financeur ; le document imprime « Non poursuivi ». Faut-il imprimer les objectifs non poursuivis ? | psychomotricienne | non |
 | D-k | Le motif d'une annulation reste réécrivable après coup sur l'**attestation** (`0016`) et le **courrier** (`0022`). La synthèse (`0023`) le fige. **Écart assumé et consigné** : le figer sur les deux autres demande une migration, et c'est la même décision pour les trois. | psychomotricienne | non |
+| D-m | Le non-dit est-il conservé ? Une synthèse remise sans les rendez-vous non honorés ne les garde plus dans son instantané — un document ne conserve pas ce qu'il n'a pas dit. Si la praticienne veut retrouver ce qu'elle n'a PAS dit, c'est une décision produit, et elle est réversible. | psychomotricienne | non |
 | D-l | La périodicité d'une synthèse. Elle se lit dans le contrat signé ; le produit n'en impose aucune et propose six mois comme commodité de saisie. | psychomotricienne | non |
 
 Douze questions de plus, sur la trame et sur la pratique, sont dans les rapports
@@ -240,6 +241,15 @@ toutes ouvertes depuis le 2026-09-11.
   trancheraient en une séance ce qu'on ne peut qu'argumenter.*
 - **La latence de frappe de l'éditeur** est une hypothèse mécaniquement
   plausible : rien n'a été profilé.
+- **L'attestation distingue encore « introuvable » de « existe ailleurs ».**
+  `issue_attestation` et `cancel_attestation` (`0016`) rendent `P0002 —
+  Attestation introuvable.` si l'identifiant n'existe pas, et `42501 — Seul un
+  praticien du cabinet peut signer…` s'il existe dans un autre cabinet. Le
+  courrier et la synthèse ont la bonne forme (`... is null or not is_member`).
+  **Non corrigé** : la reprendre demanderait de recopier une fonction de 150
+  lignes dans une migration, pour une différence de message sur un identifiant
+  qui ne sort jamais de son cabinet. À faire quand `0016` sera touchée pour
+  autre chose. Mesuré par la relecture de sécurité du rang 3.
 - **La disposition exacte invoquée pour les comptes rendus en parcours financé
   n'est pas vérifiée.** L'arrêté du 19 décembre 2025 existe et est identifiable
   (JORFTEXT000053143303), mais ni la transmission de comptes rendus à la
