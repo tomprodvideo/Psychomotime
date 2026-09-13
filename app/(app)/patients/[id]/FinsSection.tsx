@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { Plus, Send, Printer, Ban, CornerDownLeft } from "lucide-react";
 import { Dialogue } from "@/components/Dialogue";
+import { CHAMP } from "@/components/Champ";
+import { Avertissement, SectionDossier } from "@/components/SectionDossier";
 import { frDate } from "@/lib/format";
 import {
   FIN_NATURE_AIDES,
@@ -26,8 +28,6 @@ import {
 } from "../../fins/actions";
 import type { OptionDestinataire } from "./CourriersSection";
 
-const CHAMP =
-  "w-full rounded-lg border border-slate-500 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100";
 
 export interface OptionParcoursFin {
   id: string;
@@ -76,15 +76,13 @@ export default function FinsSection({
   const [edite, setEdite] = useState<FinAvecDestinataire | "nouveau" | null>(null);
 
   return (
-    <section
-      aria-labelledby="titre-fins"
-      className="bg-white rounded-xl border border-slate-100 shadow-sm p-5"
-    >
-      <div className="flex items-center justify-between gap-3">
-        <h2 id="titre-fins" className="font-semibold text-slate-800">
-          Fin de prise en soin
-        </h2>
-        {canWrite && parcours.length > 0 && (
+    <SectionDossier
+      id="fins"
+      titre="Fin de prise en soin"
+      erreur={erreur}
+      action={
+        canWrite &&
+        parcours.length > 0 && (
           <button
             type="button"
             onClick={() => setEdite("nouveau")}
@@ -93,8 +91,9 @@ export default function FinsSection({
             <Plus className="h-4 w-4" aria-hidden="true" />
             Rédiger
           </button>
-        )}
-      </div>
+        )
+      }
+    >
 
       <p
         className={`text-xs mt-2 rounded-lg px-3 py-2 ${
@@ -105,15 +104,6 @@ export default function FinsSection({
       >
         {messageConsentement(consentement)}
       </p>
-
-      {erreur && (
-        <p
-          role="alert"
-          className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
-        >
-          {erreur}
-        </p>
-      )}
 
       {parcours.length === 0 ? (
         <p className="text-sm text-slate-500 mt-3">
@@ -150,7 +140,7 @@ export default function FinsSection({
           onClose={() => setEdite(null)}
         />
       )}
-    </section>
+    </SectionDossier>
   );
 }
 
@@ -463,12 +453,14 @@ function DialogueFin({
             ))}
           </select>
           {parcoursChoisi && !parcoursChoisi.clos && (
-            <p className="text-xs text-amber-900 bg-amber-50 ring-1 ring-amber-200 rounded px-2 py-1.5 mt-1">
+            <div className="mt-1">
+              <Avertissement compact>
               Cette prise en soin est encore ouverte. Le brouillon s&apos;écrit,
               mais la remise demandera qu&apos;elle soit close depuis le
               parcours — clore est une décision clinique, pas une conséquence de
               la remise d&apos;un document.
-            </p>
+              </Avertissement>
+            </div>
           )}
         </div>
 
@@ -542,7 +534,7 @@ function DialogueFin({
 
               {/* TROIS AVERTISSEMENTS, qui ne partent pas avec le document. */}
               {faits.honorees_sans_parcours > 0 && (
-                <p className="text-xs text-amber-900 bg-amber-50 ring-1 ring-amber-200 rounded px-2 py-1.5">
+                <Avertissement compact>
                   Le dossier porte {faits.honorees_sans_parcours} séance
                   {faits.honorees_sans_parcours > 1 ? "s" : ""} honorée
                   {faits.honorees_sans_parcours > 1 ? "s" : ""} rattachée
@@ -550,23 +542,23 @@ function DialogueFin({
                   Elle{faits.honorees_sans_parcours > 1 ? "s" : ""} ne
                   {faits.honorees_sans_parcours > 1 ? " sont" : " sera"} pas
                   compté{faits.honorees_sans_parcours > 1 ? "es" : "e"} ci-dessus.
-                </p>
+                </Avertissement>
               )}
               {faits.rendez_vous_a_venir > 0 && (
-                <p className="text-xs text-amber-900 bg-amber-50 ring-1 ring-amber-200 rounded px-2 py-1.5">
+                <Avertissement compact>
                   {faits.rendez_vous_a_venir} rendez-vous de cette prise en soin
                   {faits.rendez_vous_a_venir > 1 ? " restent" : " reste"} à venir
                   à l&apos;agenda : le créneau est toujours bloqué.
-                </p>
+                </Avertissement>
               )}
               {avecObjectifs && faits.objectifs_en_cours > 0 && (
-                <p className="text-xs text-amber-900 bg-amber-50 ring-1 ring-amber-200 rounded px-2 py-1.5">
+                <Avertissement compact>
                   {faits.objectifs_en_cours} objectif
                   {faits.objectifs_en_cours > 1 ? "s restent" : " reste"} « en
                   cours » et s&apos;imprimera{faits.objectifs_en_cours > 1 ? "ont" : ""}{" "}
                   ainsi sur un écrit qui annonce la fin. Statuez-les depuis le
                   parcours, un par un — le logiciel ne les requalifie pas.
-                </p>
+                </Avertissement>
               )}
 
               {avecObjectifs && faits.objectifs.length > 0 && (

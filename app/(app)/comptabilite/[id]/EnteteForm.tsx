@@ -8,6 +8,7 @@ import {
   type BillingFundingScheme,
 } from "@/lib/compta/types";
 import { enregistrerPiece } from "../actions";
+import { CHAMP } from "@/components/Champ";
 
 interface Option {
   id: string;
@@ -62,7 +63,7 @@ export default function EnteteForm({
             id="patient_id"
             name="patient_id"
             defaultValue={document.patient_id ?? ""}
-            className={styleChamp}
+            className={CHAMP}
           >
             <option value="">Aucun patient rattaché</option>
             {patients.map((p) => (
@@ -78,7 +79,7 @@ export default function EnteteForm({
             id="pathway_id"
             name="pathway_id"
             defaultValue={document.pathway_id ?? ""}
-            className={styleChamp}
+            className={CHAMP}
           >
             <option value="">Aucun</option>
             {parcours.map((p) => (
@@ -114,7 +115,7 @@ export default function EnteteForm({
             name="payer_contact_id"
             aria-label="Destinataire de la pièce"
             defaultValue={document.payer_contact_id ?? ""}
-            className={styleChamp}
+            className={CHAMP}
           >
             <option value="">Choisir un contact…</option>
             {contacts.map((c) => (
@@ -132,7 +133,7 @@ export default function EnteteForm({
             id="funding_scheme"
             name="funding_scheme"
             defaultValue={document.funding_scheme ?? ""}
-            className={styleChamp}
+            className={CHAMP}
           >
             <option value="">Non précisé</option>
             {(
@@ -152,7 +153,7 @@ export default function EnteteForm({
               name="valid_until"
               type="date"
               defaultValue={document.valid_until ?? ""}
-              className={styleChamp}
+              className={CHAMP}
             />
           </Champ>
         ) : (
@@ -162,7 +163,7 @@ export default function EnteteForm({
               name="due_on"
               type="date"
               defaultValue={document.due_on ?? ""}
-              className={styleChamp}
+              className={CHAMP}
             />
           </Champ>
         )}
@@ -177,7 +178,7 @@ export default function EnteteForm({
             name="period_start"
             type="date"
             defaultValue={document.period_start ?? ""}
-            className={styleChamp}
+            className={CHAMP}
           />
         </Champ>
 
@@ -187,7 +188,7 @@ export default function EnteteForm({
             name="period_end"
             type="date"
             defaultValue={document.period_end ?? ""}
-            className={styleChamp}
+            className={CHAMP}
           />
         </Champ>
       </div>
@@ -203,7 +204,7 @@ export default function EnteteForm({
             name="note"
             rows={2}
             defaultValue={document.note ?? ""}
-            className={styleChamp}
+            className={CHAMP}
           />
         </Champ>
         <Champ
@@ -216,7 +217,7 @@ export default function EnteteForm({
             name="internal_note"
             rows={2}
             defaultValue={document.internal_note ?? ""}
-            className={styleChamp}
+            className={CHAMP}
           />
         </Champ>
       </div>
@@ -245,8 +246,6 @@ export default function EnteteForm({
   );
 }
 
-const styleChamp =
-  "w-full rounded-lg border border-slate-500 px-3 py-2 text-sm bg-white focus:border-brand-400 focus:ring-2 focus:ring-brand-100";
 
 function Champ({
   label,

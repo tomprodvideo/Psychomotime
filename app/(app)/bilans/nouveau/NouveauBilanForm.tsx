@@ -8,6 +8,7 @@ import { BILAN_TYPES, type BilanType } from "@/lib/constants";
 import { frDate } from "@/lib/format";
 import { formatAgeAt } from "@/lib/age";
 import { createBilan } from "../actions";
+import { CHAMP } from "@/components/Champ";
 
 type PatientLite = Pick<Patient, "id" | "first_name" | "last_name" | "birth_date">;
 
@@ -88,7 +89,7 @@ export default function NouveauBilanForm({
         <Label>Patient</Label>
         {patients.length > 0 && (
           <select
-            className={`${inputCls} mb-2`}
+            className={`${CHAMP} mb-2`}
             value={patientId}
             onChange={(e) => {
               const p = patients.find((x) => x.id === e.target.value);
@@ -131,7 +132,7 @@ export default function NouveauBilanForm({
             if (!estUneRetouche(saisi, duDossier)) setPatientId("");
           }}
           placeholder="Prénom et nom du patient"
-          className={inputCls}
+          className={CHAMP}
           aria-describedby={patientId ? "lien-dossier" : undefined}
         />
         {/* L'état du rattachement est ÉCRIT, pas deviné. Sans cela, rien à
@@ -153,7 +154,7 @@ export default function NouveauBilanForm({
             name="title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className={inputCls}
+            className={CHAMP}
           />
         </div>
         <div>
@@ -162,7 +163,7 @@ export default function NouveauBilanForm({
             name="bilan_date"
             type="date"
             defaultValue={today}
-            className={inputCls}
+            className={CHAMP}
           />
         </div>
       </div>
@@ -173,7 +174,7 @@ export default function NouveauBilanForm({
           name="author"
           defaultValue={defaultAuthor}
           placeholder="Nom du psychomotricien(ne)"
-          className={inputCls}
+          className={CHAMP}
         />
       </div>
 
@@ -184,8 +185,6 @@ export default function NouveauBilanForm({
   );
 }
 
-const inputCls =
-  "w-full rounded-lg border border-slate-500 bg-white py-2 px-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100 transition";
 
 function Label({ children }: { children: React.ReactNode }) {
   return (

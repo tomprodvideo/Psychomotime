@@ -10,6 +10,7 @@ import {
   type ServiceNature,
 } from "@/lib/compta/types";
 import { enregistrerPrestation, supprimerPrestation } from "../actions";
+import { CHAMP } from "@/components/Champ";
 
 /**
  * Le catalogue de prestations.
@@ -216,7 +217,7 @@ function Formulaire({
             name="label"
             required
             defaultValue={item?.label ?? ""}
-            className={styleChamp}
+            className={CHAMP}
             placeholder="Séance de psychomotricité"
           />
         </div>
@@ -232,7 +233,7 @@ function Formulaire({
             defaultValue={
               item ? centsToEuros(item.unit_price_cents).toFixed(2).replace(".", ",") : ""
             }
-            className={styleChamp}
+            className={CHAMP}
             placeholder="45,00"
           />
         </div>
@@ -244,7 +245,7 @@ function Formulaire({
             id="pricing"
             name="pricing"
             defaultValue={item?.pricing ?? "unitaire"}
-            className={styleChamp}
+            className={CHAMP}
           >
             <option value="unitaire">Unitaire</option>
             <option value="forfait">Forfait</option>
@@ -261,7 +262,7 @@ function Formulaire({
             id="nature"
             name="nature"
             defaultValue={item?.nature ?? "seance"}
-            className={styleChamp}
+            className={CHAMP}
           >
             {(Object.keys(NATURE_LABELS) as ServiceNature[]).map((n) => (
               <option key={n} value={n}>
@@ -281,7 +282,7 @@ function Formulaire({
             id="default_intro"
             name="default_intro"
             defaultValue={item?.default_intro ?? ""}
-            className={styleChamp}
+            className={CHAMP}
             placeholder="Séances réalisées aux dates suivantes :"
           />
         </div>
@@ -320,5 +321,3 @@ function Formulaire({
   );
 }
 
-const styleChamp =
-  "w-full rounded-lg border border-slate-500 px-3 py-2 text-sm bg-white focus:border-brand-400 focus:ring-2 focus:ring-brand-100";

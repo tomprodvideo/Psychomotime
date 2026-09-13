@@ -5,6 +5,7 @@ import { Plus, Trash2 } from "lucide-react";
 import type { RecurringExpense } from "@/lib/types";
 import { euro } from "@/lib/format";
 import { monthlyEquivalent, monthlyTotal } from "@/lib/expenses";
+import { CHAMP } from "@/components/Champ";
 
 /**
  * Liste des dépenses récurrentes. Le contenu part dans le formulaire des
@@ -73,7 +74,7 @@ export default function RecurringExpensesEditor({
                 value={e.label}
                 onChange={(ev) => update(e.id, { label: ev.target.value })}
                 placeholder="Ex. Abonnement téléphonique"
-                className={`col-span-5 ${inputCls}`}
+                className={`col-span-5 ${CHAMP}`}
               />
 
               <input
@@ -84,7 +85,7 @@ export default function RecurringExpensesEditor({
                   update(e.id, { amount: parseFloat(ev.target.value) || 0 })
                 }
                 placeholder="0,00"
-                className={`col-span-2 ${inputCls} text-right`}
+                className={`col-span-2 ${CHAMP} text-right`}
               />
 
               <select
@@ -94,7 +95,7 @@ export default function RecurringExpensesEditor({
                     period: ev.target.value as RecurringExpense["period"],
                   })
                 }
-                className={`col-span-2 ${inputCls}`}
+                className={`col-span-2 ${CHAMP}`}
               >
                 <option value="mensuel">par mois</option>
                 <option value="annuel">par an</option>
@@ -161,5 +162,3 @@ export default function RecurringExpensesEditor({
   );
 }
 
-const inputCls =
-  "w-full rounded-lg border border-slate-500 bg-white py-2 px-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100 transition";

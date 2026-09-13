@@ -17,6 +17,7 @@ import {
   supprimerCharge,
   supprimerRecurrence,
 } from "../actions";
+import { CHAMP } from "@/components/Champ";
 
 /**
  * Charges constatées et charges récurrentes.
@@ -285,7 +286,7 @@ function FormulaireCharge({ aujourdhui }: { aujourdhui: string }) {
           <label htmlFor="category" className="block text-xs font-medium text-slate-500 mb-1">
             Catégorie
           </label>
-          <select id="category" name="category" className={styleChamp}>
+          <select id="category" name="category" className={CHAMP}>
             {(Object.keys(CATEGORIE_LABELS) as CategorieCharge[]).map((c) => (
               <option key={c} value={c}>
                 {CATEGORIE_LABELS[c]}
@@ -297,7 +298,7 @@ function FormulaireCharge({ aujourdhui }: { aujourdhui: string }) {
           <label htmlFor="label" className="block text-xs font-medium text-slate-500 mb-1">
             Libellé
           </label>
-          <input id="label" name="label" className={styleChamp} />
+          <input id="label" name="label" className={CHAMP} />
         </div>
         <div>
           <label htmlFor="amount" className="block text-xs font-medium text-slate-500 mb-1">
@@ -308,7 +309,7 @@ function FormulaireCharge({ aujourdhui }: { aujourdhui: string }) {
             name="amount"
             required
             inputMode="decimal"
-            className={styleChamp}
+            className={CHAMP}
             placeholder="383,33"
           />
         </div>
@@ -322,7 +323,7 @@ function FormulaireCharge({ aujourdhui }: { aujourdhui: string }) {
             type="date"
             required
             defaultValue={aujourdhui}
-            className={styleChamp}
+            className={CHAMP}
           />
         </div>
       </div>
@@ -386,7 +387,7 @@ function FormulaireRecurrence({
           <label htmlFor="r_category" className="block text-xs font-medium text-slate-500 mb-1">
             Catégorie
           </label>
-          <select id="r_category" name="category" className={styleChamp}>
+          <select id="r_category" name="category" className={CHAMP}>
             {(Object.keys(CATEGORIE_LABELS) as CategorieCharge[]).map((c) => (
               <option key={c} value={c}>
                 {CATEGORIE_LABELS[c]}
@@ -398,7 +399,7 @@ function FormulaireRecurrence({
           <label htmlFor="r_label" className="block text-xs font-medium text-slate-500 mb-1">
             Libellé
           </label>
-          <input id="r_label" name="label" required className={styleChamp} />
+          <input id="r_label" name="label" required className={CHAMP} />
         </div>
         <div>
           <label htmlFor="r_amount" className="block text-xs font-medium text-slate-500 mb-1">
@@ -409,14 +410,14 @@ function FormulaireRecurrence({
             name="amount"
             required
             inputMode="decimal"
-            className={styleChamp}
+            className={CHAMP}
           />
         </div>
         <div>
           <label htmlFor="r_period" className="block text-xs font-medium text-slate-500 mb-1">
             Rythme
           </label>
-          <select id="r_period" name="period" className={styleChamp}>
+          <select id="r_period" name="period" className={CHAMP}>
             <option value="mensuel">Mensuel</option>
             <option value="annuel">Annuel</option>
           </select>
@@ -431,7 +432,7 @@ function FormulaireRecurrence({
             type="date"
             required
             defaultValue={aujourdhui}
-            className={styleChamp}
+            className={CHAMP}
           />
         </div>
       </div>
@@ -455,5 +456,3 @@ function FormulaireRecurrence({
   );
 }
 
-const styleChamp =
-  "w-full rounded-lg border border-slate-500 px-3 py-2 text-sm bg-white focus:border-brand-400 focus:ring-2 focus:ring-brand-100";

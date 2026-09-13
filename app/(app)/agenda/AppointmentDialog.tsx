@@ -15,9 +15,8 @@ import {
   type AppointmentKind,
 } from "@/lib/dossier/types";
 import type { PatientListItem } from "@/lib/dossier/queries";
+import { CHAMP } from "@/components/Champ";
 
-const CHAMP =
-  "w-full rounded-lg border border-slate-500 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100 transition";
 
 /** Types de rendez-vous qui ne concernent personne en particulier. */
 const SANS_PATIENT: AppointmentKind[] = ["reunion", "administratif", "autre"];

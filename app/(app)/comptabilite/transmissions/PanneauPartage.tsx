@@ -12,6 +12,7 @@ import {
 } from "@/lib/transmissions/types";
 import { EXPIRATIONS_PROPOSEES } from "@/lib/transmissions/jeton";
 import { creerLien, revoquerLien } from "./actions";
+import { CHAMP } from "@/components/Champ";
 
 interface OptionContact {
   id: string;
@@ -312,7 +313,7 @@ export default function PanneauPartage({
                       const c = contacts.find((x) => x.id === e.target.value);
                       if (c?.email && adresse.trim() === "") setAdresse(c.email);
                     }}
-                    className={styleChamp}
+                    className={CHAMP}
                   >
                     <option value="">Choisir un contact…</option>
                     {(
@@ -349,7 +350,7 @@ export default function PanneauPartage({
                     id="recipient_label"
                     value={libelle}
                     onChange={(e) => setLibelle(e.target.value)}
-                    className={styleChamp}
+                    className={CHAMP}
                     placeholder="Mutuelle, employeur…"
                   />
                 </div>
@@ -367,7 +368,7 @@ export default function PanneauPartage({
                     id="jours"
                     value={jours}
                     onChange={(e) => setJours(Number(e.target.value))}
-                    className={styleChamp}
+                    className={CHAMP}
                   >
                     {EXPIRATIONS_PROPOSEES.map((j) => (
                       <option key={j} value={j}>
@@ -391,7 +392,7 @@ export default function PanneauPartage({
                     type="email"
                     value={adresse}
                     onChange={(e) => setAdresse(e.target.value)}
-                    className={styleChamp}
+                    className={CHAMP}
                     placeholder="adresse@exemple.fr"
                   />
                   <p className="text-xs text-slate-500 mt-1">
@@ -498,5 +499,3 @@ export default function PanneauPartage({
   );
 }
 
-const styleChamp =
-  "w-full rounded-lg border border-slate-500 px-3 py-2 text-sm bg-white focus:border-brand-400 focus:ring-2 focus:ring-brand-100";

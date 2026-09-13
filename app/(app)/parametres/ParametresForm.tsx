@@ -30,6 +30,7 @@ import {
   previewInvoiceNumber,
 } from "@/lib/invoiceNumber";
 import RecurringExpensesEditor from "./RecurringExpensesEditor";
+import { CHAMP } from "@/components/Champ";
 
 /** Redimensionne une image raster et renvoie un data-URL JPEG léger.
  *  Les SVG (déjà légers et vectoriels) sont conservés tels quels. */
@@ -284,7 +285,7 @@ export default function ParametresForm({
             name="display_name"
             defaultValue={settings.display_name ?? ""}
             placeholder="Ex. Manon Dupont, psychomotricienne D.E."
-            className={inputCls}
+            className={CHAMP}
           />
         </div>
       </Section>
@@ -340,7 +341,7 @@ export default function ParametresForm({
             <input
               name="address"
               defaultValue={settings.profile?.address ?? ""}
-              className={inputCls}
+              className={CHAMP}
             />
           </div>
           <div>
@@ -348,7 +349,7 @@ export default function ParametresForm({
             <input
               name="postal_code"
               defaultValue={settings.profile?.postal_code ?? ""}
-              className={inputCls}
+              className={CHAMP}
             />
           </div>
           <div>
@@ -356,7 +357,7 @@ export default function ParametresForm({
             <input
               name="city"
               defaultValue={settings.profile?.city ?? ""}
-              className={inputCls}
+              className={CHAMP}
             />
           </div>
           <div>
@@ -365,7 +366,7 @@ export default function ParametresForm({
               name="business_email"
               type="email"
               defaultValue={settings.profile?.business_email ?? ""}
-              className={inputCls}
+              className={CHAMP}
             />
           </div>
           <div>
@@ -373,7 +374,7 @@ export default function ParametresForm({
             <input
               name="business_phone"
               defaultValue={settings.profile?.business_phone ?? ""}
-              className={inputCls}
+              className={CHAMP}
             />
           </div>
           <div>
@@ -381,7 +382,7 @@ export default function ParametresForm({
             <input
               name="siret"
               defaultValue={settings.profile?.siret ?? ""}
-              className={inputCls}
+              className={CHAMP}
             />
           </div>
           <div>
@@ -389,7 +390,7 @@ export default function ParametresForm({
             <input
               name="adeli"
               defaultValue={settings.profile?.adeli ?? ""}
-              className={inputCls}
+              className={CHAMP}
             />
           </div>
           <div>
@@ -397,7 +398,7 @@ export default function ParametresForm({
             <input
               name="rpps"
               defaultValue={settings.profile?.rpps ?? ""}
-              className={inputCls}
+              className={CHAMP}
             />
           </div>
           <div className="sm:col-span-2">
@@ -409,7 +410,7 @@ export default function ParametresForm({
                 settings.profile?.legal_mentions ??
                 "TVA non applicable, art. 293 B du CGI."
               }
-              className={inputCls}
+              className={CHAMP}
             />
           </div>
         </div>
@@ -555,7 +556,7 @@ export default function ParametresForm({
             <select
               value={cfg.bilan_font}
               onChange={(e) => setCfg({ bilan_font: e.target.value })}
-              className={inputCls}
+              className={CHAMP}
             >
               {BILAN_FONTS.map((f) => (
                 <option key={f.id} value={f.id}>
@@ -569,7 +570,7 @@ export default function ParametresForm({
             <select
               value={cfg.bilan_title_style}
               onChange={(e) => setCfg({ bilan_title_style: e.target.value })}
-              className={inputCls}
+              className={CHAMP}
             >
               {BILAN_TITLE_STYLES.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -642,7 +643,7 @@ export default function ParametresForm({
           rows={2}
           value={cfg.closing_note}
           onChange={(e) => setCfg({ closing_note: e.target.value })}
-          className={`${inputCls} resize-y`}
+          className={`${CHAMP} resize-y`}
         />
         <p className="text-xs text-slate-500 mt-1 mb-4">
           Votre nom vient de l&apos;onglet Général. Il s&apos;affiche sous cette
@@ -810,7 +811,7 @@ export default function ParametresForm({
               step="0.1"
               defaultValue={(settings.retrocession_rate * 100).toString()}
               disabled={mode === "loyer"}
-              className={`${inputCls} disabled:bg-slate-100 disabled:text-slate-500`}
+              className={`${CHAMP} disabled:bg-slate-100 disabled:text-slate-500`}
             />
           </div>
           <div>
@@ -821,7 +822,7 @@ export default function ParametresForm({
               step="0.01"
               defaultValue={settings.monthly_rent.toString()}
               disabled={mode === "retrocession"}
-              className={`${inputCls} disabled:bg-slate-100 disabled:text-slate-500`}
+              className={`${CHAMP} disabled:bg-slate-100 disabled:text-slate-500`}
             />
           </div>
         </div>
@@ -839,7 +840,7 @@ export default function ParametresForm({
             value={numFormat}
             onChange={(e) => setNumFormat(e.target.value)}
             placeholder={DEFAULT_INVOICE_FORMAT}
-            className={inputCls}
+            className={CHAMP}
           />
           <p className="text-xs text-slate-500 mt-1.5">
             Première facture de mars 2026 :{" "}
@@ -880,7 +881,7 @@ export default function ParametresForm({
             type="number"
             step="0.01"
             defaultValue={(settings.urssaf_rate * 100).toString()}
-            className={inputCls}
+            className={CHAMP}
           />
           <p className="text-xs text-slate-500 mt-1">
             Appliqué sur le revenu après rétrocession. Valeur usuelle : 23,2 %.
@@ -988,8 +989,6 @@ function Section({
   );
 }
 
-const inputCls =
-  "w-full rounded-lg border border-slate-500 bg-white py-2 px-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100 transition";
 
 function Label({ children }: { children: React.ReactNode }) {
   return (

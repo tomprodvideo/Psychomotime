@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { Plus, Send, Printer, Ban } from "lucide-react";
 import { Dialogue } from "@/components/Dialogue";
+import { CHAMP } from "@/components/Champ";
+import { Avertissement, SectionDossier } from "@/components/SectionDossier";
 import { frDate } from "@/lib/format";
 import {
   MENTION_COMPTE_SEANCES,
@@ -24,8 +26,6 @@ import {
 } from "../../syntheses/actions";
 import type { OptionDestinataire } from "./CourriersSection";
 
-const CHAMP =
-  "w-full rounded-lg border border-slate-500 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100";
 
 export interface OptionParcours {
   id: string;
@@ -73,15 +73,12 @@ export default function SynthesesSection({
   );
 
   return (
-    <section
-      aria-labelledby="titre-syntheses"
-      className="bg-white rounded-xl border border-slate-100 shadow-sm p-5"
-    >
-      <div className="flex items-center justify-between gap-3">
-        <h2 id="titre-syntheses" className="font-semibold text-slate-800">
-          Synthèses de suivi
-        </h2>
-        {canWrite && (
+    <SectionDossier
+      id="syntheses"
+      titre="Synthèses de suivi"
+      erreur={erreur}
+      action={
+        canWrite && (
           <button
             type="button"
             onClick={() => setEdite("nouveau")}
@@ -90,8 +87,9 @@ export default function SynthesesSection({
             <Plus className="h-4 w-4" aria-hidden="true" />
             Rédiger
           </button>
-        )}
-      </div>
+        )
+      }
+    >
 
       {/* LE PRODUIT DIT CE QU'IL SAIT, IL NE BLOQUE PAS — même doctrine que le
           courrier de liaison. Elle vaut A FORTIORI ici : une synthèse emporte
@@ -105,15 +103,6 @@ export default function SynthesesSection({
       >
         {messageConsentement(consentement)}
       </p>
-
-      {erreur && (
-        <p
-          role="alert"
-          className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
-        >
-          {erreur}
-        </p>
-      )}
 
       {syntheses.length === 0 ? (
         <p className="text-sm text-slate-500 mt-3">
@@ -147,7 +136,7 @@ export default function SynthesesSection({
           onClose={() => setEdite(null)}
         />
       )}
-    </section>
+    </SectionDossier>
   );
 }
 
@@ -380,7 +369,7 @@ function ReleveDeLaPeriode({
               rien dire. Il s'adresse à elle, avant la remise, et ne part pas
               avec le document. */}
           {faits.honorees_sans_parcours > 0 && (
-            <p className="text-xs text-amber-800 bg-amber-50 ring-1 ring-amber-200 rounded px-2 py-1.5">
+            <Avertissement compact>
               {faits.honorees_sans_parcours} séance
               {faits.honorees_sans_parcours > 1 ? "s" : ""} honorée
               {faits.honorees_sans_parcours > 1 ? "s" : ""} de la période n
@@ -389,7 +378,7 @@ function ReleveDeLaPeriode({
               {faits.honorees_sans_parcours > 1 ? " elles ne sont" : " elle n'est"}{" "}
               pas compt{faits.honorees_sans_parcours > 1 ? "ées" : "ée"} ci-dessus.
               Cette remarque ne figurera pas sur le document.
-            </p>
+            </Avertissement>
           )}
           {faits.parcours_ouvert_le && (
             <p className="text-sm text-slate-600">
@@ -605,7 +594,7 @@ function DialogueSynthese({
             avant de remettre, pas à découvrir quand le destinataire le fait
             remarquer. On le DIT ; on ne bloque pas. */}
         {recouvertes.length > 0 && (
-          <p className="text-xs text-amber-900 bg-amber-50 ring-1 ring-amber-200 rounded-lg px-3 py-2">
+          <Avertissement compact>
             {recouvertes.length === 1
               ? "Une synthèse déjà remise couvre une partie de cette période"
               : `${recouvertes.length} synthèses déjà remises couvrent une partie de cette période`}{" "}
@@ -613,7 +602,7 @@ function DialogueSynthese({
               .map((r) => `${frDate(r.period_start)} – ${frDate(r.period_end)}`)
               .join(", ")}
             ). Les mêmes séances y seront comptées deux fois.
-          </p>
+          </Avertissement>
         )}
 
         <ReleveDeLaPeriode

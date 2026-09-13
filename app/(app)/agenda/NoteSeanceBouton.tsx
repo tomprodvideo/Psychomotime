@@ -3,13 +3,12 @@
 import { useState, useTransition } from "react";
 import { NotebookPen } from "lucide-react";
 import { Dialogue } from "@/components/Dialogue";
+import { CHAMP } from "@/components/Champ";
 import { frDate } from "@/lib/format";
 import { saveNote } from "../patients/actions";
 import type { AppointmentWithPatient } from "@/lib/dossier/types";
 import { patientName } from "@/lib/dossier/types";
 
-const CHAMP =
-  "w-full rounded-lg border border-slate-500 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100";
 
 /**
  * Écrire la note d'une séance depuis l'agenda.

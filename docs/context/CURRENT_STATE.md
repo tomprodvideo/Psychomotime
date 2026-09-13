@@ -128,16 +128,24 @@ peine de le garder.
   plan de falsification.
 - **Aucun parcours de bout en bout automatisé** (L9), aucun contrôle visuel.
 - **Aucune fonction IA n'a été revue** depuis la refonte.
-- **Le design system n'existe pas** : 58 lignes de CSS, 108 lignes de
-  composants partagés.
+- **Le socle de formulaire existe depuis le 2026-09-13** : `components/Champ.tsx`
+  et `components/SectionDossier.tsx`. Le style de champ était redéclaré **33
+  fois dans 29 fichiers**, en trois variantes divergentes dont les plus
+  récentes étaient celles des derniers écrans écrits — la dérive était active.
+  Il n'en reste **aucune** déclaration locale. Le reste du socle — `Bouton`,
+  `Statut`, jetons sémantiques — n'est pas fait.
 - **Aucune durée de conservation n'est tranchée**, pour aucune donnée.
-- **Le socle de composants n'existe toujours pas.** Le style de champ est
-  redéclaré **33 fois dans 29 fichiers**, en trois variantes divergentes — et
-  les plus récentes sont celles des derniers écrans écrits, donc la dérive est
-  active. `aria-invalid` n'apparaît **nulle part** : les erreurs de formulaire
-  s'affichent en bas, sans lien avec le champ fautif. Le chemin est tracé
-  (`Champ`, `SectionDossier`, `Bouton`) et il commence par élargir le contrat
-  de retour des actions serveur, qui ne rendent aujourd'hui qu'une chaîne.
+- **Les erreurs de formulaire ne sont toujours pas liées à leur champ.** Le
+  composant `Champ` existe et sait le faire — `aria-invalid`,
+  `aria-describedby` avec l'erreur AVANT l'aide, état invalide sur trois
+  canaux — mais rien ne le nourrit : les actions serveur rendent une chaîne
+  unique, `{ ok, error }`, sans dire QUEL champ a échoué. C'est ce contrat
+  qu'il faut élargir avant de brancher quoi que ce soit ; le composant, lui,
+  accepte déjà `erreur` en propriété facultative.
+- **Le composant `Bouton` n'est pas fait.** Trois tables de correspondance
+  état → couleur coexistent encore (agenda, comptabilité, et deux ternaires en
+  ligne). Les quatre appliquent la bonne règle — le libellé est toujours écrit
+  à côté de la couleur — mais par discipline, pas par construction.
 
 ## Risques ouverts
 

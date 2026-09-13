@@ -50,6 +50,7 @@ import {
   type Provenances,
 } from "@/lib/bilans/provenance";
 import { useDictation } from "./useDictation";
+import { CHAMP } from "@/components/Champ";
 
 function parseJSON<T>(s: unknown, fallback: T): T {
   try {
@@ -846,7 +847,7 @@ export default function BilanEditor({
                 setPatientName(e.target.value);
                 markDirty();
               }}
-              className={inputCls}
+              className={CHAMP}
             />
             {patientBirthDate && (
               <p className="text-xs text-slate-500 mt-1">
@@ -869,7 +870,7 @@ export default function BilanEditor({
                 setBilanDate(e.target.value);
                 markDirty();
               }}
-              className={inputCls}
+              className={CHAMP}
             />
           </div>
           <div>
@@ -880,7 +881,7 @@ export default function BilanEditor({
                 setAuthor(e.target.value);
                 markDirty();
               }}
-              className={inputCls}
+              className={CHAMP}
             />
           </div>
           <div>
@@ -889,7 +890,7 @@ export default function BilanEditor({
               value={content.lieu ?? ""}
               onChange={(e) => update("lieu", e.target.value)}
               placeholder="Ex. Le Puy-en-Velay"
-              className={inputCls}
+              className={CHAMP}
             />
           </div>
         </div>
@@ -908,7 +909,7 @@ export default function BilanEditor({
                 value={content[f.id] ?? ""}
                 onChange={(e) => update(f.id, e.target.value)}
                 placeholder={f.placeholder}
-                className={inputCls}
+                className={CHAMP}
               />
             </div>
           ))}
@@ -1369,8 +1370,6 @@ function MabcTable({
   );
 }
 
-const inputCls =
-  "w-full rounded-lg border border-slate-500 bg-white py-2 px-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100 transition";
 
 function Label({ children }: { children: React.ReactNode }) {
   return (

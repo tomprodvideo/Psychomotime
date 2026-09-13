@@ -8,6 +8,7 @@ import { frDate } from "@/lib/format";
 import { METHOD_LABELS, type PaymentMethod } from "@/lib/compta/types";
 import type { ReglementAffecte } from "@/lib/compta/queries";
 import { enregistrerReglement, retirerAffectation } from "../actions";
+import { CHAMP } from "@/components/Champ";
 
 /**
  * Les règlements imputés sur une pièce.
@@ -145,7 +146,7 @@ export default function ReglementsSection({
                         ? centsToEuros(solde).toFixed(2).replace(".", ",")
                         : ""
                     }
-                    className={styleChamp}
+                    className={CHAMP}
                   />
                 </div>
                 <div>
@@ -157,14 +158,14 @@ export default function ReglementsSection({
                     name="received_on"
                     type="date"
                     defaultValue={aujourdhui}
-                    className={styleChamp}
+                    className={CHAMP}
                   />
                 </div>
                 <div>
                   <label htmlFor="method" className="block text-xs font-medium text-slate-500 mb-1">
                     Moyen
                   </label>
-                  <select id="method" name="method" className={styleChamp}>
+                  <select id="method" name="method" className={CHAMP}>
                     {(Object.keys(METHOD_LABELS) as PaymentMethod[]).map((m) => (
                       <option key={m} value={m}>
                         {METHOD_LABELS[m]}
@@ -179,7 +180,7 @@ export default function ReglementsSection({
                   <input
                     id="reference"
                     name="reference"
-                    className={styleChamp}
+                    className={CHAMP}
                     placeholder="N° de chèque…"
                   />
                 </div>
@@ -228,5 +229,3 @@ export default function ReglementsSection({
   );
 }
 
-const styleChamp =
-  "w-full rounded-lg border border-slate-500 px-3 py-2 text-sm bg-white focus:border-brand-400 focus:ring-2 focus:ring-brand-100";

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Save } from "lucide-react";
 import type { Attestation } from "@/lib/attestations/types";
 import { enregistrerAttestation } from "../actions";
+import { CHAMP } from "@/components/Champ";
 
 interface Option {
   id: string;
@@ -64,7 +65,7 @@ export default function EnteteAttestation({
             name="period_start"
             type="date"
             defaultValue={attestation.period_start ?? ""}
-            className={styleChamp}
+            className={CHAMP}
           />
         </div>
         <div>
@@ -79,7 +80,7 @@ export default function EnteteAttestation({
             name="period_end"
             type="date"
             defaultValue={attestation.period_end ?? ""}
-            className={styleChamp}
+            className={CHAMP}
           />
         </div>
       </div>
@@ -109,7 +110,7 @@ export default function EnteteAttestation({
               name="recipient_contact_id"
               aria-label="Destinataire de l'attestation"
               defaultValue={attestation.recipient_contact_id ?? ""}
-              className={styleChamp}
+              className={CHAMP}
             >
               <option value="">Choisir un destinataire…</option>
               {contactsDuDossier.length > 0 && (
@@ -177,7 +178,7 @@ export default function EnteteAttestation({
             name="note"
             rows={2}
             defaultValue={attestation.note ?? ""}
-            className={styleChamp}
+            className={CHAMP}
           />
           <p className="text-xs text-slate-500 mt-1">
             Visible par le destinataire. Une attestation n&apos;a pas à porter de
@@ -196,7 +197,7 @@ export default function EnteteAttestation({
             name="internal_note"
             rows={2}
             defaultValue={attestation.internal_note ?? ""}
-            className={styleChamp}
+            className={CHAMP}
           />
           <p className="text-xs text-slate-500 mt-1">
             Jamais imprimée, jamais transmise.
@@ -228,5 +229,3 @@ export default function EnteteAttestation({
   );
 }
 
-const styleChamp =
-  "w-full rounded-lg border border-slate-500 px-3 py-2 text-sm bg-white focus:border-brand-400 focus:ring-2 focus:ring-brand-100";

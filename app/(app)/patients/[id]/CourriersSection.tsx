@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { Plus, Send, Printer, Ban } from "lucide-react";
 import { Dialogue } from "@/components/Dialogue";
+import { CHAMP } from "@/components/Champ";
+import { SectionDossier } from "@/components/SectionDossier";
 import { frDate } from "@/lib/format";
 import {
   COURRIER_STATUS_LABELS,
@@ -18,8 +20,6 @@ import {
   supprimerBrouillonCourrier,
 } from "../../courriers/actions";
 
-const CHAMP =
-  "w-full rounded-lg border border-slate-500 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100";
 
 export interface OptionDestinataire {
   id: string;
@@ -66,15 +66,12 @@ export default function CourriersSection({
   );
 
   return (
-    <section
-      aria-labelledby="titre-courriers"
-      className="bg-white rounded-xl border border-slate-100 shadow-sm p-5"
-    >
-      <div className="flex items-center justify-between gap-3">
-        <h2 id="titre-courriers" className="font-semibold text-slate-800">
-          Courriers de liaison
-        </h2>
-        {canWrite && (
+    <SectionDossier
+      id="courriers"
+      titre="Courriers de liaison"
+      erreur={erreur}
+      action={
+        canWrite && (
           <button
             type="button"
             onClick={() => setEdite("nouveau")}
@@ -83,8 +80,9 @@ export default function CourriersSection({
             <Plus className="h-4 w-4" aria-hidden="true" />
             Écrire
           </button>
-        )}
-      </div>
+        )
+      }
+    >
 
       {/* LE PRODUIT DIT CE QU'IL SAIT, IL NE BLOQUE PAS. Un accord retiré est
           signalé fortement ; son absence, simplement dite. Exiger un accord
@@ -98,15 +96,6 @@ export default function CourriersSection({
       >
         {messageConsentement(consentement)}
       </p>
-
-      {erreur && (
-        <p
-          role="alert"
-          className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
-        >
-          {erreur}
-        </p>
-      )}
 
       {courriers.length === 0 ? (
         <p className="text-sm text-slate-500 mt-3">
@@ -137,7 +126,7 @@ export default function CourriersSection({
           onClose={() => setEdite(null)}
         />
       )}
-    </section>
+    </SectionDossier>
   );
 }
 

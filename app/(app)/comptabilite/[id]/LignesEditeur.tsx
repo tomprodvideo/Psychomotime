@@ -12,6 +12,7 @@ import {
 } from "@/lib/compta/types";
 import type { SeanceFacturable } from "@/lib/compta/queries";
 import { enregistrerLigne, supprimerLigne } from "../actions";
+import { CHAMP } from "@/components/Champ";
 
 /**
  * Les lignes d'un brouillon.
@@ -277,7 +278,7 @@ function FormulaireLigne({
             id="catalogue"
             value={catalogId}
             onChange={(e) => choisirCatalogue(e.target.value)}
-            className={styleChamp}
+            className={CHAMP}
           >
             <option value="">Saisie libre</option>
             {catalogue.map((c) => (
@@ -305,7 +306,7 @@ function FormulaireLigne({
             required
             value={libelle}
             onChange={(e) => setLibelle(e.target.value)}
-            className={styleChamp}
+            className={CHAMP}
             placeholder="Séance de psychomotricité"
           />
         </div>
@@ -321,7 +322,7 @@ function FormulaireLigne({
               inputMode="decimal"
               value={prix}
               onChange={(e) => setPrix(e.target.value)}
-              className={styleChamp}
+              className={CHAMP}
               placeholder="45,00"
             />
           </div>
@@ -334,7 +335,7 @@ function FormulaireLigne({
               name="pricing"
               value={pricing}
               onChange={(e) => setPricing(e.target.value as ServicePricing)}
-              className={styleChamp}
+              className={CHAMP}
             >
               {(Object.keys(PRICING_LABELS) as ServicePricing[]).map((p) => (
                 <option key={p} value={p}>
@@ -355,7 +356,7 @@ function FormulaireLigne({
               value={pricing === "forfait" ? 1 : quantite}
               disabled={pricing === "forfait"}
               onChange={(e) => setQuantite(Math.max(1, Number(e.target.value)))}
-              className={`${styleChamp} disabled:bg-slate-50 disabled:text-slate-500`}
+              className={`${CHAMP} disabled:bg-slate-50 disabled:text-slate-500`}
             />
           </div>
         </div>
@@ -400,7 +401,7 @@ function FormulaireLigne({
           name="intro"
           value={intro}
           onChange={(e) => setIntro(e.target.value)}
-          className={styleChamp}
+          className={CHAMP}
           placeholder="Séances réalisées aux dates suivantes :"
         />
       </div>
@@ -433,5 +434,3 @@ function FormulaireLigne({
   );
 }
 
-const styleChamp =
-  "w-full rounded-lg border border-slate-500 px-3 py-2 text-sm bg-white focus:border-brand-400 focus:ring-2 focus:ring-brand-100";
