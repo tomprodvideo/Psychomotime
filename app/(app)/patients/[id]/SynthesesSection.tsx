@@ -49,6 +49,8 @@ export interface OptionParcours {
  */
 export default function SynthesesSection({
   patientId,
+  patientNom,
+  patientNeLe,
   syntheses,
   parcours,
   destinataires,
@@ -57,6 +59,8 @@ export default function SynthesesSection({
   canWrite,
 }: {
   patientId: string;
+  patientNom: string;
+  patientNeLe: string | null;
   syntheses: SyntheseAvecDestinataire[];
   parcours: OptionParcours[];
   destinataires: OptionDestinataire[];
@@ -69,9 +73,14 @@ export default function SynthesesSection({
   );
 
   return (
-    <section className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
+    <section
+      aria-labelledby="titre-syntheses"
+      className="bg-white rounded-xl border border-slate-100 shadow-sm p-5"
+    >
       <div className="flex items-center justify-between gap-3">
-        <h2 className="font-semibold text-slate-800">Synthèses de suivi</h2>
+        <h2 id="titre-syntheses" className="font-semibold text-slate-800">
+          Synthèses de suivi
+        </h2>
         {canWrite && (
           <button
             type="button"
@@ -129,6 +138,8 @@ export default function SynthesesSection({
       {edite && (
         <DialogueSynthese
           patientId={patientId}
+          patientNom={patientNom}
+          patientNeLe={patientNeLe}
           synthese={edite === "nouveau" ? null : edite}
           existantes={syntheses}
           parcours={parcours}
@@ -431,6 +442,8 @@ function ReleveDeLaPeriode({
 
 function DialogueSynthese({
   patientId,
+  patientNom,
+  patientNeLe,
   synthese,
   existantes,
   parcours,
@@ -438,6 +451,8 @@ function DialogueSynthese({
   onClose,
 }: {
   patientId: string;
+  patientNom: string;
+  patientNeLe: string | null;
   synthese: SyntheseAvecDestinataire | null;
   existantes: SyntheseAvecDestinataire[];
   parcours: OptionParcours[];
@@ -517,7 +532,16 @@ function DialogueSynthese({
       onFermer={onClose}
       taille="large"
       titre={synthese ? "Modifier la synthèse" : "Synthèse de suivi"}
-      description="Les éléments de la période sont relevés dans le dossier. Ce qu'ils signifient, c'est vous qui l'écrivez."
+      /* LE DOSSIER EST NOMMÉ DANS LA FENÊTRE. `showModal()` rend inerte tout
+         ce qui est derrière : le nom du patient, en tête de page, devient
+         inatteignable — y compris pour un lecteur d'écran — et le titre de
+         l'onglet est délibérément statique pour tenir ce nom hors de
+         l'historique du navigateur.
+         Le rapport est inversé par rapport au risque : la fenêtre de note de
+         séance, dont le contenu reste au cabinet, nommait le patient ; celles
+         qui composent un écrit destiné à SORTIR ne le nommaient pas.
+         Relevé par la relecture d'interface du lot 8. */
+      description={`${patientNom}${patientNeLe ? ` · né(e) le ${frDate(patientNeLe)}` : ""}`}
     >
       <form onSubmit={soumettre} className="px-6 py-5 space-y-4">
         <div className="grid gap-4 sm:grid-cols-3">

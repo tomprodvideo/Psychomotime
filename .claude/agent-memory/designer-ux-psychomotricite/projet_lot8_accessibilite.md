@@ -1,14 +1,17 @@
 ---
 name: projet-lot8-accessibilite
-description: Lot 8 = accessibilité, cible WCAG 2.2 niveau AA ; et les docs/context sont en retard sur le code
+description: Lot 8 = design + accessibilité (WCAG 2.2 AA) ; quels docs/context sont fiables et lesquels mentent encore
 metadata:
   type: project
 ---
 
-Le **lot 8** du projet Psychomotime porte sur l'accessibilité. Cible annoncée : **WCAG 2.2 niveau AA** (donc 2.4.11 Focus Not Obscured et 2.5.8 Target Size sont dans le périmètre ; 2.4.13 Focus Appearance et 2.4.12 sont AAA, hors cible).
+Le **lot 8** de Psychomotime porte sur design, accessibilité et performance. Performance livrée ; accessibilité en audit. Cible annoncée : **WCAG 2.2 niveau AA** (2.4.11 Focus Not Obscured et 2.5.8 Target Size sont dans le périmètre ; 2.4.13 Focus Appearance est AAA, hors cible).
 
-**Fait non évident à retenir : `docs/context/*` et `docs/clinical/*` décrivent le dépôt à l'état `e262bb6` (2026-09-11) et sont nettement en retard sur le code.** Au 2026-09-12 (`6987e0a`), des modules que ces documents déclarent « absents » existent bel et bien : agenda et présences, séances, consentements, entourage, attestations, parcours de soin, transmissions par lien, et une page publique `app/document/[token]` accessible sans compte.
+## Quels documents croire, au 2026-09-13
 
-**Why:** j'ai failli fonder un audit sur la cartographie de `PRODUCT.md`/`SCOPE.md`, qui affirme « aucun agenda, aucune table, aucun partage sortant ». C'est faux aujourd'hui.
+- **`docs/context/CURRENT_STATE.md` a été réécrit le 2026-09-13 et est globalement fiable** (locataire = cabinet, 24 migrations, falsification des gardes). Il reste **une ligne fausse** : « le design system n'existe pas : 58 lignes de CSS, 108 lignes de composants partagés ». Réel : `app/globals.css` fait 96 lignes et porte une règle `:focus-visible` posée hors couche en cascade, et `components/` contient 5 fichiers dont un `Dialogue` bâti sur `<dialog>` natif.
+- **`PRODUCT.md`, `SCOPE.md`, `USERS.md`, `GLOSSARY.md`, `WORKFLOWS.md` sont restés au 2026-09-11** et sont désormais contredits par le code : ils affirment que le locataire est le compte utilisateur, qu'il n'y a ni agenda, ni séance, ni partage sortant, ni envoi d'e-mail, ni génération PDF serveur. Or `package.json` porte `resend` et `@react-pdf/renderer`, et `app/(app)/agenda/`, `courriers/`, `syntheses/`, `attestations/` existent.
 
-**How to apply:** lire ces documents pour l'intention et les principes (sécurité clinique, vocabulaire, décisions), **jamais pour l'inventaire des fonctionnalités**. Pour le périmètre réel, énumérer l'arborescence `app/`. Signaler l'écart quand il change le résultat. Voir [[feedback-rigueur-audit]].
+**Why:** j'ai failli fonder un audit sur la cartographie de `PRODUCT.md`, qui est fausse. Et l'utilisateur ouvre désormais ses demandes par « état factuel, à vérifier toi-même avant de conclure » — il sait que ces documents dérivent et attend une contre-vérification, pas une citation.
+
+**How to apply:** lire ces documents pour l'intention et les principes (sécurité clinique, vocabulaire, décisions), **jamais pour l'inventaire des fonctionnalités ni pour un chiffre**. Pour le périmètre réel, énumérer `app/` ; pour un volume, compter par `Grep`. Signaler l'écart quand il change le résultat. Voir [[feedback-rigueur-audit]] et [[feedback-rubrique-refus]].

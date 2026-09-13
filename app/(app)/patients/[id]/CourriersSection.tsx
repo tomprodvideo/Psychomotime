@@ -44,6 +44,8 @@ export interface OptionDestinataire {
  */
 export default function CourriersSection({
   patientId,
+  patientNom,
+  patientNeLe,
   courriers,
   destinataires,
   consentement,
@@ -51,6 +53,8 @@ export default function CourriersSection({
   canWrite,
 }: {
   patientId: string;
+  patientNom: string;
+  patientNeLe: string | null;
   courriers: CourrierAvecDestinataire[];
   destinataires: OptionDestinataire[];
   consentement: EtatConsentement;
@@ -62,9 +66,14 @@ export default function CourriersSection({
   );
 
   return (
-    <section className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
+    <section
+      aria-labelledby="titre-courriers"
+      className="bg-white rounded-xl border border-slate-100 shadow-sm p-5"
+    >
       <div className="flex items-center justify-between gap-3">
-        <h2 className="font-semibold text-slate-800">Courriers de liaison</h2>
+        <h2 id="titre-courriers" className="font-semibold text-slate-800">
+          Courriers de liaison
+        </h2>
         {canWrite && (
           <button
             type="button"
@@ -121,6 +130,8 @@ export default function CourriersSection({
       {edite && (
         <DialogueCourrier
           patientId={patientId}
+          patientNom={patientNom}
+          patientNeLe={patientNeLe}
           courrier={edite === "nouveau" ? null : edite}
           destinataires={destinataires}
           onClose={() => setEdite(null)}
@@ -294,11 +305,15 @@ function LigneCourrier({
 
 function DialogueCourrier({
   patientId,
+  patientNom,
+  patientNeLe,
   courrier,
   destinataires,
   onClose,
 }: {
   patientId: string;
+  patientNom: string;
+  patientNeLe: string | null;
   courrier: CourrierAvecDestinataire | null;
   destinataires: OptionDestinataire[];
   onClose: () => void;
@@ -327,7 +342,16 @@ function DialogueCourrier({
       ouvert
       onFermer={onClose}
       titre={courrier ? "Modifier le courrier" : "Courrier de liaison"}
-      description="Une page adressée à un professionnel nommé. Le courrier ne reprend rien d'un bilan : ce qu'il dit, c'est ce que vous écrivez."
+      /* LE DOSSIER EST NOMMÉ DANS LA FENÊTRE. `showModal()` rend inerte tout
+         ce qui est derrière : le nom du patient, en tête de page, devient
+         inatteignable — y compris pour un lecteur d'écran — et le titre de
+         l'onglet est délibérément statique pour tenir ce nom hors de
+         l'historique du navigateur.
+         Le rapport est inversé par rapport au risque : la fenêtre de note de
+         séance, dont le contenu reste au cabinet, nommait le patient ; celles
+         qui composent un écrit destiné à SORTIR ne le nommaient pas.
+         Relevé par la relecture d'interface du lot 8. */
+      description={`${patientNom}${patientNeLe ? ` · né(e) le ${frDate(patientNeLe)}` : ""}`}
     >
       <form onSubmit={soumettre} className="px-6 py-5 space-y-4">
         <div>

@@ -1,0 +1,250 @@
+{
+  "cible": "supabase/migrations/0024_ecrit_de_fin.sql",
+  "mutations": [
+    {
+      "nom": "refus uniforme (oracle d'appartenance)",
+      "avant": "  if app.current_user_id() is not null\n     and not app.can_write(new.practice_id) then\n    raise exception 'Accès refusé.' using errcode = 'insufficient_privilege';\n  end if;",
+      "apres": ""
+    },
+    {
+      "nom": "le parcours est celui du dossier",
+      "avant": "  if not exists (\n    select 1 from public.care_pathways cp\n     where cp.id = new.pathway_id\n       and cp.practice_id = new.practice_id\n       and cp.patient_id = new.patient_id\n  ) then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "le destinataire appartient au cabinet",
+      "avant": "  if new.recipient_contact_id is not null and not exists (\n    select 1 from public.contacts c\n     where c.id = new.recipient_contact_id and c.practice_id = new.practice_id\n  ) then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "la remise et le destinataire s'accordent",
+      "avant": "  constraint closure_remise_ck check (\n    (delivery_mode = 'destinataire') = (recipient_contact_id is not null))",
+      "apres": "  constraint closure_remise_ck check (true)"
+    },
+    {
+      "nom": "un écrit sans observation ne part pas",
+      "avant": "  if btrim(coalesce(r.observed, '')) = '' then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "le parcours doit être clos",
+      "avant": "  if cp.status not in ('termine', 'interrompu', 'reoriente') then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "la fin ne se situe pas dans le futur",
+      "avant": "  if cp.ended_on > current_date then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "le parcours doit avoir une date de début",
+      "avant": "  if cp.started_on is null then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "l'écrit ne se date pas du futur",
+      "avant": "  if v_emission > current_date then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "la lecture est clinique, pas simplement membre",
+      "avant": "  using (practice_id in (select app.mes_cabinets_cliniques()));",
+      "apres": "  using (practice_id in (select app.mes_cabinets()));"
+    },
+    {
+      "nom": "le contenu clinique n'est pas lisible par un assistant",
+      "avant": "  if not app.can_read_clinical(cp.practice_id) then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "la dernière séance honorée est relevée",
+      "avant": "    'derniere_seance_le', (",
+      "apres": "    'derniere_seance_retiree', ("
+    },
+    {
+      "nom": "les rendez-vous encore à venir sont signalés",
+      "avant": "    'rendez_vous_a_venir', (",
+      "apres": "    'rendez_vous_a_venir_retire', ("
+    },
+    {
+      "nom": "les objectifs encore en cours sont signalés",
+      "avant": "    'objectifs_en_cours', (",
+      "apres": "    'objectifs_en_cours_retire', ("
+    },
+    {
+      "nom": "les objectifs sont ceux de CE parcours",
+      "avant": "       where o.pathway_id = p_pathway_id\n         and o.practice_id = cp.practice_id), '[]'::jsonb),",
+      "apres": "       where o.practice_id = cp.practice_id), '[]'::jsonb),"
+    },
+    {
+      "nom": "les avertissements d'écran ne partent pas avec le document",
+      "avant": "             - 'honorees_sans_parcours' - 'rendez_vous_a_venir'\n             - 'objectifs_en_cours'\n",
+      "apres": "             "
+    },
+    {
+      "nom": "la parole proposée à la reprise n'est pas imprimée",
+      "avant": "             - 'motif_demande_a_reprendre' - 'fin_du_parcours_a_reprendre'\n",
+      "apres": ""
+    },
+    {
+      "nom": "le non-dit des absences n'est pas conservé",
+      "avant": "             - (case when r.detail_absences then array[]::text[]\n                     else array['absences', 'annulees_par_le_cabinet'] end)\n",
+      "apres": ""
+    },
+    {
+      "nom": "le non-dit des objectifs n'est pas conservé",
+      "avant": "             - (case when r.detail_objectifs then array[]::text[]\n                     else array['objectifs'] end)\n",
+      "apres": ""
+    },
+    {
+      "nom": "le non-dit du financement n'est pas conservé",
+      "avant": "             - (case when r.detail_financement then array[]::text[]\n                     else array['financement'] end)",
+      "apres": ""
+    },
+    {
+      "nom": "la nature de la fin est énoncée et figée",
+      "avant": "             'nature', case r.closure_kind",
+      "apres": "             'nature_retiree', case r.closure_kind"
+    },
+    {
+      "nom": "un écrit versé au dossier le dit",
+      "avant": "             'remise', case r.delivery_mode",
+      "apres": "             'remise_retiree', case r.delivery_mode"
+    },
+    {
+      "nom": "l'accord de partage est figé",
+      "avant": "           'consentement_partage', (",
+      "apres": "           'consentement_partage_retire', ("
+    },
+    {
+      "nom": "un parcours portant un écrit remis ne se rouvre pas",
+      "avant": "  if old.status in ('termine', 'interrompu', 'reoriente')\n     and new.status not in ('termine', 'interrompu', 'reoriente')",
+      "apres": "  if false"
+    },
+    {
+      "nom": "seul un écrit REMIS verrouille le parcours",
+      "avant": "                  where cr.pathway_id = old.id and cr.status = 'emis')",
+      "apres": "                  where cr.pathway_id = old.id)"
+    },
+    {
+      "nom": "le motif d'annulation ne se pose pas d'avance",
+      "avant": "  if new.cancellation_reason is distinct from old.cancellation_reason\n     and new.status <> 'annule' then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "une annulation ne se défait pas",
+      "avant": "    if not (old.status = 'emis' and new.status = 'annule') then",
+      "apres": "    if false then"
+    },
+    {
+      "nom": "un écrit remis ne se supprime pas",
+      "avant": "  if old.status <> 'brouillon' then\n    raise exception\n      'Un écrit de fin remis ne se supprime pas",
+      "apres": "  if false then\n    raise exception\n      'Un écrit de fin remis ne se supprime pas"
+    },
+    {
+      "nom": "[contre-contrôle] une clé ajoutée à l'instantané est vue",
+      "avant": "           'emis_le', v_emission,\n           'nature', r.closure_kind,",
+      "apres": "           'emis_le', v_emission, 'cle_en_trop', 'x',\n           'nature', r.closure_kind,"
+    },
+    {
+      "nom": "figé après remise — closure_kind",
+      "avant": "  if new.closure_kind is distinct from old.closure_kind\n     or",
+      "apres": "  if"
+    },
+    {
+      "nom": "figé après remise — context",
+      "avant": "     or new.context is distinct from old.context\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — means",
+      "avant": "     or new.means is distinct from old.means\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — observed",
+      "avant": "     or new.observed is distinct from old.observed\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — closure_reason",
+      "avant": "     or new.closure_reason is distinct from old.closure_reason\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — remains_open",
+      "avant": "     or new.remains_open is distinct from old.remains_open\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — handover",
+      "avant": "     or new.handover is distinct from old.handover\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — resumption",
+      "avant": "     or new.resumption is distinct from old.resumption\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — note",
+      "avant": "     or new.note is distinct from old.note\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — detail_objectifs",
+      "avant": "     or new.detail_objectifs is distinct from old.detail_objectifs\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — detail_absences",
+      "avant": "     or new.detail_absences is distinct from old.detail_absences\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — detail_financement",
+      "avant": "     or new.detail_financement is distinct from old.detail_financement\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — issued_on",
+      "avant": "     or new.issued_on is distinct from old.issued_on\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — snapshot",
+      "avant": "     or new.snapshot is distinct from old.snapshot\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — delivery_mode",
+      "avant": "     or new.delivery_mode is distinct from old.delivery_mode\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — recipient_contact_id",
+      "avant": "     or new.recipient_contact_id is distinct from old.recipient_contact_id\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — issued_by",
+      "avant": "     or new.issued_by is distinct from old.issued_by\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — created_by",
+      "avant": "     or new.created_by is distinct from old.created_by\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — pathway_id",
+      "avant": "     or new.pathway_id <> old.pathway_id\n",
+      "apres": ""
+    },
+    {
+      "nom": "figé après remise — created_at",
+      "avant": "     or new.created_at is distinct from old.created_at then",
+      "apres": "     or false then"
+    }
+  ]
+}

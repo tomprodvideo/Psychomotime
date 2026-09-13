@@ -22,8 +22,10 @@ import {
   etatConsentementPartage,
 } from "@/lib/courriers/queries";
 import { listSyntheses } from "@/lib/syntheses/queries";
+import { listFins } from "@/lib/fins/queries";
 import CourriersSection from "./CourriersSection";
 import SynthesesSection from "./SynthesesSection";
+import FinsSection from "./FinsSection";
 import { ROLE_LABELS, contactName, patientName } from "@/lib/dossier/types";
 import { listAttestations } from "@/lib/attestations/queries";
 import PatientFormDialog from "../PatientFormDialog";
@@ -73,6 +75,7 @@ export default async function FichePatientPage({
     attestations,
     courriers,
     syntheses,
+    fins,
     consentementPartage,
   ] = await Promise.all([
     listPatientContacts(practice, patient.id),
@@ -87,6 +90,7 @@ export default async function FichePatientPage({
     listAttestations(practice, { patientId: patient.id }),
     listCourriers(practice, patient.id),
     listSyntheses(practice, patient.id),
+    listFins(practice, patient.id),
     etatConsentementPartage(practice, patient.id),
   ]);
 
@@ -256,6 +260,8 @@ export default async function FichePatientPage({
           <>
           <CourriersSection
             patientId={patient.id}
+            patientNom={patientName(patient)}
+            patientNeLe={patient.birth_date}
             courriers={courriers.items}
             erreur={courriers.erreur}
             consentement={consentementPartage}
@@ -286,6 +292,8 @@ export default async function FichePatientPage({
               sont les mêmes que ceux d'un courrier. */}
           <SynthesesSection
             patientId={patient.id}
+            patientNom={patientName(patient)}
+            patientNeLe={patient.birth_date}
             syntheses={syntheses.items}
             erreur={syntheses.erreur}
             consentement={consentementPartage}
@@ -295,6 +303,40 @@ export default async function FichePatientPage({
               libelle:
                 p.label?.trim() ||
                 `Parcours ouvert le ${p.started_on ? frDate(p.started_on) : "—"}`,
+            }))}
+            destinataires={[
+              ...entourage.map((l) => ({
+                id: l.contact.id,
+                nom: contactName(l.contact),
+                role: ROLE_LABELS[l.role] ?? l.role,
+                groupe: "dossier" as const,
+              })),
+              ...contacts
+                .filter((c) => !entourage.some((l) => l.contact.id === c.id))
+                .map((c) => ({
+                  id: c.id,
+                  nom: contactName(c),
+                  groupe: "cabinet" as const,
+                })),
+            ]}
+          />
+
+          {/* L'ÉCRIT DE FIN VIENT APRÈS LA SYNTHÈSE : il en reprend la forme,
+              et il arrive plus tard dans la vie d'un dossier. */}
+          <FinsSection
+            patientId={patient.id}
+            patientNom={patientName(patient)}
+            patientNeLe={patient.birth_date}
+            ecrits={fins.items}
+            erreur={fins.erreur}
+            consentement={consentementPartage}
+            canWrite={practice.canWrite}
+            parcours={parcours.map((p) => ({
+              id: p.id,
+              libelle:
+                p.label?.trim() ||
+                `Parcours ouvert le ${p.started_on ? frDate(p.started_on) : "—"}`,
+              clos: ["termine", "interrompu", "reoriente"].includes(p.status),
             }))}
             destinataires={[
               ...entourage.map((l) => ({

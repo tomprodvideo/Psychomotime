@@ -7,7 +7,7 @@
 ## Modèles et parcours validés
 
 - Aucun modèle de bilan ou compte rendu n'est validé à l'installation.
-- [Moteur de bilans, dernier îlot v1](project_moteur-bilans-ilot-v1.md) — L4 gelé derrière Q-203 (bloc de prose ou registres séparés), non tranchée.
+- [Moteur de bilans, dernier îlot v1](project_moteur-bilans-ilot-v1.md) — écarts C-1..C-8 vérifiés, `CURRENT_STATE.md` périmé sur ce point, ce que Q-201/Q-202 bloquent vraiment.
 - [Série des écrits cliniques](project_ecrits-cliniques-serie.md) — livrée rang par rang, SQL d'abord et document imprimable en dernier ; décisions groupées en attente.
 
 ## Instruments, licences et psychométrie

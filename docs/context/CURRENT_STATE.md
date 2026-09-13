@@ -31,7 +31,7 @@ mutation par le harnais de falsification — et non de la production.
 | L5 | Moteur comptable, charges, attestations | livré |
 | L7 | Transmissions par lien | livré |
 | L8 | Design, accessibilité, performance | en cours — performance faite, accessibilité en audit |
-| L4 | Écrits cliniques : note de séance, courrier de liaison, synthèse de suivi | 3 des 7 écrits manquants livrés |
+| L4 | Écrits cliniques : note de séance, courrier, synthèse, écrit de fin | 4 des 7 écrits manquants livrés |
 | L6, L9 | IA, préparation à la production | à faire |
 
 ## Ce qui est solide, et pourquoi on peut le dire
@@ -97,9 +97,32 @@ peine de le garder.
 
 ## Ce qui n'est pas encore fait, et qu'il ne faut pas supposer acquis
 
-- **Le moteur de bilans est toujours celui de la v1**, clé sur `user_id`. Les
-  écarts cliniques documentés dans `docs/clinical/CLINICAL_SAFETY.md` — dont un
-  brouillon qui s'imprime à l'identique d'un document validé — sont intacts.
+- **Le moteur de bilans est toujours celui de la v1**, clé sur `user_id`, hors
+  du modèle « cabinet ». Sa bascule est bloquée par `Q-201` — ce que « validé »
+  doit signifier — qui est une décision de la praticienne.
+
+  **Cinq des huit écarts cliniques de `docs/clinical/CLINICAL_SAFETY.md` sont
+  corrigés** depuis le 2026-09-12 : le brouillon porte un bandeau qui s'imprime,
+  l'âge est calculé à la date de passation, la saisie est enregistrée toutes les
+  trente secondes, un bilan ne se détache plus de son dossier sur une frappe, et
+  supprimer une section n'orpheline plus son texte. *Cette rubrique affirmait le
+  contraire jusqu'au 2026-09-13 ; elle est chargée dans le contexte de chaque
+  session et a induit deux analyses en erreur.*
+
+  **Restent ouverts, et aucun ne dépend de `Q-201`** : la légende des scores se
+  contredit à la note 7 et à −1 DS (`Q-202`, une question fermée), le
+  vocabulaire « zone dite pathologique » figure sur un document remis à des
+  familles, la cohérence entre groupe d'âge coché et date de naissance n'est pas
+  montrée (`Q-205`), les bilans déjà orphelins sont invisibles et irréparables,
+  et l'objet du courriel sortant annonce « bilan psychomoteur » quel que soit
+  le type.
+- **`public.bilans` n'est couverte par AUCUN contrôle d'isolation.** Elle naît
+  dans le schéma v1, appliqué seulement par la voie `cutover` ; la base de test
+  est construite à partir des seules migrations, et la couverture RLS
+  générique ne peut donc pas voir une table qui n'y est pas. Sa politique est
+  lisible et correcte — elle n'a simplement jamais été FALSIFIÉE, dans un dépôt
+  où 102 gardes l'ont été sur les deux dernières migrations. C'est la table qui
+  porte les comptes rendus.
 - **Aucun parcours de bout en bout automatisé** (L9), aucun contrôle visuel.
 - **Aucune fonction IA n'a été revue** depuis la refonte.
 - **Le design system n'existe pas** : 58 lignes de CSS, 108 lignes de
