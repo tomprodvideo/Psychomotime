@@ -17,7 +17,12 @@ import {
   listPatientPieces,
   listPatientContacts,
 } from "@/lib/dossier/queries";
-import { patientName } from "@/lib/dossier/types";
+import {
+  listCourriers,
+  etatConsentementPartage,
+} from "@/lib/courriers/queries";
+import CourriersSection from "./CourriersSection";
+import { ROLE_LABELS, contactName, patientName } from "@/lib/dossier/types";
 import { listAttestations } from "@/lib/attestations/queries";
 import PatientFormDialog from "../PatientFormDialog";
 import ArchiveControls from "./ArchiveControls";
@@ -64,6 +69,8 @@ export default async function FichePatientPage({
     comptes,
     pieces,
     attestations,
+    courriers,
+    consentementPartage,
   ] = await Promise.all([
     listPatientContacts(practice, patient.id),
     listPathways(practice, patient.id),
@@ -75,6 +82,8 @@ export default async function FichePatientPage({
     countPatientSessions(practice, patient.id, maintenant),
     listPatientPieces(patient.id),
     listAttestations(practice, { patientId: patient.id }),
+    listCourriers(practice, patient.id),
+    etatConsentementPartage(practice, patient.id),
   ]);
 
   const objectifs = await listObjectives(
@@ -240,6 +249,34 @@ export default async function FichePatientPage({
         />
 
         {practice.canReadClinical ? (
+          <>
+          <CourriersSection
+            patientId={patient.id}
+            courriers={courriers.items}
+            erreur={courriers.erreur}
+            consentement={consentementPartage}
+            canWrite={practice.canWrite}
+            /* DEUX GROUPES, SÉPARÉS À L'ŒIL. L'entourage du dossier d'abord :
+               proposer indistinctement tous les contacts du cabinet rendrait
+               possible d'écrire au confrère d'un autre patient au sujet de
+               celui-ci. */
+            destinataires={[
+              ...entourage.map((l) => ({
+                id: l.contact.id,
+                nom: contactName(l.contact),
+                role: ROLE_LABELS[l.role] ?? l.role,
+                groupe: "dossier" as const,
+              })),
+              ...contacts
+                .filter((c) => !entourage.some((l) => l.contact.id === c.id))
+                .map((c) => ({
+                  id: c.id,
+                  nom: contactName(c),
+                  groupe: "cabinet" as const,
+                })),
+            ]}
+          />
+
           <NotesSection
             patientId={patient.id}
             notes={notes}
@@ -252,6 +289,7 @@ export default async function FichePatientPage({
             )}
             canWrite={practice.canWrite}
           />
+          </>
         ) : (
           <section className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
             <h2 className="font-semibold text-slate-800">Notes cliniques</h2>
