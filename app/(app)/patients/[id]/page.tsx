@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AlertTriangle, ArrowLeft, Archive } from "lucide-react";
-import { frDate } from "@/lib/format";
+import { frDate, frJourDe } from "@/lib/format";
 import { formatAgeAt } from "@/lib/age";
 import { dateCivile } from "@/lib/dateCivile";
 import { getCurrentPractice } from "@/lib/dossier/practice";
@@ -164,7 +164,7 @@ export default async function FichePatientPage({
           <div className="text-sm text-slate-600">
             <p className="font-medium text-slate-700">Dossier archivé</p>
             <p>
-              {patient.archived_at && `Archivé le ${frDate(patient.archived_at.slice(0, 10))}. `}
+              {patient.archived_at && `Archivé le ${frJourDe(patient.archived_at, practice.timezone)}. `}
               {patient.archive_reason ?? "Aucun motif renseigné."}
             </p>
             <p className="text-xs text-slate-500 mt-1">
@@ -256,7 +256,7 @@ export default async function FichePatientPage({
           canWrite={practice.canWrite}
         />
 
-        <SeancesSection appointments={rendezVous} counts={comptes} />
+        <SeancesSection appointments={rendezVous} counts={comptes} fuseau={practice.timezone} />
 
         <ParcoursSection
           patientId={patient.id}
@@ -273,6 +273,7 @@ export default async function FichePatientPage({
           <>
           <NotesSection
             aujourdhui={aujourdhui}
+            fuseau={practice.timezone}
             patientId={patient.id}
             patientNom={patientName(patient)}
             patientNeLe={patient.birth_date}
@@ -320,6 +321,7 @@ export default async function FichePatientPage({
               rédige en relisant les notes de la période, et les destinataires
               sont les mêmes que ceux d'un courrier. */}
           <SynthesesSection
+            aujourdhui={aujourdhui}
             patientId={patient.id}
             patientNom={patientName(patient)}
             patientNeLe={patient.birth_date}

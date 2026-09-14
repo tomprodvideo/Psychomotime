@@ -63,6 +63,7 @@ export default function RegistreClient({
   vocabulaires,
   canWrite,
   seulementBoutonAjout = false,
+  aujourdhui,
 }: {
   instruments: Instrument[];
   echelles: Record<string, InstrumentScale[]>;
@@ -70,6 +71,8 @@ export default function RegistreClient({
   vocabulaires: Vocabulary[];
   canWrite: boolean;
   seulementBoutonAjout?: boolean;
+  /** Le jour du cabinet. Une licence échue l'est au lendemain de son échéance, comme en base. */
+  aujourdhui: string;
 }) {
   const [edite, setEdite] = useState<Instrument | "nouveau" | null>(null);
   const [echelleEditee, setEchelleEditee] = useState<{
@@ -112,8 +115,11 @@ export default function RegistreClient({
         {instruments.map((i) => {
           const ouvert = deplie === i.id;
           const mesEchelles = echelles[i.id] ?? [];
-          const expire =
-            i.licence_expires_on && new Date(i.licence_expires_on) < new Date();
+          /* LA RÈGLE DE LA BASE (`app.effective_licence_status`) : échue le
+             LENDEMAIN de son échéance. `new Date("AAAA-MM-JJ")` se lit à minuit
+             UTC — l'écran la disait échue dès 1 h ou 2 h du matin, le jour même,
+             pendant que la base la tenait encore pour valable. */
+          const expire = i.licence_expires_on !== null && i.licence_expires_on < aujourdhui;
 
           return (
             <li

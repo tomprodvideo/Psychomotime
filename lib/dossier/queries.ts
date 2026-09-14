@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { ajouterJours, dateCivile, debutDuJour } from "@/lib/dateCivile";
 import type {
   Appointment,
   AppointmentWithPatient,
@@ -687,6 +688,11 @@ export interface JourneeResume {
  *
  * `maintenant` est un paramètre : la page choisit son instant une fois, et
  * toutes les bornes en découlent. Aucune lecture d'horloge n'est cachée ici.
+ *
+ * LA JOURNÉE EST CELLE DU CABINET. Elle commençait à `setHours(0, 0, 0, 0)`,
+ * minuit dans le fuseau du SERVEUR : sous un processus UTC, « aujourd'hui »
+ * courait de 1 h ou 2 h du matin à Paris jusqu'à la même heure le lendemain,
+ * et entre minuit et cette heure-là l'accueil montrait encore la veille.
  */
 export async function getJourneeResume(
   practice: PracticeContext,
@@ -694,12 +700,10 @@ export async function getJourneeResume(
 ): Promise<JourneeResume> {
   const supabase = await createClient();
 
-  const debutJour = new Date(maintenant);
-  debutJour.setHours(0, 0, 0, 0);
-  const finJour = new Date(debutJour);
-  finJour.setDate(finJour.getDate() + 1);
-  const finSemaine = new Date(debutJour);
-  finSemaine.setDate(finSemaine.getDate() + 7);
+  const jour = dateCivile(maintenant, practice.timezone);
+  const debutJour = debutDuJour(jour, practice.timezone);
+  const finJour = debutDuJour(ajouterJours(jour, 1), practice.timezone);
+  const finSemaine = debutDuJour(ajouterJours(jour, 7), practice.timezone);
 
   const [
     aujourdhui,

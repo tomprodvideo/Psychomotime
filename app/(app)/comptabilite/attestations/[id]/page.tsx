@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Ban, Printer } from "lucide-react";
 import { formatCents } from "@/lib/money";
-import { frDate } from "@/lib/format";
+import { frDate, frJourDe } from "@/lib/format";
 import { Card } from "@/components/ui";
 import { getCurrentPractice } from "@/lib/dossier/practice";
 import { listContacts, listPatientContacts } from "@/lib/dossier/queries";
@@ -252,6 +252,7 @@ export default async function AttestationPage({
 
           {modifiable ? (
             <FaitsAttestes
+              fuseau={practice.timezone}
               attestationId={a.id}
               kind={a.kind}
               seances={seances}
@@ -263,7 +264,7 @@ export default async function AttestationPage({
             <ul className="list-none p-0 m-0 divide-y divide-slate-50">
               {complete.seances.map((s) => (
                 <li key={s.appointment_id} className="px-5 py-2.5 text-sm text-slate-700">
-                  {frDate(s.starts_at.slice(0, 10))}
+                  {frJourDe(s.starts_at, practice.timezone)}
                   <span className="text-slate-500">
                     {" · "}
                     {a.detail_nature
@@ -289,6 +290,7 @@ export default async function AttestationPage({
         </Card>
         {a.status !== "brouillon" && (
           <PanneauPartage
+            fuseau={practice.timezone}
             sujetType="attestation"
             sujetId={a.id}
             liens={liensPartage.items}

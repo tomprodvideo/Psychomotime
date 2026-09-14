@@ -218,6 +218,7 @@ export default async function PiecePage({
             )}
           </div>
           <LignesEditeur
+            fuseau={practice.timezone}
             documentId={d.id}
             lignes={lignes}
             catalogue={catalogue}
@@ -228,6 +229,7 @@ export default async function PiecePage({
 
         {d.status !== "brouillon" && (
           <PanneauPartage
+            fuseau={practice.timezone}
             sujetType="billing_document"
             sujetId={d.id}
             liens={liens.items}

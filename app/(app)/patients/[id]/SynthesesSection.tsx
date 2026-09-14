@@ -60,6 +60,7 @@ export default function SynthesesSection({
   consentement,
   erreur,
   canWrite,
+  aujourdhui,
 }: {
   patientId: string;
   patientNom: string;
@@ -70,6 +71,8 @@ export default function SynthesesSection({
   consentement: EtatConsentement;
   erreur: string | null;
   canWrite: boolean;
+  /** Le jour du cabinet, calculé côté serveur : il borne la période proposée. */
+  aujourdhui: string;
 }) {
   const [edite, setEdite] = useState<SyntheseAvecDestinataire | "nouveau" | null>(
     null,
@@ -135,6 +138,7 @@ export default function SynthesesSection({
           existantes={syntheses}
           parcours={parcours}
           destinataires={destinataires}
+          aujourdhui={aujourdhui}
           onClose={() => setEdite(null)}
         />
       )}
@@ -432,6 +436,7 @@ function DialogueSynthese({
   existantes,
   parcours,
   destinataires,
+  aujourdhui,
   onClose,
 }: {
   patientId: string;
@@ -441,12 +446,13 @@ function DialogueSynthese({
   existantes: SyntheseAvecDestinataire[];
   parcours: OptionParcours[];
   destinataires: OptionDestinataire[];
+  aujourdhui: string;
   onClose: () => void;
 }) {
   const [pending, start] = useTransition();
   const [erreur, setErreur] = useState<string | null>(null);
 
-  const defaut = periodeParDefaut();
+  const defaut = periodeParDefaut(aujourdhui);
   const [parcoursId, setParcoursId] = useState(
     synthese?.pathway_id ?? (parcours.length === 1 ? parcours[0].id : ""),
   );

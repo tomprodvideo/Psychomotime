@@ -54,9 +54,14 @@ export function indice(jeton: string): string {
   return jeton.slice(-4);
 }
 
-/** Date d'expiration, à partir d'une date de référence fournie. */
+/**
+ * Date d'expiration, à partir d'une date de référence fournie.
+ *
+ * `jours` fois vingt-quatre heures. `setDate` ajoutait des jours du fuseau du
+ * PROCESSUS : une heure de plus ou de moins selon le serveur, les nuits de
+ * changement d'heure. Le jour affiché se calcule ensuite dans le fuseau du
+ * cabinet (`dateCivile`).
+ */
 export function expiration(jours: number, depuis: Date): Date {
-  const d = new Date(depuis);
-  d.setDate(d.getDate() + jours);
-  return d;
+  return new Date(depuis.getTime() + jours * 86_400_000);
 }

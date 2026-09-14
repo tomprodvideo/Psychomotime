@@ -7,7 +7,8 @@ import { Card, EmptyState, PageHeader } from "@/components/ui";
 import { getCurrentPractice } from "@/lib/dossier/practice";
 import { listPayments } from "@/lib/compta/queries";
 import { METHOD_LABELS } from "@/lib/compta/types";
-import { resoudrePeriode } from "../periode";
+import { resoudrePeriode } from "@/lib/compta/periode";
+import { dateCivile } from "@/lib/dateCivile";
 
 import type { Metadata } from "next";
 /* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
@@ -35,7 +36,7 @@ export default async function ReglementsPage({
   const practice = await getCurrentPractice();
   if (!practice) notFound();
 
-  const aujourdhui = new Date();
+  const aujourdhui = dateCivile(new Date(), practice.timezone);
   const periode = resoudrePeriode(params, aujourdhui);
   const reglements = await listPayments(practice, {
     du: periode.du,

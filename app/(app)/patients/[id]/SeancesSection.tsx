@@ -21,22 +21,34 @@ import { Statut } from "@/components/Statut";
  * ou à venir.
  */
 
-const dateHeure = new Intl.DateTimeFormat("fr-FR", {
-  weekday: "short",
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-});
+/* L'HEURE D'UNE SÉANCE SE LIT DANS LE FUSEAU DU CABINET. Le formateur n'en
+   portait aucun : rendu d'abord sur le serveur, il écrivait l'heure du serveur,
+   puis celle du poste à l'hydratation — deux textes pour le même rendez-vous,
+   et sous un serveur UTC, 12 h 30 pour une séance de 14 h 30. C'est la règle
+   que l'agenda applique déjà (`AgendaVue`). */
+function formateurDateHeure(fuseau: string) {
+  return new Intl.DateTimeFormat("fr-FR", {
+    timeZone: fuseau,
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 export default function SeancesSection({
   appointments,
   counts,
+  fuseau,
 }: {
   appointments: Appointment[];
   counts: SessionCount;
+  /** Le fuseau du cabinet. */
+  fuseau: string;
 }) {
+  const dateHeure = formateurDateHeure(fuseau);
   const aVenir = appointments.filter((a) => a.attendance === "a_venir" && new Date(a.starts_at) >= new Date());
   const passes = appointments.filter((a) => !aVenir.includes(a));
 
@@ -92,7 +104,7 @@ export default function SeancesSection({
               </h3>
               <ul className="space-y-1.5 list-none p-0 m-0 mb-4">
                 {aVenir.slice(0, 5).map((a) => (
-                  <Ligne key={a.id} rdv={a} />
+                  <Ligne key={a.id} rdv={a} dateHeure={dateHeure} />
                 ))}
               </ul>
             </>
@@ -111,7 +123,7 @@ export default function SeancesSection({
                   Relevé par la relecture métier de la fiche. */}
               <ul className="space-y-1.5 list-none p-0 m-0">
                 {passes.slice(0, 3).map((a) => (
-                  <Ligne key={a.id} rdv={a} />
+                  <Ligne key={a.id} rdv={a} dateHeure={dateHeure} />
                 ))}
               </ul>
               {passes.length > 3 && (
@@ -148,7 +160,7 @@ function Compteur({
   );
 }
 
-function Ligne({ rdv }: { rdv: Appointment }) {
+function Ligne({ rdv, dateHeure }: { rdv: Appointment; dateHeure: Intl.DateTimeFormat }) {
   const annule = rdv.attendance.startsWith("annule");
   return (
     <li className="flex flex-wrap items-center justify-between gap-2 text-sm">

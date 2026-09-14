@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { CalendarCheck, Info, Wallet } from "lucide-react";
 import { centsToEuros, formatCents } from "@/lib/money";
-import { frDate } from "@/lib/format";
+import { frDate, frJourDe } from "@/lib/format";
 import { METHOD_LABELS, type PaymentMethod } from "@/lib/compta/types";
 import { NATURE_ACTE_LABELS } from "@/lib/attestations/types";
 import type {
@@ -29,6 +29,7 @@ export default function FaitsAttestes({
   reglements,
   choisies,
   modifiable,
+  fuseau,
 }: {
   attestationId: string;
   kind: "presence" | "paiement";
@@ -36,6 +37,8 @@ export default function FaitsAttestes({
   reglements: ReglementAttestable[];
   choisies: Set<string>;
   modifiable: boolean;
+  /** Le fuseau du cabinet : le jour d'une séance se lit dans celui-ci. */
+  fuseau: string;
 }) {
   const router = useRouter();
   const [enCours, demarrer] = useTransition();
@@ -88,7 +91,7 @@ export default function FaitsAttestes({
                         className="inline h-3.5 w-3.5 text-slate-500 mr-1.5"
                         aria-hidden="true"
                       />
-                      {frDate(s.starts_at.slice(0, 10))}
+                      {frJourDe(s.starts_at, fuseau)}
                       <span className="text-slate-500">
                         {" · "}
                         {NATURE_ACTE_LABELS[s.kind] ?? s.kind}

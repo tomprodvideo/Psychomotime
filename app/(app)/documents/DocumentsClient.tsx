@@ -28,7 +28,7 @@ function isImage(d: { name: string; mime_type: string | null }) {
 }
 import { createClient } from "@/lib/supabase/client";
 import type { DocFolder, DocumentFile } from "@/lib/types";
-import { frDate } from "@/lib/format";
+import { frJourDe } from "@/lib/format";
 import { Dialogue } from "@/components/Dialogue";
 
 const ALL = "__all__";
@@ -51,10 +51,13 @@ export default function DocumentsClient({
   userId,
   folders,
   documents,
+  fuseau,
 }: {
   userId: string;
   folders: DocFolder[];
   documents: DocumentFile[];
+  /** Le fuseau du cabinet : la date d'ajout d'un fichier se lit dans celui-ci. */
+  fuseau: string;
 }) {
   const supabase = createClient();
   const router = useRouter();
@@ -327,7 +330,7 @@ export default function DocumentsClient({
                         {d.name}
                       </p>
                       <p className="text-xs text-slate-500">
-                        {formatBytes(d.size)} · {frDate(d.created_at)}
+                        {formatBytes(d.size)} · {frJourDe(d.created_at, fuseau)}
                       </p>
                     </div>
                   </button>

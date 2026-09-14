@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Check, Copy, Link2, ShieldAlert, X } from "lucide-react";
-import { frDate } from "@/lib/format";
+import { frDate, frJourDe } from "@/lib/format";
 import {
   ETAT_LIEN_LABELS,
   etatLien,
@@ -52,12 +52,15 @@ export default function PanneauPartage({
   liens,
   contacts,
   modifiable,
+  fuseau,
 }: {
   sujetType: SujetPartage;
   sujetId: string;
   liens: LienPartage[];
   contacts: OptionContact[];
   modifiable: boolean;
+  /** Le fuseau du cabinet : l'échéance et la dernière consultation se lisent dans celui-ci. */
+  fuseau: string;
 }) {
   const router = useRouter();
   const [enCours, demarrer] = useTransition();
@@ -256,13 +259,13 @@ export default function PanneauPartage({
                     >
                       {ETAT_LIEN_LABELS[etat]}
                     </span>
-                    {etat === "actif" && ` jusqu'au ${frDate(l.expires_at.slice(0, 10))}`}
+                    {etat === "actif" && ` jusqu'au ${frJourDe(l.expires_at, fuseau)}`}
                     {" · "}
                     {l.access_count === 0
                       ? "jamais consulté"
                       : `${l.access_count} consultation${l.access_count > 1 ? "s" : ""}`}
                     {l.last_accessed_at &&
-                      `, la dernière le ${frDate(l.last_accessed_at.slice(0, 10))}`}
+                      `, la dernière le ${frJourDe(l.last_accessed_at, fuseau)}`}
                   </p>
                 </div>
                 {modifiable && (

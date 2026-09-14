@@ -1,3 +1,5 @@
+import { anneeEtMois } from "@/lib/compta/periode";
+import { dateCivile } from "@/lib/dateCivile";
 import Link from "next/link";
 import {
   AlertCircle,
@@ -9,7 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import { getSettings } from "@/lib/data";
-import { frDate } from "@/lib/format";
+import { frJourDe } from "@/lib/format";
 import { formatCents } from "@/lib/money";
 import { Card, StatCard } from "@/components/ui";
 import { getCurrentPractice } from "@/lib/dossier/practice";
@@ -64,10 +66,21 @@ export default async function AccueilPage() {
   const maintenant = new Date();
   const resume = await getJourneeResume(practice, maintenant);
 
+  /* TOUT CE QUI SUIT SE LIT DANS LE FUSEAU DU CABINET. L'année, la date du
+     jour et les heures des rendez-vous l'étaient dans celui du SERVEUR : sous
+     un processus UTC, une séance de 14 h 30 s'affichait à 12 h 30 l'été, et
+     l'accueil saluait d'une date de la veille entre minuit et deux heures. */
+  const fuseau = practice.timezone;
+  const heure = new Intl.DateTimeFormat("fr-FR", {
+    timeZone: fuseau,
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
   // L'activité de l'année, lue sur le modèle cible. Les totaux viennent du même
   // calcul que l'écran de comptabilité — il n'y a qu'une seule définition de ce
   // qu'est un « facturé », et elle est écrite une fois, dans `lib/compta`.
-  const annee = maintenant.getFullYear();
+  const { annee } = anneeEtMois(dateCivile(maintenant, fuseau));
   const { totaux } = await listDocuments(practice, {
     du: `${annee}-01-01`,
     au: `${annee}-12-31`,
@@ -77,6 +90,7 @@ export default async function AccueilPage() {
 
   const prenom = (settings.display_name ?? "").split(" ")[0] || "";
   const dateDuJour = new Intl.DateTimeFormat("fr-FR", {
+    timeZone: fuseau,
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -132,7 +146,7 @@ export default async function AccueilPage() {
                   </span>
                   <span className="text-slate-500">
                     {" — "}
-                    {frDate(rdv.starts_at.slice(0, 10))}
+                    {frJourDe(rdv.starts_at, fuseau)}
                   </span>
                 </span>
                 {practice.canWrite && <AttendanceControl appointment={rdv} compact />}
@@ -186,10 +200,7 @@ export default async function AccueilPage() {
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <span className="text-sm font-medium text-slate-700 tabular-nums">
-                        {new Intl.DateTimeFormat("fr-FR", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        }).format(debut)}
+                        {heure.format(debut)}
                       </span>
                       <span className="min-w-0">
                         <span
@@ -225,10 +236,7 @@ export default async function AccueilPage() {
           {aVenirAujourdhui.length > 0 && (
             <p className="flex items-center gap-1.5 text-xs text-slate-500 mt-3 pt-3 border-t border-slate-100">
               <Clock className="h-3.5 w-3.5" aria-hidden="true" />
-              Prochain à {new Intl.DateTimeFormat("fr-FR", {
-                hour: "2-digit",
-                minute: "2-digit",
-              }).format(new Date(aVenirAujourdhui[0].starts_at))}
+              Prochain à {heure.format(new Date(aVenirAujourdhui[0].starts_at))}
               {resume.semaineCount > 0 &&
                 ` · ${resume.semaineCount} rendez-vous dans les sept prochains jours`}
             </p>

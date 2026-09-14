@@ -5,7 +5,17 @@
  * `new Date()` au fond de son code rend ses totaux intestables et fait dépendre
  * ce qu'il affiche du fuseau du serveur : une facture du 31 décembre peut
  * basculer d'un exercice à l'autre selon l'endroit où la question est posée.
+ *
+ * ET CE PARAMÈTRE EST UN JOUR DU CABINET, PAS UN INSTANT. Il était un `Date`,
+ * lu par `getFullYear` et `getMonth` — dans le fuseau du PROCESSUS, soit la
+ * dépendance même que ce module annonçait écarter. Sous un processus UTC, le
+ * 1er janvier à 0 h 30 à Paris, « l'année en cours » était encore l'année
+ * close. Les écrans passent désormais `dateCivile(instant, fuseau du cabinet)`,
+ * et un instant ne compile plus. Déplacé depuis `app/(app)/comptabilite/` pour
+ * être contrôlé : les contrôles unitaires ne parcourent que `lib/`.
  */
+
+import type { DateCivile } from "@/lib/dateCivile";
 
 export type ModePeriode = "mois" | "annee" | "intervalle" | "tout";
 
@@ -31,6 +41,12 @@ export function dernierJour(annee: number, mois: number): number {
   return new Date(Date.UTC(annee, mois, 0)).getUTCDate();
 }
 
+/** L'année et le mois d'un jour civil. Un jour illisible est une erreur, pas une devinette. */
+export function anneeEtMois(jour: DateCivile): { annee: number; mois: number } {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(jour)) throw new RangeError(`Jour civil illisible : ${jour}`);
+  return { annee: Number(jour.slice(0, 4)), mois: Number(jour.slice(5, 7)) };
+}
+
 /**
  * Résout la période demandée.
  *
@@ -40,9 +56,9 @@ export function dernierJour(annee: number, mois: number): number {
  */
 export function resoudrePeriode(
   params: { mode?: string; mois?: string; annee?: string; du?: string; au?: string },
-  aujourdhui: Date,
+  aujourdhui: DateCivile,
 ): Periode {
-  const anneeCourante = aujourdhui.getFullYear();
+  const { annee: anneeCourante, mois: moisCourant } = anneeEtMois(aujourdhui);
   const annee = Number(params.annee);
   const anneeValide =
     Number.isInteger(annee) && annee >= 2000 && annee <= 2200 ? annee : anneeCourante;
@@ -73,7 +89,7 @@ export function resoudrePeriode(
     const moisValide =
       Number.isInteger(mois) && mois >= 1 && mois <= 12
         ? mois
-        : aujourdhui.getMonth() + 1;
+        : moisCourant;
     return {
       mode: "mois",
       du: jour(anneeValide, moisValide, 1),
@@ -91,11 +107,11 @@ export function resoudrePeriode(
 }
 
 /** Les paramètres d'URL correspondant à une période, pour construire un lien. */
-export function versParams(p: Periode, aujourdhui: Date): URLSearchParams {
+export function versParams(p: Periode, aujourdhui: DateCivile): URLSearchParams {
   const u = new URLSearchParams();
   u.set("mode", p.mode);
   if (p.mode === "tout") return u;
-  const annee = p.du ? Number(p.du.slice(0, 4)) : aujourdhui.getFullYear();
+  const annee = p.du ? Number(p.du.slice(0, 4)) : anneeEtMois(aujourdhui).annee;
   u.set("annee", String(annee));
   if (p.mode === "mois" && p.du) u.set("mois", String(Number(p.du.slice(5, 7))));
   if (p.mode === "intervalle") {

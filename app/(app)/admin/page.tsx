@@ -1,10 +1,11 @@
+import { FUSEAU_PAR_DEFAUT } from "@/lib/dateCivile";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAccess } from "@/lib/data";
 import type { Subscription } from "@/lib/types";
 import { isTrialRunning } from "@/lib/subscription";
 import { PageHeader, StatCard } from "@/components/ui";
-import { frDate } from "@/lib/format";
+import { frJourDe } from "@/lib/format";
 import { setSubscription } from "./actions";
 
 import type { Metadata } from "next";
@@ -114,7 +115,10 @@ export default async function AdminPage() {
                     )}
                   </td>
                   <td className="px-4 py-3 text-slate-500">
-                    {frDate(s.created_at)}
+                    {/* Un abonnement n'appartient à aucun cabinet dont on lirait le
+                        fuseau : le jour s'y lit dans le fuseau par défaut de la
+                        base (`practices.timezone`), et c'est un choix d'affichage. */}
+                    {frJourDe(s.created_at, FUSEAU_PAR_DEFAUT)}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2">

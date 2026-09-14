@@ -4,7 +4,9 @@ import { requireUser } from "@/lib/auth/guard";
 import { getCurrentPractice } from "@/lib/dossier/practice";
 import { listCharges, listDocuments } from "@/lib/compta/queries";
 import { construireCsv, nomFichierCsv } from "@/lib/compta/csv";
-import { resoudrePeriode } from "../periode";
+import { resoudrePeriode } from "@/lib/compta/periode";
+import { dateCivile } from "@/lib/dateCivile";
+import { frDate } from "@/lib/format";
 
 /**
  * Export comptable de la période.
@@ -36,7 +38,8 @@ export async function GET(requete: Request) {
   }
 
   const url = new URL(requete.url);
-  const maintenant = new Date();
+  // Le jour du cabinet : il choisit l'année par défaut, et il date le fichier.
+  const aujourdhui = dateCivile(new Date(), practice.timezone);
   const periode = resoudrePeriode(
     {
       mode: url.searchParams.get("mode") ?? undefined,
@@ -45,7 +48,7 @@ export async function GET(requete: Request) {
       du: url.searchParams.get("du") ?? undefined,
       au: url.searchParams.get("au") ?? undefined,
     },
-    maintenant,
+    aujourdhui,
   );
 
   const [pieces, charges] = await Promise.all([
@@ -89,7 +92,7 @@ export async function GET(requete: Request) {
   const csv = construireCsv({
     libellePeriode: periode.libelle,
     cabinet: practice.practiceName,
-    exporteLe: maintenant.toLocaleDateString("fr-FR"),
+    exporteLe: frDate(aujourdhui),
     pieces: pieces.items,
     totaux: pieces.totaux,
     charges: charges.items,

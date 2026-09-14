@@ -1,3 +1,5 @@
+import { dateCivile } from "@/lib/dateCivile";
+
 export function euro(n: number | null | undefined): string {
   return new Intl.NumberFormat("fr-FR", {
     style: "currency",
@@ -12,38 +14,37 @@ export function pct(rate: number): string {
   }).format(rate ?? 0);
 }
 
-/** Date ISO (yyyy-mm-dd) -> "12/06/2026" */
+/**
+ * Un jour civil « AAAA-MM-JJ » → « 12/06/2026 ».
+ *
+ * UN JOUR, JAMAIS UN INSTANT. Cette fonction acceptait aussi un horodatage, et
+ * le formatait dans le fuseau du PROCESSUS : l'heure d'expiration d'un lien, la
+ * date d'ajout d'un document, s'affichaient au jour du serveur. Une chaîne
+ * horodatée ne rend désormais RIEN — une date absente se voit, une date fausse
+ * passe inaperçue, comme pour l'âge (`lib/age.ts`). Pour un instant :
+ * `frJourDe(instant, fuseau du cabinet)`.
+ *
+ * Le jour est recomposé tel quel, sans `Date` ni `Intl` : aucun fuseau ne peut
+ * le déplacer.
+ */
 export function frDate(iso: string | null | undefined): string {
-  if (!iso) return "";
-  const d = new Date(iso + (iso.length === 10 ? "T00:00:00" : ""));
-  if (isNaN(d.getTime())) return "";
-  return new Intl.DateTimeFormat("fr-FR").format(d);
+  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return "";
+  const [annee, mois, jour] = iso.split("-");
+  return `${jour}/${mois}/${annee}`;
 }
 
 /**
- * @deprecated Cette fonction lit l'HORLOGE. Elle rend donc l'âge du jour où on
- * l'appelle, jamais l'âge à la date qui compte — celle de la passation. Un
- * bilan passé en février et réimprimé en septembre affichait sept mois de trop,
- * sur un document dont toute la lecture repose sur des normes par classe d'âge.
+ * Le jour d'un INSTANT, dans le fuseau du cabinet → « 12/06/2026 ».
  *
- * Employer `formatAgeAt(naissance, date)` de `lib/age.ts`, qui EXIGE la date de
- * référence : oublier de la passer doit être impossible, pas silencieux.
- *
- * Plus aucun appelant au 2026-09-12. Conservée le temps de vérifier qu'aucun
- * écran de la v1 ne s'y adosse encore.
+ * `frDate(x_at.slice(0, 10))` rendait le jour UTC : entre minuit et deux heures
+ * du matin à Paris, la veille. Un instant illisible ne rend rien.
  */
-export function ageFromBirth(iso: string | null | undefined): string {
-  if (!iso) return "";
-  const birth = new Date(iso + "T00:00:00");
-  if (isNaN(birth.getTime())) return "";
-  const now = new Date();
-  let years = now.getFullYear() - birth.getFullYear();
-  let months = now.getMonth() - birth.getMonth();
-  if (now.getDate() < birth.getDate()) months -= 1;
-  if (months < 0) {
-    years -= 1;
-    months += 12;
-  }
-  if (years <= 0) return `${months} mois`;
-  return `${years} ans ${months} mois`;
+export function frJourDe(
+  instant: string | Date | null | undefined,
+  fuseau: string | null | undefined,
+): string {
+  if (!instant) return "";
+  const d = instant instanceof Date ? instant : new Date(instant);
+  if (Number.isNaN(d.getTime())) return "";
+  return frDate(dateCivile(d, fuseau));
 }

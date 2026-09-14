@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Link2 } from "lucide-react";
-import { frDate } from "@/lib/format";
+import { frJourDe } from "@/lib/format";
 import { Card, EmptyState, PageHeader } from "@/components/ui";
 import { getCurrentPractice } from "@/lib/dossier/practice";
 import { listLiensDuCabinet } from "@/lib/transmissions/queries";
@@ -131,14 +131,14 @@ export default async function TransmissionsPage() {
                     }
                   >
                     {ETAT_LIEN_LABELS[etat]}
-                    {etat === "actif" && ` jusqu'au ${frDate(l.expires_at)}`}
+                    {etat === "actif" && ` jusqu'au ${frJourDe(l.expires_at, practice.timezone)}`}
                   </span>
 
                   <span className="text-xs text-slate-500 ml-auto">
                     {l.access_count === 0
                       ? "jamais consulté"
                       : `${l.access_count} consultation${l.access_count > 1 ? "s" : ""}`}
-                    {l.last_accessed_at && `, la dernière le ${frDate(l.last_accessed_at)}`}
+                    {l.last_accessed_at && `, la dernière le ${frJourDe(l.last_accessed_at, practice.timezone)}`}
                   </span>
                 </li>
               );

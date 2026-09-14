@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/ui";
 import type { DocFolder, DocumentFile } from "@/lib/types";
 import DocumentsClient from "./DocumentsClient";
+import { getCurrentPractice } from "@/lib/dossier/practice";
+import { FUSEAU_PAR_DEFAUT } from "@/lib/dateCivile";
 
 import type { Metadata } from "next";
 /* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
@@ -18,12 +20,13 @@ export default async function DocumentsPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [{ data: foldersRaw }, { data: docsRaw }] = await Promise.all([
+  const [{ data: foldersRaw }, { data: docsRaw }, practice] = await Promise.all([
     supabase.from("doc_folders").select("*").order("name"),
     supabase
       .from("documents")
       .select("*")
       .order("created_at", { ascending: false }),
+    getCurrentPractice(),
   ]);
 
   const folders = (foldersRaw ?? []) as DocFolder[];
@@ -39,6 +42,7 @@ export default async function DocumentsPage() {
         userId={user?.id ?? ""}
         folders={folders}
         documents={documents}
+        fuseau={practice?.timezone ?? FUSEAU_PAR_DEFAUT}
       />
     </div>
   );

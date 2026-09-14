@@ -31,6 +31,8 @@
  * le produit ne la simule pas.
  */
 
+import { frJourDe } from "@/lib/format";
+
 export interface Provenance {
   /** Date ISO de la reformulation. */
   le: string;
@@ -57,15 +59,18 @@ export function repriseEnMain(p: Provenance, courant: string): boolean {
  * « validé » seraient des affirmations que le produit n'est pas en position de
  * faire — il sait qu'un texte a été retouché, pas qu'il a été jugé juste.
  */
-export function mentionProvenance(p: Provenance, courant: string): string {
-  /* DATE LOCALE, pas UTC. `slice(0, 10)` sur un horodatage ISO rend le jour
-   * UTC : une reformulation faite à 00 h 30 à Paris s'affichait la veille. Sur
-   * une trace qui accompagne un document clinique, une date fausse d'un jour
-   * est une date fausse. */
-  const d = new Date(p.le);
-  const jour = Number.isNaN(d.getTime())
-    ? p.le.slice(0, 10).split("-").reverse().join("/")
-    : `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+export function mentionProvenance(
+  p: Provenance,
+  courant: string,
+  fuseau: string | null | undefined,
+): string {
+  /* LE JOUR DU CABINET, ni UTC ni celui du processus. `slice(0, 10)` sur un
+   * horodatage ISO rendait le jour UTC : une reformulation faite à 00 h 30 à
+   * Paris s'affichait la veille. Le correctif lisait ensuite les accesseurs
+   * LOCAUX — le fuseau du serveur au premier rendu, celui du poste ensuite.
+   * Sur une trace qui accompagne un document clinique, une date fausse d'un
+   * jour est une date fausse. */
+  const jour = frJourDe(p.le, fuseau) || p.le.slice(0, 10).split("-").reverse().join("/");
   return repriseEnMain(p, courant)
     ? `Reformulé par l'assistant le ${jour}, puis modifié.`
     : `Reformulé par l'assistant le ${jour}. Texte non modifié depuis.`;

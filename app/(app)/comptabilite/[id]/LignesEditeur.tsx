@@ -1,9 +1,10 @@
 "use client";
 
+import { dateCivile } from "@/lib/dateCivile";
 import { useMemo, useState, useTransition } from "react";
 import { Plus, Trash2, X } from "lucide-react";
 import { formatCents, centsToEuros } from "@/lib/money";
-import { frDate } from "@/lib/format";
+import { frDate, frJourDe } from "@/lib/format";
 import {
   PRICING_LABELS,
   type BillingLine,
@@ -35,12 +36,15 @@ export default function LignesEditeur({
   catalogue,
   seances,
   modifiable,
+  fuseau,
 }: {
   documentId: string;
   lignes: BillingLine[];
   catalogue: CatalogItem[];
   seances: SeanceFacturable[];
   modifiable: boolean;
+  /** Le fuseau du cabinet : la date d'une prestation est le jour de la séance AU CABINET. */
+  fuseau: string;
 }) {
   const [ouvert, setOuvert] = useState(false);
   const total = lignes.reduce((s, l) => s + l.amount_cents, 0);
@@ -96,6 +100,7 @@ export default function LignesEditeur({
               documentId={documentId}
               catalogue={catalogue}
               seances={seances}
+              fuseau={fuseau}
               onFerme={() => setOuvert(false)}
             />
           ) : (
@@ -188,11 +193,13 @@ function FormulaireLigne({
   documentId,
   catalogue,
   seances,
+  fuseau,
   onFerme,
 }: {
   documentId: string;
   catalogue: CatalogItem[];
   seances: SeanceFacturable[];
+  fuseau: string;
   onFerme: () => void;
 }) {
   const [enCours, demarrer] = useTransition();
@@ -243,7 +250,9 @@ function FormulaireLigne({
     fd.set("document_id", documentId);
     const dates = seances
       .filter((s) => choisies.includes(s.id))
-      .map((s) => s.starts_at.slice(0, 10))
+      /* LE JOUR DE LA SÉANCE AU CABINET. Tronquer l'horodatage rendait le jour
+         UTC — et ces dates s'impriment sur la pièce comme dates de prestation. */
+      .map((s) => dateCivile(new Date(s.starts_at), fuseau))
       .sort();
     fd.set("service_dates", dates.join(" "));
     if (dates.length > 0) fd.set("date_render", "par_date");
@@ -385,7 +394,7 @@ function FormulaireLigne({
                     onChange={() => basculerSeance(s.id, s.starts_at)}
                     className="rounded border-slate-300"
                   />
-                  {frDate(s.starts_at.slice(0, 10))}
+                  {frJourDe(s.starts_at, fuseau)}
                 </label>
               </li>
             ))}

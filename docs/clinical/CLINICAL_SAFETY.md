@@ -77,7 +77,7 @@ et le formulaire de création — emploient désormais `formatAgeAt` de
 `lib/age.ts` existait déjà, écrit pour ce défaut, et **n’était appelé nulle
 part** : c’est le même motif que `lib/scales.ts`, construit au lot 3 et jamais
 branché sur le document. Le module correct existe ; ce qui manque, c’est le fil.
-`ageFromBirth` est marquée obsolète et n’a plus d’appelant.
+`ageFromBirth`, sans appelant, a été retirée le 2026-09-14.
 
 **Reste ouvert** : le groupe d’âge M-ABC est toujours choisi à la main, sans
 aucun contrôle de cohérence avec la date de naissance, pourtant disponible dans

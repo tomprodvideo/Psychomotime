@@ -1,5 +1,6 @@
 "use client";
 
+import { dateCivile } from "@/lib/dateCivile";
 import { useState, useTransition } from "react";
 import { NotebookPen } from "lucide-react";
 import { Dialogue } from "@/components/Dialogue";
@@ -31,10 +32,13 @@ import { Bouton } from "@/components/Bouton";
 export default function NoteSeanceBouton({
   appointment,
   aDejaUneNote,
+  fuseau,
 }: {
   appointment: AppointmentWithPatient;
   /** Une séance déjà notée le dit : sans cela, on relit tout pour savoir. */
   aDejaUneNote: boolean;
+  /** Le fuseau du cabinet : le jour de la séance, et donc la date proposée à la note. */
+  fuseau: string;
 }) {
   const [ouvert, setOuvert] = useState(false);
   const [pending, start] = useTransition();
@@ -45,7 +49,9 @@ export default function NoteSeanceBouton({
    * séance : il ne porte pas de note clinique. La base le refuse aussi. */
   if (!appointment.patient_id) return null;
 
-  const jour = appointment.starts_at.slice(0, 10);
+  /* LE JOUR DE LA SÉANCE AU CABINET. Tronquer l'horodatage rendait le jour UTC,
+     et c'est la date que la note proposait — puis enregistrait. */
+  const jour = dateCivile(new Date(appointment.starts_at), fuseau);
 
   const soumettre = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

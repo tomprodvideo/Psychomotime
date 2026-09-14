@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/ui";
 import { getCurrentPractice } from "@/lib/dossier/practice";
 import { listCharges, listRecurrences } from "@/lib/compta/queries";
-import { resoudrePeriode } from "../periode";
+import { resoudrePeriode } from "@/lib/compta/periode";
 import ChargesClient from "./ChargesClient";
 
 import type { Metadata } from "next";
@@ -26,7 +26,7 @@ export default async function ChargesPage({
   const practice = await getCurrentPractice();
   if (!practice) notFound();
 
-  const aujourdhui = new Date();
+  const aujourdhui = dateCivile(new Date(), practice.timezone);
   const periode = resoudrePeriode(params, aujourdhui);
 
   const [charges, recurrences] = await Promise.all([
@@ -56,7 +56,7 @@ export default async function ChargesPage({
         charges={charges.items}
         recurrences={recurrences}
         modifiable={practice.canWrite}
-        aujourdhui={dateCivile(aujourdhui, practice.timezone)}
+        aujourdhui={aujourdhui}
       />
     </div>
   );

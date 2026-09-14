@@ -1,6 +1,6 @@
 # État courant
 
-Dernière mise à jour : 2026-09-13. Dépôt sur `main`, synchronisé avec `origin/main`.
+Dernière mise à jour : 2026-09-14. Dépôt sur `main`, synchronisé avec `origin/main`.
 
 Ce document ne contient que ce que le dépôt et la base DÉMONTRENT. Ce qui est
 supposé est marqué comme tel. Il a été entièrement réécrit : la version
@@ -14,8 +14,10 @@ locataire n'est plus le compte : c'est le CABINET** (`practices` +
 `practice_members`, cinq rôles). C'est le changement structurant dont tout le
 reste découle.
 
-Vingt-six migrations (`0000` à `0025`) sont appliquées en production —
+Vingt-sept migrations (`0000` à `0026`) sont appliquées en production —
 projet Supabase `sisummvlowhtfgiatwwf`, vérifié après chaque application.
+**`0027` est versionnée et éprouvée, mais n'est PAS appliquée** : elle attend
+une autorisation explicite.
 Depuis `0023`, la vérification ne se contente plus de compter les objets :
 **les empreintes des huit fonctions déployées sont comparées une à une à
 celles de la base locale éprouvée.** C'est ce contrôle qui a montré, sur cette
@@ -80,13 +82,20 @@ mutation par le harnais de falsification — et non de la production.
 
 ## Vérifications connues
 
-`npm run verify` enchaîne : `lint`, `typecheck`, 134 contrôles unitaires
-(20 fichiers), 12 fichiers de contrôle SQL, un contrôle de concurrence sur la
+`npm run verify` enchaîne : `lint`, `typecheck`, 192 contrôles unitaires
+(27 fichiers), 16 fichiers de contrôle SQL, un contrôle de concurrence sur la
 numérotation, le **rejeu complet de la bascule v1 → cible** sur une base
 jetable, et les **budgets de performance**.
 
 | Date | Vérification | Résultat |
 |---|---|---|
+| 2026-09-14 | `npm run verify` et `npm run build` après le reste de `Q-507` | tout passe — 192 contrôles unitaires, 16 fichiers SQL, bascule, concurrence, budgets ; construction de production réussie |
+| 2026-09-14 | Page de vérification temporaire, serveur de développement lancé en `TZ=UTC` | séance de 14 h 30 affichée 12:30 avant, 14:30 après ; jour d'une séance à 0 h 30 : le 12 avant, le 13 après ; année proposée la nuit du réveillon : 2026 avant, 2027 après ; liste des séances hydratée sans erreur ; page retirée |
+| 2026-09-14 | Garde-fou des dates falsifié : chaque forme corrigée réintroduite dans un vrai fichier | 7 formes, 7 détectées — la septième échappait d'abord au détecteur, qui relit désormais les arguments parenthèses équilibrées |
+| 2026-09-14 | `160_jour_et_fuseau_du_cabinet.sql` rejoué section par section sur le schéma `0026` | chaque section échoue, et sur le défaut qu'elle vise |
+| 2026-09-14 | Falsification de `0027`, puis de tous les plans avec l'outil corrigé | 89 mutations sur `0027`, dont 50 reportées des plans `0023` à `0026` ; 202 gardes démontrées au total ; une mutation du plan `0023` cassait le schéma depuis sa création |
+| 2026-09-14 | Droits des fonctions remplacées par `0027`, comparés avant et après sur une base neuve | identiques pour chacune ; `practices` : droits et politiques inchangés |
+| 2026-09-14 | Coût de `realised_sessions` sur le jeu volumineux, à travers la RLS : un cabinet entier filtré par jour | 3,5 ms avant ; 31 ms avec la règle de fuseau évaluée à chaque séance (7 072 appels) ; 5 ms avec la colonne générée, sans appel par séance |
 | 2026-09-14 | Application de `0026` en production, projet « Psychomotime » identifié avant écriture | empreintes avant (`0016`) et après (`0026`) conformes au fichier testé ; droits conformes ; aucune catégorie nouvelle à l'analyseur |
 | 2026-09-14 | Fuseau de la base de production, lu | `UTC` — trois cabinets réglés sur `Europe/Paris` |
 | 2026-09-14 | `npm run verify` après fusion de l'attestation | tout passe — 182 contrôles, 15 fichiers SQL, bascule, concurrence, budgets |
@@ -448,8 +457,45 @@ peine de le garder.
 
   **Le fuseau de la base de production est MESURÉ : UTC.** La fenêtre de refus
   existait donc réellement, et l'ordre de livraison n'était pas une précaution
-  de principe. Le dernier fichier de `DETTE_Q507` est corrigé : la dette côté
-  application est soldée, et le garde-fou reste en place, liste vide.
+  de principe.
+
+  **La dette côté application avait été déclarée soldée à tort.** Le
+  garde-fou ne surveillait qu'une forme du défaut, `toISOString().slice(0, 10)`,
+  et d'autres restaient : l'année comptable en cours lue par `getFullYear` — le
+  1er janvier à 0 h 30, sous un processus UTC, l'écran s'ouvrait sur l'exercice
+  clos ; la journée de l'accueil bornée par `setHours(0, 0, 0, 0)` ; la période
+  proposée d'une synthèse calculée par `setMonth`, qui débordait en outre — six
+  mois avant le 31 août donnaient le 3 mars ; les heures des rendez-vous de
+  l'accueil et du dossier formatées sans fuseau — sous un processus UTC, 12 h 30
+  pour une séance de 14 h 30, démontré ; le jour d'une séance tiré de
+  `starts_at.slice(0, 10)`, jusque dans les **dates de prestation enregistrées
+  sur une ligne de facture** et la date proposée à une note de séance ;
+  l'échéance d'une licence lue à minuit UTC, et jugée échue un jour avant la
+  base. **Tous corrigés le 2026-09-14** : `frJourDe` affiche un instant dans le
+  fuseau du cabinet, `frDate` n'accepte plus que des jours, et
+  `lib/compta/periode.ts` n'admet plus un instant à la compilation. Le
+  garde-fou surveille désormais sept formes, liste de dette vide.
+
+  **`0027` corrige le reste côté base — versionnée, NON appliquée.** Les quatre
+  écrits cliniques, la pièce comptable, l'archivage, le découpage de bandes, les
+  notes et les règlements dataient par `current_date` ; trois lectures figeaient
+  `'Europe/Paris'`. Le jour du cabinet partout ; le fuseau effectif calculé une
+  fois, à l'écriture du cabinet (`practices.effective_timezone`) ; une licence
+  évaluée sur un jour passé en paramètre. L'archivage d'un dossier dont le
+  parcours s'ouvre le jour même échouait réellement, sur
+  `care_pathways_periode_ck` — démontré par mutation. Compatible avec
+  l'application déployée : pour un cabinet à l'est d'UTC, aucune garde ne
+  devient plus stricte. **Les dates déjà enregistrées ne sont pas réécrites.**
+
+  **Deux défauts de la preuve elle-même, trouvés en falsifiant `0027`.**
+  `scripts/falsifier.mjs` comptait comme « détectée » toute mutation qui faisait
+  tomber la suite — y compris quand la suite était déjà rouge, et quand la
+  mutation empêchait d'appliquer le schéma. Une mutation du plan `0023` était
+  dans ce second cas depuis sa création : la garde qu'elle prétendait prouver
+  ne l'était pas, et un contrôle la voit bien une fois la mutation rendue
+  valide. L'outil refuse maintenant les deux cas. Et comme `0027` redéfinit des
+  fonctions de `0023` à `0026`, cinquante mutations de leurs plans visaient des
+  copies mortes : elles sont reportées sur les copies en service.
 
 - **`main` ne passait plus `npm run verify` depuis le 14 septembre 2026.**
   `supabase/tests/130_ecrit_de_fin.sql`, écrit la veille, attendait en dur la
@@ -481,7 +527,8 @@ lever :
 
 ## Prochaine action
 
-Appliquer `0023` en production, puis poursuivre les écrits manquants : rang 4
-(écrit de fin de prise en soin), rang 5 (écrit pour un tiers non soignant),
+Appliquer `0027` en production, **sur autorisation explicite** : environnement
+identifié, empreintes des douze fonctions remplacées comparées avant écriture,
+empreintes et droits vérifiés après. Puis poursuivre les écrits manquants :
 rang 6 (notice d'information), rang 7 (projet d'accompagnement imprimable).
 Reste ensuite l'accessibilité WCAG 2.2 AA du lot 8, puis L6, et L9 en dernier.

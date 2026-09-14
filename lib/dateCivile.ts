@@ -37,6 +37,15 @@
 export const FUSEAU_PAR_DEFAUT = "Europe/Paris";
 
 /**
+ * Un jour civil, « AAAA-MM-JJ » — jamais un instant.
+ *
+ * Né dans `lib/age.ts`, qui en explique la raison : un module qui reçoit un
+ * `Date` là où il attend un jour le lit dans le fuseau du PROCESSUS. Passer un
+ * instant à une fonction qui attend ce type est une erreur de compilation.
+ */
+export type DateCivile = string;
+
+/**
  * Un fuseau utilisable. La colonne n'a AUCUNE contrainte de validité : une
  * valeur illisible y est possible. Plutôt que de faire échouer l'impression
  * d'une fiche, on retombe sur le défaut que la base aurait posé elle-même.
@@ -105,6 +114,20 @@ export function ajouterJours(civile: string, n: number): string {
      `lib/dates.architecture.test.mts` interdit partout, et le module qui fournit
      la bonne voie ne doit pas avoir besoin d'exemption. */
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+}
+
+/**
+ * Ajoute `n` mois à un jour civil. Un jour qui n'existe pas dans le mois
+ * d'arrivée est RAMENÉ au dernier : six mois avant le 31 août, c'est le
+ * 28 février — pas le 3 mars, que rendait `setMonth` en débordant.
+ */
+export function ajouterMois(civile: string, n: number): string {
+  const [a, m, j] = partiesDuJour(civile);
+  const rang = a * 12 + (m - 1) + n;
+  const annee = Math.floor(rang / 12);
+  const mois = rang - annee * 12 + 1;
+  const dernier = new Date(Date.UTC(annee, mois, 0)).getUTCDate();
+  return `${String(annee).padStart(4, "0")}-${String(mois).padStart(2, "0")}-${String(Math.min(j, dernier)).padStart(2, "0")}`;
 }
 
 /** Le lundi de la semaine d'un jour civil. */

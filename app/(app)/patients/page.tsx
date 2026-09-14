@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Archive, ChevronRight, Users } from "lucide-react";
 import { PageHeader, EmptyState } from "@/components/ui";
-import { frDate } from "@/lib/format";
+import { frDate, frJourDe } from "@/lib/format";
 import { formatAgeAt } from "@/lib/age";
 import { dateCivile } from "@/lib/dateCivile";
 import { getCurrentPractice } from "@/lib/dossier/practice";
@@ -154,7 +154,7 @@ export default async function PatientsPage({
                     {p.status === "archive" && (
                       <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 bg-slate-100 rounded-full px-2 py-0.5">
                         <Archive className="h-3 w-3" aria-hidden="true" />
-                        Archivé{p.archived_at ? ` le ${frDate(p.archived_at.slice(0, 10))}` : ""}
+                        Archivé{p.archived_at ? ` le ${frJourDe(p.archived_at, practice?.timezone)}` : ""}
                       </p>
                     )}
                   </Link>

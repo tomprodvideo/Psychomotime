@@ -5,7 +5,7 @@ import { resolveBilanSections } from "@/lib/constants";
 import type { Bilan } from "@/lib/types";
 import BilanEditor from "./BilanEditor";
 import { getCurrentPractice } from "@/lib/dossier/practice";
-import { dateCivile } from "@/lib/dateCivile";
+import { dateCivile, fuseauUtilisable } from "@/lib/dateCivile";
 
 import type { Metadata } from "next";
 /* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
@@ -69,6 +69,7 @@ export default async function BilanEditPage({
       sections={sections}
       patientBirthDate={patientBirthDate}
       aujourdhui={dateCivile(new Date(), practice?.timezone)}
+      fuseau={fuseauUtilisable(practice?.timezone)}
     />
   );
 }

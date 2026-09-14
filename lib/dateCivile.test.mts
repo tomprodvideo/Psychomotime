@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   ajouterJours,
+  ajouterMois,
   dateCivile,
   debutDuJour,
   fuseauUtilisable,
@@ -65,6 +66,19 @@ test("ajouter des jours ne traverse ni mois, ni année, ni changement d'heure de
   assert.equal(ajouterJours("2026-03-28", 1), "2026-03-29"); // veille du passage à l'heure d'été
   assert.equal(ajouterJours("2026-03-29", 1), "2026-03-30");
   assert.equal(ajouterJours("2026-09-14", 7), "2026-09-21");
+});
+
+test("ajouter des mois ramène au dernier jour d'un mois plus court, sans déborder", () => {
+  /* LE DÉFAUT CORRIGÉ. `setMonth` débordait : six mois avant le 31 août
+   * donnaient le 3 mars. La période proposée d'une synthèse s'en servait. */
+  assert.equal(ajouterMois("2026-08-31", -6), "2026-02-28");
+  assert.equal(ajouterMois("2024-08-31", -6), "2024-02-29", "année bissextile");
+  assert.equal(ajouterMois("2026-03-31", 1), "2026-04-30");
+  assert.equal(ajouterMois("2026-01-15", -1), "2025-12-15", "on recule d'une année");
+  assert.equal(ajouterMois("2026-12-31", 2), "2027-02-28", "on avance d'une année");
+  assert.equal(ajouterMois("2026-05-10", -24), "2024-05-10");
+  assert.equal(ajouterMois("2026-05-10", 0), "2026-05-10");
+  assert.throws(() => ajouterMois("2026-5-10", 1), RangeError);
 });
 
 test("le lundi d'une semaine", () => {

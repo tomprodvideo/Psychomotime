@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Dialogue } from "@/components/Dialogue";
 import { Plus, NotebookPen, ShieldAlert } from "lucide-react";
-import { frDate } from "@/lib/format";
+import { frDate, frJourDe } from "@/lib/format";
 import { ATTENDANCE_LABELS } from "@/lib/dossier/types";
 import { saveNote } from "../actions";
 import type {
@@ -36,6 +36,7 @@ export default function NotesSection({
   parcours,
   seances,
   canWrite,
+  fuseau,
 }: {
   patientId: string;
   patientNom: string;
@@ -51,6 +52,8 @@ export default function NotesSection({
    * calculée en UTC — la veille, entre minuit et deux heures du matin.
    */
   aujourdhui: string;
+  /** Le fuseau du cabinet : le jour d'une séance se lit dans celui-ci. */
+  fuseau: string;
 }) {
   const [ouvert, setOuvert] = useState(false);
   /* Un index, pas une recherche par note : sans lui, afficher la séance de
@@ -106,9 +109,7 @@ export default function NotesSection({
                   {n.appointment_id && seanceParId.get(n.appointment_id) && (
                     <span className="text-brand-700">
                       {" · séance du "}
-                      {frDate(
-                        seanceParId.get(n.appointment_id)!.starts_at.slice(0, 10),
-                      )}
+                      {frJourDe(seanceParId.get(n.appointment_id)!.starts_at, fuseau)}
                     </span>
                   )}
                 </p>
@@ -133,6 +134,7 @@ export default function NotesSection({
       {ouvert && (
         <DialogueNote
           aujourdhui={aujourdhui}
+          fuseau={fuseau}
           patientId={patientId}
           patientNom={patientNom}
           patientNeLe={patientNeLe}
@@ -148,6 +150,7 @@ export default function NotesSection({
 
 function DialogueNote({
   aujourdhui,
+  fuseau,
   patientId,
   patientNom,
   patientNeLe,
@@ -162,6 +165,7 @@ function DialogueNote({
   seances: Appointment[];
   onClose: () => void;
   aujourdhui: string;
+  fuseau: string;
 }) {
   const [pending, start] = useTransition();
   const [erreur, setErreur] = useState<string | null>(null);
@@ -255,7 +259,7 @@ function DialogueNote({
                 <option value="">Aucune séance en particulier</option>
                 {seances.map((r) => (
                   <option key={r.id} value={r.id}>
-                    {frDate(r.starts_at.slice(0, 10))} ·{" "}
+                    {frJourDe(r.starts_at, fuseau)} ·{" "}
                     {ATTENDANCE_LABELS[r.attendance] ?? r.attendance}
                   </option>
                 ))}

@@ -1,5 +1,6 @@
 
 import type { Ton } from "@/components/Statut";
+import { ajouterMois, type DateCivile } from "@/lib/dateCivile";
 /**
  * LA SYNTHÈSE DE SUIVI.
  *
@@ -176,15 +177,16 @@ export function syntheseModifiable(s: Pick<Synthese, "status">): boolean {
  * compte rendu dépend du contrat signé — parcours financé, convention avec une
  * structure — et se lit dans ce contrat. Le produit n'en impose aucune et ce
  * défaut se corrige d'un clic. [VALIDATION HUMAINE]
+ *
+ * « AUJOURD'HUI » EST LE JOUR DU CABINET, fourni par l'écran. Il avait pour
+ * défaut `new Date()`, lu dans le fuseau de la machine qui rendait la page ;
+ * et `setMonth` débordait : six mois avant le 31 août donnaient le 3 mars.
  */
-export function periodeParDefaut(aujourdhui = new Date()): {
+export function periodeParDefaut(aujourdhui: DateCivile): {
   du: string;
   au: string;
 } {
-  const au = new Date(aujourdhui);
-  const du = new Date(aujourdhui);
-  du.setMonth(du.getMonth() - 6);
-  return { du: isoJour(du), au: isoJour(au) };
+  return { du: ajouterMois(aujourdhui, -6), au: aujourdhui };
 }
 
 /**
@@ -210,12 +212,6 @@ export function chevauchements<
       s.period_start <= au &&
       du <= s.period_end,
   );
-}
-
-function isoJour(d: Date): string {
-  const m = `${d.getMonth() + 1}`.padStart(2, "0");
-  const j = `${d.getDate()}`.padStart(2, "0");
-  return `${d.getFullYear()}-${m}-${j}`;
 }
 
 /**

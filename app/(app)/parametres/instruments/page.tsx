@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, FlaskConical, ShieldAlert } from "lucide-react";
 import { PageHeader, EmptyState } from "@/components/ui";
 import { getCurrentPractice } from "@/lib/dossier/practice";
+import { dateCivile } from "@/lib/dateCivile";
 import {
   listBandSets,
   listInstruments,
@@ -47,6 +48,8 @@ export default async function RegistrePage() {
       </div>
     );
   }
+
+  const aujourdhui = dateCivile(new Date(), practice.timezone);
 
   const [instruments, vocabulaires] = await Promise.all([
     listInstruments(practice),
@@ -115,6 +118,7 @@ export default async function RegistrePage() {
                   decoupages={{}}
                   vocabulaires={vocabulaires}
                   canWrite={practice.canWrite}
+                  aujourdhui={aujourdhui}
                   seulementBoutonAjout
                 />
               ) : undefined
@@ -128,6 +132,7 @@ export default async function RegistrePage() {
           decoupages={decoupagesParEchelle}
           vocabulaires={vocabulaires}
           canWrite={practice.canWrite}
+          aujourdhui={aujourdhui}
         />
       )}
     </div>

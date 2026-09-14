@@ -10,7 +10,7 @@
  * par défaut : oublier de la passer doit être impossible, pas silencieux.
  */
 
-import { dateCivile } from "@/lib/dateCivile";
+import { dateCivile, type DateCivile } from "@/lib/dateCivile";
 
 export interface Age {
   years: number;
@@ -39,17 +39,20 @@ export interface Age {
  * âge faux passe inaperçu. Pour « aujourd'hui » : `dateCivile(instant, fuseau
  * du cabinet)`, de `lib/dateCivile.ts`.
  */
-export type DateCivile = string;
+export type { DateCivile };
 
 const FORMAT_CIVIL = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
- * Relue à minuit LOCAL, puis rendue par les accesseurs locaux : une date civile
- * retombe sur le même jour quel que soit le fuseau du processus.
+ * Relue à minuit UTC, puis rendue par les accesseurs UTC : un jour civil n'a pas
+ * de fuseau, et aucun ne peut le déplacer. (Relue à minuit LOCAL et rendue par
+ * les accesseurs locaux, elle retombait aussi sur le même jour — mais c'était le
+ * seul endroit du dépôt à lire l'heure locale à bon droit, et le garde-fou de
+ * `lib/dates.architecture.test.mts` l'interdit désormais partout.)
  */
 function parseDate(civile: DateCivile | null | undefined): Date | null {
   if (!civile || !FORMAT_CIVIL.test(civile)) return null;
-  const d = new Date(`${civile}T00:00:00`);
+  const d = new Date(`${civile}T00:00:00Z`);
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
@@ -69,14 +72,14 @@ export function ageAt(
   if (!birth || !ref) return null;
   if (ref.getTime() < birth.getTime()) return null;
 
-  let years = ref.getFullYear() - birth.getFullYear();
-  let months = ref.getMonth() - birth.getMonth();
-  let days = ref.getDate() - birth.getDate();
+  let years = ref.getUTCFullYear() - birth.getUTCFullYear();
+  let months = ref.getUTCMonth() - birth.getUTCMonth();
+  let days = ref.getUTCDate() - birth.getUTCDate();
 
   if (days < 0) {
     months -= 1;
     // Nombre de jours du mois qui précède la date de référence.
-    const moisPrecedent = new Date(ref.getFullYear(), ref.getMonth(), 0).getDate();
+    const moisPrecedent = new Date(Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth(), 0)).getUTCDate();
     days += moisPrecedent;
   }
   if (months < 0) {

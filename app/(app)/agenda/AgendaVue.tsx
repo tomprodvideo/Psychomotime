@@ -24,13 +24,16 @@ import { ajouterJours, dateCivile } from "@/lib/dateCivile";
 
 /* DEUX SORTES DE DATES, DEUX SORTES DE FORMATEURS.
  *
- * Un JOUR CIVIL (« 2026-09-14 ») s'affiche relu à midi LOCAL : quel que soit le
- * fuseau du poste, midi reste le même jour. Un INSTANT (l'heure d'un
- * rendez-vous) s'affiche dans le fuseau du CABINET, sans quoi un poste réglé
- * ailleurs montrerait d'autres heures que celles que l'action serveur a
- * enregistrées. */
-function midiLocal(jour: string): Date {
-  return new Date(`${jour}T12:00:00`);
+ * Un JOUR CIVIL (« 2026-09-14 ») n'a pas de fuseau : il s'écrit à partir de son
+ * midi UTC, relu en UTC — aucun fuseau, ni du poste ni du serveur, ne peut le
+ * déplacer. (Il était relu à midi LOCAL par un formateur local, ce qui tombait
+ * juste aussi ; mais tout formateur sans fuseau est désormais refusé par
+ * `lib/dates.architecture.test.mts`, pour qu'aucun instant ne s'y glisse.) Un
+ * INSTANT (l'heure d'un rendez-vous) s'affiche dans le fuseau du CABINET, sans
+ * quoi un poste réglé ailleurs montrerait d'autres heures que celles que
+ * l'action serveur a enregistrées. */
+function midiUTC(jour: string): Date {
+  return new Date(`${jour}T12:00:00Z`);
 }
 function formateursDuCabinet(fuseau: string) {
   return {
@@ -40,11 +43,13 @@ function formateursDuCabinet(fuseau: string) {
 }
 
 const jourLong = new Intl.DateTimeFormat("fr-FR", {
+  timeZone: "UTC",
   weekday: "long",
   day: "numeric",
   month: "long",
 });
 const jourCourt = new Intl.DateTimeFormat("fr-FR", {
+  timeZone: "UTC",
   day: "numeric",
   month: "short",
 });
@@ -109,8 +114,8 @@ export default function AgendaVue({
 
   const titrePeriode =
     vue === "jour"
-      ? jourLong.format(midiLocal(debutJour))
-      : `Semaine du ${jourCourt.format(midiLocal(debutJour))} au ${jourCourt.format(midiLocal(ajouterJours(finJour, -1)))}`;
+      ? jourLong.format(midiUTC(debutJour))
+      : `Semaine du ${jourCourt.format(midiUTC(debutJour))} au ${jourCourt.format(midiUTC(ajouterJours(finJour, -1)))}`;
 
   return (
     <>
@@ -163,6 +168,7 @@ export default function AgendaVue({
                     <NoteSeanceBouton
                       appointment={rdv}
                       aDejaUneNote={notees.has(rdv.id)}
+                      fuseau={fuseau}
                     />
                   </div>
                 )}
@@ -241,10 +247,10 @@ export default function AgendaVue({
       {parJour.size > 0 && (
         <div className="space-y-5">
           {[...parJour.entries()].map(([cle, liste]) => (
-            <section key={cle} aria-label={jourLong.format(new Date(`${cle}T12:00:00`))}>
+            <section key={cle} aria-label={jourLong.format(midiUTC(cle))}>
               {vue === "semaine" && (
                 <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500 mb-2 first-letter:uppercase">
-                  {jourLong.format(new Date(`${cle}T12:00:00`))}
+                  {jourLong.format(midiUTC(cle))}
                 </h3>
               )}
               <ul className="space-y-2 list-none p-0 m-0">
@@ -254,6 +260,7 @@ export default function AgendaVue({
                     rdv={rdv}
                     maintenant={maintenant}
                     heure={heure}
+                    fuseau={fuseau}
                     canWrite={canWrite}
                     aDejaUneNote={notees.has(rdv.id)}
                     onEdit={() => setEdite(rdv)}
@@ -285,6 +292,7 @@ function LigneRendezVous({
   canWrite,
   aDejaUneNote,
   onEdit,
+  fuseau,
 }: {
   rdv: AppointmentWithPatient;
   maintenant: string;
@@ -293,6 +301,7 @@ function LigneRendezVous({
   canWrite: boolean;
   aDejaUneNote: boolean;
   onEdit: () => void;
+  fuseau: string;
 }) {
   const debut = new Date(rdv.starts_at);
   const fin = new Date(rdv.ends_at);
@@ -352,7 +361,7 @@ function LigneRendezVous({
                   l'agenda, de retrouver le dossier, puis la séance dans une
                   liste — trois gestes à un moment où l'on en enchaîne dix. */}
               {passe && (
-                <NoteSeanceBouton appointment={rdv} aDejaUneNote={aDejaUneNote} />
+                <NoteSeanceBouton appointment={rdv} aDejaUneNote={aDejaUneNote} fuseau={fuseau} />
               )}
               <button
                 type="button"

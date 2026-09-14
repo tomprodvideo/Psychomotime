@@ -104,6 +104,7 @@ export default function BilanEditor({
   sections,
   patientBirthDate,
   aujourdhui,
+  fuseau,
 }: {
   bilan: Bilan;
   templates: AdaptationTemplate[];
@@ -117,6 +118,8 @@ export default function BilanEditor({
    * premier affichage et l'hydratation.
    */
   aujourdhui: string;
+  /** Le fuseau du cabinet : la date d'une reformulation se lit dans celui-ci. */
+  fuseau: string;
 }) {
   const raw0 = bilan.content ?? {};
 
@@ -650,7 +653,7 @@ export default function BilanEditor({
                 qu'un modèle l'a écrit, pas qu'il a été jugé juste. */}
             <span className="inline-flex items-center gap-1 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
               <Sparkles className="h-3 w-3" aria-hidden="true" />
-              {mentionProvenance(provenances[fieldKey], content[fieldKey] ?? "")}
+              {mentionProvenance(provenances[fieldKey], content[fieldKey] ?? "", fuseau)}
             </span>
             <button
               type="button"

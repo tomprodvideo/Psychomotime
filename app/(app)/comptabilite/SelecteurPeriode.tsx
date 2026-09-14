@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { MOIS, type ModePeriode } from "./periode";
+import { MOIS, type ModePeriode } from "@/lib/compta/periode";
 import { CHAMP_AUTO } from "@/components/Champ";
 
 /**

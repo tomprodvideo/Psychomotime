@@ -15,7 +15,8 @@ import {
   resumeCharges,
 } from "@/lib/compta/types";
 import type { DocumentListItem } from "@/lib/compta/queries";
-import { resoudrePeriode, versParams } from "./periode";
+import { anneeEtMois, resoudrePeriode, versParams } from "@/lib/compta/periode";
+import { dateCivile } from "@/lib/dateCivile";
 import SelecteurPeriode from "./SelecteurPeriode";
 import NouvellePiece from "./NouvellePiece";
 
@@ -46,7 +47,8 @@ export default async function ComptabilitePage({
   const practice = await getCurrentPractice();
   if (!practice) notFound();
 
-  const aujourdhui = new Date();
+  // Le jour du CABINET : c'est lui qui dit quelle année est « en cours ».
+  const aujourdhui = dateCivile(new Date(), practice.timezone);
   const periode = resoudrePeriode(params, aujourdhui);
 
   const [pieces, charges] = await Promise.all([
@@ -62,7 +64,7 @@ export default async function ComptabilitePage({
   const chargesResume = resumeCharges(charges.items);
   const net = totaux.encaisse_cents - chargesResume.total_cents;
 
-  const anneeCourante = aujourdhui.getFullYear();
+  const { annee: anneeCourante, mois: moisCourant } = anneeEtMois(aujourdhui);
   const annees = Array.from({ length: 6 }, (_, i) => anneeCourante - i);
 
   return (
@@ -75,7 +77,7 @@ export default async function ComptabilitePage({
         <SelecteurPeriode
           mode={periode.mode}
           annee={periode.du ? Number(periode.du.slice(0, 4)) : anneeCourante}
-          mois={periode.du ? Number(periode.du.slice(5, 7)) : aujourdhui.getMonth() + 1}
+          mois={periode.du ? Number(periode.du.slice(5, 7)) : moisCourant}
           du={periode.du}
           au={periode.au}
           anneesDisponibles={annees}

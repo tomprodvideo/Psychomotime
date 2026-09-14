@@ -23,15 +23,31 @@ const P: Provenance = {
 };
 
 test("la mention nomme l'assistant et la date", () => {
-  const m = mentionProvenance(P, P.apres);
+  const m = mentionProvenance(P, P.apres, "Europe/Paris");
   assert.match(m, /assistant/);
   assert.match(m, /31\/03\/2026/);
 });
 
+test("la date est le jour du cabinet, quel que soit le fuseau du processus", () => {
+  /* 22 h 30 UTC le 30 mars 2026 : 0 h 30 le 31 à Paris, à l'heure d'été. Lue
+   * par les accesseurs locaux, la mention disait le 30 sous un serveur UTC. */
+  const tard: Provenance = { ...P, le: "2026-03-30T22:30:00.000Z" };
+  for (const tz of ["UTC", "Europe/Paris", "Etc/GMT+12"]) {
+    const avant = process.env.TZ;
+    process.env.TZ = tz;
+    try {
+      assert.match(mentionProvenance(tard, tard.apres, "Europe/Paris"), /31\/03\/2026/, `sous ${tz}`);
+    } finally {
+      if (avant === undefined) delete process.env.TZ;
+      else process.env.TZ = avant;
+    }
+  }
+});
+
 test("elle distingue un texte repris en main d'un texte intact", () => {
-  assert.match(mentionProvenance(P, P.apres), /non modifié depuis/);
+  assert.match(mentionProvenance(P, P.apres, "Europe/Paris"), /non modifié depuis/);
   assert.match(
-    mentionProvenance(P, "Se maintient debout sans appui, avec vigilance."),
+    mentionProvenance(P, "Se maintient debout sans appui, avec vigilance.", "Europe/Paris"),
     /puis modifié/,
   );
 });
@@ -42,7 +58,7 @@ test("elle n'affirme jamais que le texte a été relu ni validé", () => {
    * interdit : présenter un résultat généré comme une décision du
    * psychomotricien. */
   for (const courant of [P.apres, "tout autre texte"]) {
-    const m = mentionProvenance(P, courant).toLowerCase();
+    const m = mentionProvenance(P, courant, "Europe/Paris").toLowerCase();
     for (const interdit of ["relu", "validé", "vérifié", "approuvé", "conforme"]) {
       assert.ok(!m.includes(interdit), `la mention ne doit pas dire « ${interdit} » : ${m}`);
     }
