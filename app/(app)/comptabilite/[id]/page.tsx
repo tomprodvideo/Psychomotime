@@ -32,6 +32,7 @@ import ReglementsSection from "./ReglementsSection";
 import PanneauPartage from "../transmissions/PanneauPartage";
 
 import type { Metadata } from "next";
+import { dateCivile } from "@/lib/dateCivile";
 /* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
    patient le ferait entrer dans l'historique du navigateur, parfois synchronisé
    entre appareils, parfois affiché devant quelqu'un d'autre. C'est le même
@@ -61,7 +62,13 @@ export default async function PiecePage({
 
   const { document: d, lignes } = piece;
   const modifiable = estModifiable(d) && practice.canWrite;
-  const aujourdhui = new Date().toISOString().slice(0, 10);
+  /* Le jour proposé pour ÉMETTRE la pièce et pour recevoir un règlement, dans le
+     fuseau du cabinet. En UTC, le 1er janvier à 0 h 30 à Paris, il proposait le
+     31 décembre — et la série suit l'année de la date d'émission : la facture
+     aurait été numérotée dans la série de l'année close. L'émission d'une pièce
+     n'a pas de garde de date future (`0014`) : la corriger ne fait rien
+     refuser. */
+  const aujourdhui = dateCivile(new Date(), practice.timezone);
 
   const [
     catalogue,

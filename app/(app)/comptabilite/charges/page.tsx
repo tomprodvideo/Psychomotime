@@ -8,6 +8,7 @@ import { resoudrePeriode } from "../periode";
 import ChargesClient from "./ChargesClient";
 
 import type { Metadata } from "next";
+import { dateCivile } from "@/lib/dateCivile";
 /* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
    patient le ferait entrer dans l'historique du navigateur, parfois synchronisé
    entre appareils, parfois affiché devant quelqu'un d'autre. C'est le même
@@ -55,7 +56,7 @@ export default async function ChargesPage({
         charges={charges.items}
         recurrences={recurrences}
         modifiable={practice.canWrite}
-        aujourdhui={aujourdhui.toISOString().slice(0, 10)}
+        aujourdhui={dateCivile(aujourdhui, practice.timezone)}
       />
     </div>
   );

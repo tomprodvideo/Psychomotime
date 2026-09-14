@@ -24,6 +24,7 @@ import { Bouton } from "@/components/Bouton";
  * une date et plus à une autre.
  */
 export default function ConsentementsSection({
+  aujourdhui,
   patientId,
   patientNom,
   patientNeLe,
@@ -37,6 +38,12 @@ export default function ConsentementsSection({
   consentements: PatientConsent[];
   contacts: Contact[];
   canWrite: boolean;
+  /**
+   * Le jour civil du cabinet, calculé par la page. Pas `new Date()` ici : ce
+   * composant est rendu d'abord sur le serveur, et la date proposée était
+   * calculée en UTC — la veille, entre minuit et deux heures du matin.
+   */
+  aujourdhui: string;
 }) {
   const [ouvert, setOuvert] = useState(false);
 
@@ -106,6 +113,7 @@ export default function ConsentementsSection({
 
       {ouvert && (
         <DialogueConsentement
+          aujourdhui={aujourdhui}
           patientId={patientId}
           patientNom={patientNom}
           patientNeLe={patientNeLe}
@@ -191,6 +199,7 @@ function LigneConsentement({
 
 
 function DialogueConsentement({
+  aujourdhui,
   patientId,
   patientNom,
   patientNeLe,
@@ -202,6 +211,7 @@ function DialogueConsentement({
   patientNeLe: string | null;
   contacts: Contact[];
   onClose: () => void;
+  aujourdhui: string;
 }) {
   const [pending, start] = useTransition();
   const [erreur, setErreur] = useState<string | null>(null);
@@ -290,7 +300,7 @@ function DialogueConsentement({
                 id="granted_on"
                 name="granted_on"
                 type="date"
-                defaultValue={new Date().toISOString().slice(0, 10)}
+                defaultValue={aujourdhui}
                 className={CHAMP}
               />
             </div>

@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ecritureReussie, requireActiveAccess, type Guarded } from "@/lib/auth/guard";
 import { getCurrentPractice } from "@/lib/dossier/practice";
 import type { PatientContact } from "@/lib/types";
+import { dateCivile } from "@/lib/dateCivile";
 import type {
   ConsentKind,
   LegalBasis,
@@ -350,7 +351,7 @@ export async function endContactRole(formData: FormData): Promise<Guarded<true>>
   const result = await supabase
     .from("patient_contacts")
     .update({
-      valid_to: fin.value ?? new Date().toISOString().slice(0, 10),
+      valid_to: fin.value ?? dateCivile(new Date(), ctx.practice.timezone),
       is_primary: false,
     })
     .eq("id", linkId)
@@ -482,7 +483,7 @@ export async function saveNote(formData: FormData): Promise<Guarded<true>> {
        * (migration 0021), pas ici : l'isolation ne dépend pas de l'écran. */
       appointment_id: str(formData, "appointment_id"),
       body,
-      written_on: ecriteLe.value ?? new Date().toISOString().slice(0, 10),
+      written_on: ecriteLe.value ?? dateCivile(new Date(), ctx.practice.timezone),
       author_member_id: ctx.practice.memberId,
       third_party_information: tiers,
       third_party_source: source,
@@ -535,7 +536,7 @@ export async function saveConsent(formData: FormData): Promise<Guarded<true>> {
       scope: str(formData, "scope"),
       granted_by_contact_id: str(formData, "granted_by_contact_id"),
       granted_by_patient: bool(formData, "granted_by_patient"),
-      granted_on: accorde.value ?? new Date().toISOString().slice(0, 10),
+      granted_on: accorde.value ?? dateCivile(new Date(), ctx.practice.timezone),
       evidence: str(formData, "evidence"),
     })
     .select("id");
@@ -559,7 +560,9 @@ export async function withdrawConsent(formData: FormData): Promise<Guarded<true>
   const supabase = await createClient();
   const result = await supabase
     .from("patient_consents")
-    .update({ withdrawn_on: new Date().toISOString().slice(0, 10) })
+    /* Le jour du RETRAIT, dans le fuseau du cabinet : un retrait consigné à
+       00 h 30 était daté de la veille, sur une trace qui a une valeur. */
+    .update({ withdrawn_on: dateCivile(new Date(), ctx.practice.timezone) })
     .eq("id", id)
     .select("id");
 

@@ -21,6 +21,7 @@ import type { SujetPartage } from "@/lib/transmissions/types";
 import { messageLien } from "@/lib/transmissions/courriel";
 import { emailConfig, sendMail } from "@/lib/email";
 import { siteOrigin } from "@/lib/siteOrigin";
+import { dateCivile } from "@/lib/dateCivile";
 
 /**
  * Création et révocation des liens de transmission.
@@ -91,13 +92,19 @@ export async function creerLien(fd: FormData): Promise<LienCree> {
 
   if (error) return { ok: false, error: messageErreur(error) };
 
+  /* LE JOUR OÙ LE LIEN EXPIRE, dans le fuseau du cabinet : il
+     part dans le courriel. Calculé en UTC, un lien créé en fin de soirée
+     annonçait une expiration un jour trop tôt. Une seule valeur sert au
+     journal et au message. */
+  const expireLe = dateCivile(expire, ctx.practice.timezone);
+
   // La trace de la création : qui a partagé quoi, et quand. Jamais le jeton.
   const { error: erreurTrace } = await supabase.rpc("log_audit_event", {
     p_practice_id: ctx.practice.practiceId,
     p_action: "transmission.link_created",
     p_subject_type: sujetBrut,
     p_subject_id: subjectId,
-    p_metadata: { expire_le: expire.toISOString().slice(0, 10), jours },
+    p_metadata: { expire_le: expireLe, jours },
   });
   if (erreurTrace) {
     console.error("[transmissions] journalisation refusée :", erreurTrace);
@@ -107,7 +114,6 @@ export async function creerLien(fd: FormData): Promise<LienCree> {
   revalidatePath(`/comptabilite/attestations/${subjectId}`);
 
   const chemin = `/document/${jeton}`;
-  const expireLe = expire.toISOString().slice(0, 10);
 
   /* ── L'ENVOI PAR COURRIEL ─────────────────────────────────────────────
    *

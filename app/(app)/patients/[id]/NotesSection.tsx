@@ -28,6 +28,7 @@ import { Bouton } from "@/components/Bouton";
  * produit ne promet pas pour autant qu'une note soit inaccessible.
  */
 export default function NotesSection({
+  aujourdhui,
   patientId,
   patientNom,
   patientNeLe,
@@ -44,6 +45,12 @@ export default function NotesSection({
   /** Les séances passées du dossier, pour rattacher une note à l'une d'elles. */
   seances: Appointment[];
   canWrite: boolean;
+  /**
+   * Le jour civil du cabinet, calculé par la page. Pas `new Date()` ici : ce
+   * composant est rendu d'abord sur le serveur, et la date proposée était
+   * calculée en UTC — la veille, entre minuit et deux heures du matin.
+   */
+  aujourdhui: string;
 }) {
   const [ouvert, setOuvert] = useState(false);
   /* Un index, pas une recherche par note : sans lui, afficher la séance de
@@ -125,6 +132,7 @@ export default function NotesSection({
 
       {ouvert && (
         <DialogueNote
+          aujourdhui={aujourdhui}
           patientId={patientId}
           patientNom={patientNom}
           patientNeLe={patientNeLe}
@@ -139,6 +147,7 @@ export default function NotesSection({
 
 
 function DialogueNote({
+  aujourdhui,
   patientId,
   patientNom,
   patientNeLe,
@@ -152,6 +161,7 @@ function DialogueNote({
   parcours: CarePathway[];
   seances: Appointment[];
   onClose: () => void;
+  aujourdhui: string;
 }) {
   const [pending, start] = useTransition();
   const [erreur, setErreur] = useState<string | null>(null);
@@ -215,7 +225,7 @@ function DialogueNote({
                 id="written_on"
                 name="written_on"
                 type="date"
-                defaultValue={new Date().toISOString().slice(0, 10)}
+                defaultValue={aujourdhui}
                 className={CHAMP}
               />
             </div>

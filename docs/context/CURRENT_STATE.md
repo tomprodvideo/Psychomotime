@@ -398,7 +398,38 @@ peine de le garder.
   `lib/` et `components/`. Les dix fichiers qui en portent encore sont une
   dette NOMMÉE, qui ne peut que rétrécir : un fichier corrigé doit quitter la
   liste, sans quoi le contrôle échoue. Trois mutations, trois détections.
-  Cette dette n'est pas corrigeable par simple remplacement : voir `Q-507`.
+
+  **Neuf des dix fichiers sont corrigés depuis le 2026-09-14** : dates proposées
+  pour un consentement, une note, une charge, l'émission d'une pièce et un
+  règlement ; `valid_to`, `written_on`, `granted_on`, `withdrawn_on`,
+  `received_on` et `validated_on` écrits par les actions serveur ; date
+  d'expiration d'un lien, reprise dans le courriel ; agenda. Aucune de ces
+  valeurs n'est comparée à `current_date` en base — une contrainte `CHECK` ne
+  peut pas l'employer, et les seules gardes qui le font sont des fonctions
+  d'émission, relevées une à une : leur correction ne peut rien faire refuser,
+  quel que soit le fuseau de la base de production.
+
+  **L'agenda est corrigé d'un bloc, parce qu'il ne pouvait pas l'être
+  isolément.** Sa page posait le jour à « minuit du serveur » et sa vue le
+  relisait en UTC ; `instant()` interprétait l'heure saisie dans le fuseau du
+  processus. Chaque version n'était cohérente qu'avec UN fuseau de serveur.
+  Corriger la vue sans `instant()` aurait aggravé la production. Tout passe
+  désormais par des jours civils et `instantDuCabinet`, et le résultat ne dépend
+  plus ni du serveur ni du poste. Vérifié dans le navigateur, sur une machine
+  réglée sur Paris : un rendez-vous à 00 h 30 le lundi est rangé le lundi,
+  « semaine suivante » et « précédente » demandent les bons lundis. **Et un
+  défaut indépendant du serveur a été trouvé au passage** : une série
+  hebdomadaire ajoutait 168 heures par semaine, si bien qu'une série du lundi
+  14 h 30 s'affichait à 13 h 30 après le changement d'heure d'octobre —
+  démontré. Une série de 30 séances au plus traverse forcément un changement
+  d'heure en France.
+
+  **Reste l'attestation.** Sa date proposée pour signer est envoyée à
+  `issue_attestation`, dont la garde refuse une date postérieure à
+  `current_date`. La corriger côté application seule ferait refuser une
+  signature entre minuit et deux heures du matin si la base de production est
+  réglée en UTC — ce qui n'a pas pu être vérifié. Elle attend la migration qui
+  aligne cette garde sur le jour du cabinet. Voir `Q-507`.
 
 - **`main` ne passait plus `npm run verify` depuis le 14 septembre 2026.**
   `supabase/tests/130_ecrit_de_fin.sql`, écrit la veille, attendait en dur la

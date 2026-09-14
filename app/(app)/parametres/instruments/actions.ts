@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ecritureReussie, requireActiveAccess, type Guarded } from "@/lib/auth/guard";
 import { getCurrentPractice } from "@/lib/dossier/practice";
 import type { LicenceStatus } from "@/lib/dossier/types";
+import { dateCivile } from "@/lib/dateCivile";
 
 /* ==========================================================================
  *  Lecture des champs
@@ -267,7 +268,7 @@ export async function saveVocabulary(formData: FormData): Promise<Guarded<string
     name,
     usage,
     validated_by: validePar,
-    validated_on: usage === "document_remis" ? (date(formData, "validated_on") ?? new Date().toISOString().slice(0, 10)) : null,
+    validated_on: usage === "document_remis" ? (date(formData, "validated_on") ?? dateCivile(new Date(), ctx.practice.timezone)) : null,
     note: str(formData, "note"),
   };
 

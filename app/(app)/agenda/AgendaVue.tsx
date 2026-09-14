@@ -17,14 +17,28 @@ import AppointmentDialog from "./AppointmentDialog";
 import AttendanceControl from "./AttendanceControl";
 import NoteSeanceBouton from "./NoteSeanceBouton";
 import { Statut } from "@/components/Statut";
+import { ajouterJours, dateCivile } from "@/lib/dateCivile";
 
 /** Couleur de l'issue. Jamais la SEULE porteuse de l'information : le libellé
  *  est toujours écrit à côté (WCAG 1.4.1). */
 
-const heure = new Intl.DateTimeFormat("fr-FR", {
-  hour: "2-digit",
-  minute: "2-digit",
-});
+/* DEUX SORTES DE DATES, DEUX SORTES DE FORMATEURS.
+ *
+ * Un JOUR CIVIL (« 2026-09-14 ») s'affiche relu à midi LOCAL : quel que soit le
+ * fuseau du poste, midi reste le même jour. Un INSTANT (l'heure d'un
+ * rendez-vous) s'affiche dans le fuseau du CABINET, sans quoi un poste réglé
+ * ailleurs montrerait d'autres heures que celles que l'action serveur a
+ * enregistrées. */
+function midiLocal(jour: string): Date {
+  return new Date(`${jour}T12:00:00`);
+}
+function formateursDuCabinet(fuseau: string) {
+  return {
+    heure: new Intl.DateTimeFormat("fr-FR", { timeZone: fuseau, hour: "2-digit", minute: "2-digit" }),
+    jourCourt: new Intl.DateTimeFormat("fr-FR", { timeZone: fuseau, day: "numeric", month: "short" }),
+  };
+}
+
 const jourLong = new Intl.DateTimeFormat("fr-FR", {
   weekday: "long",
   day: "numeric",
@@ -37,8 +51,9 @@ const jourCourt = new Intl.DateTimeFormat("fr-FR", {
 
 export default function AgendaVue({
   vue,
-  debut,
-  fin,
+  debutJour,
+  finJour,
+  fuseau,
   maintenant,
   rendezVous,
   aQualifier,
@@ -48,8 +63,12 @@ export default function AgendaVue({
   canWrite,
 }: {
   vue: "jour" | "semaine";
-  debut: string;
-  fin: string;
+  /** Premier jour civil affiché, inclus. */
+  debutJour: string;
+  /** Jour civil qui suit la période, exclu. */
+  finJour: string;
+  /** Le fuseau du cabinet. */
+  fuseau: string;
   maintenant: string;
   rendezVous: AppointmentWithPatient[];
   aQualifier: AppointmentWithPatient[];
@@ -64,21 +83,18 @@ export default function AgendaVue({
   const [edite, setEdite] = useState<Appointment | "nouveau" | null>(null);
   const notees = new Set(seancesNotees);
 
-  const d = new Date(debut);
-  const f = new Date(fin);
+  const { heure, jourCourt: jourCourtCabinet } = formateursDuCabinet(fuseau);
 
   const naviguer = (pas: number) => {
-    const cible = new Date(d);
-    cible.setDate(cible.getDate() + pas * (vue === "semaine" ? 7 : 1));
     const params = new URLSearchParams();
-    params.set("jour", cible.toISOString().slice(0, 10));
+    params.set("jour", ajouterJours(debutJour, pas * (vue === "semaine" ? 7 : 1)));
     if (vue === "semaine") params.set("vue", "semaine");
     router.push(`/agenda?${params.toString()}`);
   };
 
   const changerVue = (v: "jour" | "semaine") => {
     const params = new URLSearchParams();
-    params.set("jour", d.toISOString().slice(0, 10));
+    params.set("jour", debutJour);
     if (v === "semaine") params.set("vue", "semaine");
     router.push(`/agenda?${params.toString()}`);
   };
@@ -86,15 +102,15 @@ export default function AgendaVue({
   // Regroupement par journée : en vue semaine, une liste plate serait illisible.
   const parJour = new Map<string, AppointmentWithPatient[]>();
   for (const rdv of rendezVous) {
-    const cle = new Date(rdv.starts_at).toISOString().slice(0, 10);
+    const cle = dateCivile(new Date(rdv.starts_at), fuseau);
     if (!parJour.has(cle)) parJour.set(cle, []);
     parJour.get(cle)!.push(rdv);
   }
 
   const titrePeriode =
     vue === "jour"
-      ? jourLong.format(d)
-      : `Semaine du ${jourCourt.format(d)} au ${jourCourt.format(new Date(f.getTime() - 1))}`;
+      ? jourLong.format(midiLocal(debutJour))
+      : `Semaine du ${jourCourt.format(midiLocal(debutJour))} au ${jourCourt.format(midiLocal(ajouterJours(finJour, -1)))}`;
 
   return (
     <>
@@ -137,7 +153,7 @@ export default function AgendaVue({
                   </span>
                   <span className="text-slate-500">
                     {" — "}
-                    {jourCourt.format(new Date(rdv.starts_at))} à{" "}
+                    {jourCourtCabinet.format(new Date(rdv.starts_at))} à{" "}
                     {heure.format(new Date(rdv.starts_at))}
                   </span>
                 </div>
@@ -237,6 +253,7 @@ export default function AgendaVue({
                     key={rdv.id}
                     rdv={rdv}
                     maintenant={maintenant}
+                    heure={heure}
                     canWrite={canWrite}
                     aDejaUneNote={notees.has(rdv.id)}
                     onEdit={() => setEdite(rdv)}
@@ -252,7 +269,8 @@ export default function AgendaVue({
         <AppointmentDialog
           appointment={edite === "nouveau" ? null : edite}
           patients={patients}
-          jourParDefaut={d.toISOString().slice(0, 10)}
+          jourParDefaut={debutJour}
+          fuseau={fuseau}
           onClose={() => setEdite(null)}
         />
       )}
@@ -263,12 +281,15 @@ export default function AgendaVue({
 function LigneRendezVous({
   rdv,
   maintenant,
+  heure,
   canWrite,
   aDejaUneNote,
   onEdit,
 }: {
   rdv: AppointmentWithPatient;
   maintenant: string;
+  /** Formateur d'heure réglé sur le fuseau du cabinet. */
+  heure: Intl.DateTimeFormat;
   canWrite: boolean;
   aDejaUneNote: boolean;
   onEdit: () => void;

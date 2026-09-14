@@ -14,6 +14,7 @@ import {
   type Resultat,
 } from "@/lib/actions/serveur";
 import { getReglagesCompta } from "@/lib/compta/queries";
+import { dateCivile } from "@/lib/dateCivile";
 import type {
   BillingFundingScheme,
   DateRender,
@@ -652,7 +653,7 @@ export async function enregistrerReglement(fd: FormData): Promise<Resultat> {
     .from("payments")
     .insert({
       practice_id: ctx.practice.practiceId,
-      received_on: recu.value ?? new Date().toISOString().slice(0, 10),
+      received_on: recu.value ?? dateCivile(new Date(), ctx.practice.timezone),
       amount_cents: centimes,
       method: str(fd, "method") ?? "autre",
       reference: str(fd, "reference"),

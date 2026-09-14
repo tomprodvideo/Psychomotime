@@ -10,6 +10,7 @@ import {
   seancesAvecNote,
 } from "@/lib/dossier/queries";
 import AgendaVue from "./AgendaVue";
+import { ajouterJours, dateCivile, debutDuJour, lundiDe } from "@/lib/dateCivile";
 
 import type { Metadata } from "next";
 /* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
@@ -60,24 +61,23 @@ export default async function AgendaPage({
     return Array.isArray(v) ? v[0] : v;
   };
 
-  // L'ancre de la période est explicite. À défaut, aujourd'hui — mais la
-  // décision est prise ici, une fois, et non dispersée dans l'affichage.
-  const ancreBrute = lire("jour");
-  const ancre =
-    ancreBrute && /^\d{4}-\d{2}-\d{2}$/.test(ancreBrute)
-      ? new Date(`${ancreBrute}T12:00:00`)
-      : new Date();
+  /* LE JOUR AFFICHÉ EST UN JOUR CIVIL DU CABINET, jamais « minuit du serveur ».
+   * L'ancre était posée par `setHours(0, 0, 0, 0)` dans le fuseau du serveur,
+   * puis relue en UTC par le navigateur : sur un serveur réglé sur Paris,
+   * « jour suivant » ramenait au même jour et « précédent » reculait de deux ;
+   * sur un serveur UTC, la journée affichée courait de 2 h à 2 h du matin, et
+   * un rendez-vous à minuit et demi tombait la veille. */
+  const fuseau = practice.timezone;
+  const jourBrut = lire("jour");
+  const jour =
+    jourBrut && /^\d{4}-\d{2}-\d{2}$/.test(jourBrut) ? jourBrut : dateCivile(new Date(), fuseau);
   const vue = lire("vue") === "semaine" ? "semaine" : "jour";
 
-  const debut = new Date(ancre);
-  debut.setHours(0, 0, 0, 0);
-  if (vue === "semaine") {
-    // Semaine commençant le lundi.
-    const jour = (debut.getDay() + 6) % 7;
-    debut.setDate(debut.getDate() - jour);
-  }
-  const fin = new Date(debut);
-  fin.setDate(fin.getDate() + (vue === "semaine" ? 7 : 1));
+  // Semaine commençant le lundi.
+  const debutJour = vue === "semaine" ? lundiDe(jour) : jour;
+  const finJour = ajouterJours(debutJour, vue === "semaine" ? 7 : 1);
+  const debut = debutDuJour(debutJour, fuseau);
+  const fin = debutDuJour(finJour, fuseau);
 
   const maintenant = new Date();
 
@@ -110,8 +110,9 @@ export default async function AgendaPage({
 
       <AgendaVue
         vue={vue}
-        debut={debut.toISOString()}
-        fin={fin.toISOString()}
+        debutJour={debutJour}
+        finJour={finJour}
+        fuseau={fuseau}
         maintenant={maintenant.toISOString()}
         rendezVous={rendezVous}
         aQualifier={aQualifier}

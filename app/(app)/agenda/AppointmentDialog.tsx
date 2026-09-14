@@ -17,6 +17,7 @@ import {
 import type { PatientListItem } from "@/lib/dossier/queries";
 import { CHAMP } from "@/components/Champ";
 import { Bouton } from "@/components/Bouton";
+import { dateCivile, heureDuCabinet } from "@/lib/dateCivile";
 
 
 /** Types de rendez-vous qui ne concernent personne en particulier. */
@@ -26,11 +27,14 @@ export default function AppointmentDialog({
   appointment,
   patients,
   jourParDefaut,
+  fuseau,
   onClose,
 }: {
   appointment: Appointment | null;
   patients: PatientListItem[];
   jourParDefaut: string;
+  /** Le fuseau du cabinet : le jour et l'heure d'un rendez-vous se lisent en lui. */
+  fuseau: string;
   onClose: () => void;
 }) {
   const [pending, start] = useTransition();
@@ -43,12 +47,12 @@ export default function AppointmentDialog({
   const dureeInitiale =
     debut && fin ? Math.round((fin.getTime() - debut.getTime()) / 60_000) : 45;
 
-  const dateInitiale = debut
-    ? `${debut.getFullYear()}-${String(debut.getMonth() + 1).padStart(2, "0")}-${String(debut.getDate()).padStart(2, "0")}`
-    : jourParDefaut;
-  const heureInitiale = debut
-    ? `${String(debut.getHours()).padStart(2, "0")}:${String(debut.getMinutes()).padStart(2, "0")}`
-    : "09:00";
+  /* Relus dans le fuseau du CABINET, pas du navigateur : c'est ce jour et
+     cette heure que l'action serveur réassemblera, dans ce même fuseau. Lus
+     par les accesseurs locaux, un rendez-vous modifié depuis un poste réglé
+     ailleurs aurait été déplacé à l'enregistrement. */
+  const dateInitiale = debut ? dateCivile(debut, fuseau) : jourParDefaut;
+  const heureInitiale = debut ? heureDuCabinet(debut, fuseau) : "09:00";
 
   const sansPatient = SANS_PATIENT.includes(kind);
 

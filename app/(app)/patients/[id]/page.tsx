@@ -105,11 +105,10 @@ export default async function FichePatientPage({
   );
 
   /* `maintenant` reste un INSTANT — il compte et filtre les séances, ce qui
-     est juste. L'âge, lui, se calcule sur le JOUR CIVIL du cabinet. */
-  const age = formatAgeAt(
-    patient.birth_date,
-    dateCivile(maintenant, practice.timezone),
-  );
+     est juste. L'âge et les dates proposées, eux, se calculent sur le JOUR
+     CIVIL du cabinet, calculé ici une seule fois. */
+  const aujourdhui = dateCivile(maintenant, practice.timezone);
+  const age = formatAgeAt(patient.birth_date, aujourdhui);
   const archive = patient.status === "archive";
 
   return (
@@ -273,6 +272,7 @@ export default async function FichePatientPage({
         {practice.canReadClinical ? (
           <>
           <NotesSection
+            aujourdhui={aujourdhui}
             patientId={patient.id}
             patientNom={patientName(patient)}
             patientNeLe={patient.birth_date}
@@ -443,6 +443,7 @@ export default async function FichePatientPage({
         />
 
         <ConsentementsSection
+          aujourdhui={aujourdhui}
           patientId={patient.id}
           patientNom={patientName(patient)}
           patientNeLe={patient.birth_date}

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { ecritureReussie, requireActiveAccess, type Guarded } from "@/lib/auth/guard";
 import { getCurrentPractice } from "@/lib/dossier/practice";
+import { ajouterJours, instantDuCabinet } from "@/lib/dateCivile";
 import {
   ATTENDANCE_REQUIRING_NOTE,
   type Attendance,
@@ -33,15 +34,19 @@ const ATTENDANCES: Attendance[] = [
 ];
 
 /**
- * Combine une date et une heure locales en instant.
+ * Combine un jour et une heure DU CABINET en instant.
  *
- * Le navigateur envoie « 2026-09-15 » et « 14:30 » séparément ; le serveur les
- * assemble dans le fuseau du cabinet. Passer par une chaîne ISO sans fuseau
- * ferait dériver l'horaire d'une heure selon la saison.
+ * CE COMMENTAIRE DISAIT DÉJÀ « le serveur les assemble dans le fuseau du
+ * cabinet » — et le code faisait `new Date(\`${date}T${heure}:00\`)`, qui les
+ * interprète dans le fuseau du PROCESSUS. Démontré : « 14 h 30 » saisies
+ * devenaient 16 h 30 à Paris sous un processus UTC, et restaient justes sur une
+ * machine réglée sur Paris — d'où le silence. L'intention est désormais tenue :
+ * `instantDuCabinet`, avec le fuseau du cabinet en paramètre.
  */
 function instant(
   dateStr: string | null,
   timeStr: string | null,
+  fuseau: string,
 ): { ok: true; value: Date } | { ok: false; error: string } {
   if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
     return { ok: false, error: "La date du rendez-vous est manquante ou invalide." };
@@ -49,7 +54,7 @@ function instant(
   if (!timeStr || !/^\d{2}:\d{2}$/.test(timeStr)) {
     return { ok: false, error: "L'heure du rendez-vous est manquante ou invalide." };
   }
-  const d = new Date(`${dateStr}T${timeStr}:00`);
+  const d = instantDuCabinet(dateStr, timeStr, fuseau);
   if (Number.isNaN(d.getTime())) {
     return { ok: false, error: "Date ou heure invalide." };
   }
@@ -89,7 +94,7 @@ export async function saveAppointment(formData: FormData): Promise<Guarded<strin
   const kind = (str(formData, "kind") ?? "seance") as AppointmentKind;
   if (!KINDS.includes(kind)) return { ok: false, error: "Type de rendez-vous inattendu." };
 
-  const debut = instant(str(formData, "date"), str(formData, "start_time"));
+  const debut = instant(str(formData, "date"), str(formData, "start_time"), ctx.practice.timezone);
   if (!debut.ok) return { ok: false, error: debut.error };
 
   const dureeMin = Number.parseInt(String(formData.get("duration") ?? "45"), 10);
@@ -177,7 +182,7 @@ export async function saveAppointmentSeries(
     };
   }
 
-  const debut = instant(str(formData, "date"), str(formData, "start_time"));
+  const debut = instant(str(formData, "date"), str(formData, "start_time"), ctx.practice.timezone);
   if (!debut.ok) return { ok: false, error: debut.error };
 
   const dureeMin = Number.parseInt(String(formData.get("duration") ?? "45"), 10);
@@ -191,8 +196,18 @@ export async function saveAppointmentSeries(
   const kind = (str(formData, "kind") ?? "seance") as AppointmentKind;
   if (!KINDS.includes(kind)) return { ok: false, error: "Type de rendez-vous inattendu." };
 
+  /* UNE SEMAINE N'EST PAS 168 HEURES. La série ajoutait
+     `i × 7 × 24 × 3 600 000` millisecondes : à la première nuit de changement
+     d'heure, toutes les séances suivantes glissaient d'une heure. Démontré :
+     une série du lundi 14 h 30 commencée le 14 septembre 2026 s'affichait à
+     13 h 30 dès le 26 octobre. Avec 30 séances au plus, soit environ sept mois,
+     une série en France traverse FORCÉMENT un changement d'heure — sur n'importe
+     quel serveur. On avance donc de sept jours CIVILS, et l'on retrouve 14 h 30
+     au cabinet chaque semaine. */
+  const jourSerie = str(formData, "date")!;
+  const heureSerie = str(formData, "start_time")!;
   const lignes = Array.from({ length: occurrences }, (_, i) => {
-    const d = new Date(debut.value.getTime() + i * 7 * 24 * 3_600_000);
+    const d = instantDuCabinet(ajouterJours(jourSerie, 7 * i), heureSerie, ctx.practice.timezone);
     return {
       practice_id: ctx.practice.practiceId,
       patient_id: patientId,

@@ -29,26 +29,8 @@ import { fileURLToPath } from "node:url";
 const ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "..");
 
 const DETTE_Q507: Record<string, string> = {
-  "app/(app)/agenda/AgendaVue.tsx":
-    "Navigation jour par jour, regroupement des rendez-vous par jour, jour proposé par défaut.",
-  "app/(app)/comptabilite/[id]/page.tsx":
-    "Date proposée pour l'émission d'une pièce et pour la réception d'un règlement.",
-  "app/(app)/comptabilite/actions.ts":
-    "`received_on` par défaut, écrit en base.",
   "app/(app)/comptabilite/attestations/[id]/page.tsx":
-    "Date proposée pour signer une attestation — soumise au refus de `0016` — et drapeau « révolu ».",
-  "app/(app)/comptabilite/charges/page.tsx":
-    "Date proposée pour une charge du cabinet.",
-  "app/(app)/comptabilite/transmissions/actions.ts":
-    "Date d'expiration d'un lien, reprise dans le message de transmission et le journal.",
-  "app/(app)/parametres/instruments/actions.ts":
-    "`validated_on` par défaut, écrit en base.",
-  "app/(app)/patients/[id]/ConsentementsSection.tsx":
-    "Date proposée pour un consentement accordé.",
-  "app/(app)/patients/[id]/NotesSection.tsx":
-    "Date proposée pour une note clinique.",
-  "app/(app)/patients/actions.ts":
-    "`valid_to`, `written_on`, `granted_on` et `withdrawn_on` par défaut, écrits en base.",
+    "Date proposée pour SIGNER une attestation. Envoyée explicitement à `issue_attestation`, dont la garde refuse une date postérieure à `current_date` (`0016`) — calculé dans le fuseau de la session de la base. Passer l'application seule au jour du cabinet ferait refuser une signature entre minuit et deux heures du matin si la base de production est réglée en UTC. Attend la migration qui aligne cette garde sur le jour du cabinet.",
 };
 
 /** Toutes les façons connues d'extraire la date UTC d'un instant. */

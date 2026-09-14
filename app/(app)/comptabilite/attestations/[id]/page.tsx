@@ -27,6 +27,7 @@ import ActionsAttestation from "./ActionsAttestation";
 import PanneauPartage from "../../transmissions/PanneauPartage";
 
 import type { Metadata } from "next";
+import { dateCivile } from "@/lib/dateCivile";
 /* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
    patient le ferait entrer dans l'historique du navigateur, parfois synchronisé
    entre appareils, parfois affiché devant quelqu'un d'autre. C'est le même
@@ -165,7 +166,7 @@ export default async function AttestationPage({
                   nom: contactName(l.contact!),
                   role: ROLE_LABELS[l.role] ?? l.role,
                   revolu: Boolean(
-                    l.valid_to && l.valid_to < new Date().toISOString().slice(0, 10),
+                    l.valid_to && l.valid_to < dateCivile(new Date(), practice.timezone),
                   ),
                 }))}
               autresContacts={contacts
