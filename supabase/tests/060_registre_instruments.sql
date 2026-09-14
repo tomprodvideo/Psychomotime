@@ -73,16 +73,16 @@ select tests.authenticate_as(:alpha::uuid);
 do $$
 begin
   perform tests.assert_equals(
-    app.effective_licence_status('integration_editeur_autorisee', current_date - 1),
+    app.effective_licence_status('integration_editeur_autorisee', current_date - 1, current_date),
     'scores_saisis_par_le_praticien',
     'Une autorisation expirée doit retomber au statut inférieur.');
   perform tests.assert_equals(
-    app.effective_licence_status('integration_editeur_autorisee', current_date + 30),
+    app.effective_licence_status('integration_editeur_autorisee', current_date + 30, current_date),
     'integration_editeur_autorisee',
     'Une autorisation valide reste en vigueur.');
   -- Le repli est descendant, jamais ascendant.
   perform tests.assert_equals(
-    app.effective_licence_status('reference_seule', null),
+    app.effective_licence_status('reference_seule', null, current_date),
     'reference_seule',
     'Aucun statut ne se relève tout seul.');
 end

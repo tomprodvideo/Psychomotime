@@ -131,5 +131,34 @@ begin
 end;
 $$;
 
+-- Vérifie qu'une instruction échoue POUR LA RAISON ATTENDUE.
+--
+-- `assert_fails` accepte n'importe quelle erreur : un droit manquant, une faute
+-- de frappe dans le contrôle ou une contrainte sans rapport passent aussi bien
+-- que le refus visé. Une garde désarmée peut alors rester invisible derrière
+-- une autre erreur. Ici, le message reçu doit contenir `p_motif`.
+create or replace function tests.assert_fails_with(
+  p_statement text, p_motif text, p_message text)
+returns void
+language plpgsql
+as $$
+declare
+  v_recu text;
+begin
+  begin
+    execute p_statement;
+  exception when others then
+    get stacked diagnostics v_recu = message_text;
+    if position(p_motif in v_recu) > 0 then
+      return;
+    end if;
+    raise exception 'ÉCHEC : % — refusé, mais pour une autre raison : %', p_message, v_recu
+      using errcode = 'assert_failure';
+  end;
+  raise exception 'ÉCHEC : % — l''instruction a réussi alors qu''elle devait être refusée.', p_message
+    using errcode = 'assert_failure';
+end;
+$$;
+
 grant usage on schema tests to public;
 grant execute on all functions in schema tests to public;

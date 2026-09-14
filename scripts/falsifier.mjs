@@ -29,6 +29,17 @@
  *  3. UNE INTERRUPTION LAISSAIT LE DÉPÔT MUTÉ. Le fichier est restauré même en
  *     cas d'erreur.
  *
+ * ET DEUX AUTRES, TROUVÉS EN FALSIFIANT `0027` :
+ *
+ *  4. UNE SUITE DÉJÀ ROUGE « DÉTECTE » TOUT. Un contrôle ajouté échouait sur la
+ *     migration intacte : les trente-sept mutations sont sorties « détectées »,
+ *     sans rien prouver. La suite doit donc passer AVANT la première mutation.
+ *
+ *  5. UNE MUTATION QUI EMPÊCHE D'APPLIQUER LES MIGRATIONS NE PROUVE RIEN NON
+ *     PLUS. La suite tombe, mais aucun contrôle n'a jugé la garde : le schéma
+ *     n'a même pas été construit. Elle est signalée comme CASSE, pas comme
+ *     détectée.
+ *
  * Usage :
  *   node scripts/falsifier.mjs supabase/falsifications/0023.json
  */
@@ -66,13 +77,18 @@ const SUITE = commande === "cutover" ? "cutover" : "test";
 const chemin = join(ROOT, cible);
 const origine = readFileSync(chemin, "utf8");
 
-/** Rejoue la suite SQL. Rend `true` quand elle ÉCHOUE, ce qu'on attend ici. */
-function laSuiteTombe() {
+/**
+ * Rejoue la suite SQL. `tombe` : elle a échoué. `casse` : elle a échoué en
+ * APPLIQUANT un fichier SQL — `db.mjs` l'annonce par « ✗ fichier.sql » —, avant
+ * qu'aucun contrôle ne s'exécute.
+ */
+function rejouer() {
   const r = spawnSync("node", [join(ROOT, "scripts", "db.mjs"), SUITE], {
     cwd: ROOT,
     encoding: "utf8",
   });
-  return r.status !== 0;
+  const erreurs = (r.stderr ?? "").replace(new RegExp(ESC.replace("[", "\\[") + "[0-9;]*m", "g"), "");
+  return { tombe: r.status !== 0, casse: /✗ \S+\.sql/.test(erreurs) };
 }
 
 /**
@@ -95,6 +111,14 @@ function muter(texte, m) {
   return texte.replace(m.avant, m.apres ?? "");
 }
 
+if (rejouer().tombe) {
+  console.error(
+    C.red + C.bold + "La suite échoue AVANT toute mutation." + C.reset +
+      " Chaque mutation paraîtrait détectée sans rien prouver : rendre la suite verte d'abord.",
+  );
+  process.exit(2);
+}
+
 const vains = [];
 let code = 0;
 try {
@@ -107,13 +131,18 @@ try {
       continue;
     }
     writeFileSync(chemin, mute);
-    const detecte = laSuiteTombe();
+    const { tombe, casse } = rejouer();
+    if (casse) {
+      console.log("  " + C.yellow + "⚠ CASSE" + C.reset + "      " + m.nom);
+      vains.push(m.nom + " — la mutation empêche d'appliquer le schéma, aucun contrôle ne l'a jugée");
+      continue;
+    }
     console.log(
-      detecte
+      tombe
         ? "  " + C.green + "détecté" + C.reset + "      " + m.nom
         : "  " + C.red + "✗ VAIN" + C.reset + "       " + m.nom,
     );
-    if (!detecte) vains.push(m.nom);
+    if (!tombe) vains.push(m.nom);
   }
 } finally {
   // Le fichier d'abord, la base ensuite — et dans tous les cas.

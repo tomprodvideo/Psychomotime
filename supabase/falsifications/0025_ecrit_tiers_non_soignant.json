@@ -1,5 +1,6 @@
 {
   "cible": "supabase/migrations/0025_ecrit_tiers_non_soignant.sql",
+  "note": "Depuis 0027 (2026-09-14), les fonctions que 0027 redéfinit ne vivent plus dans ce fichier : leurs mutations y seraient sans effet. Elles sont rejouées sur la copie en service, dans 0027_jour_et_fuseau_du_cabinet.json, sous le préfixe « 0025 · ».",
   "mutations": [
     {
       "nom": "refus uniforme (oracle d'appartenance)",
@@ -32,21 +33,6 @@
       "apres": "  constraint tiers_professionnels_ck check (true)"
     },
     {
-      "nom": "un écrit sans observation ne part pas",
-      "avant": "  if btrim(coalesce(r.observed, '')) = '' then",
-      "apres": "  if false then"
-    },
-    {
-      "nom": "UN RETRAIT NE SE CONTOURNE PAS",
-      "avant": "  if v_accord = 'retire' then",
-      "apres": "  if false then"
-    },
-    {
-      "nom": "sans accord ni motif, on ne remet pas",
-      "avant": "  if v_accord <> 'accorde'\n     and btrim(coalesce(r.consent_override_reason, '')) = '' then",
-      "apres": "  if false then"
-    },
-    {
       "nom": "un retrait l'emporte sur un accord (règle partagée)",
       "avant": "    when bool_or(pc.withdrawn_on is not null) then 'retire'\n",
       "apres": ""
@@ -55,11 +41,6 @@
       "nom": "un accord sans date ne compte pas",
       "avant": "    when bool_or(pc.granted_on is not null and pc.withdrawn_on is null) then 'accorde'",
       "apres": "    when bool_or(pc.withdrawn_on is null) then 'accorde'"
-    },
-    {
-      "nom": "l'écrit ne se date pas du futur",
-      "avant": "  if v_emission > current_date then",
-      "apres": "  if false then"
     },
     {
       "nom": "la lecture est clinique, pas simplement membre",
@@ -87,41 +68,6 @@
       "apres": "    'honorees_hors_parcours_retire', ("
     },
     {
-      "nom": "les avertissements ne partent pas avec le document",
-      "avant": "             - 'honorees_hors_parcours' - 'motif_demande_a_reprendre'\n             - 'accord_partage'\n",
-      "apres": "             "
-    },
-    {
-      "nom": "le non-dit des comptes n'est pas conservé",
-      "avant": "             - (case when r.detail_seances then array[]::text[]\n                     else array['seances_honorees'] end)\n",
-      "apres": ""
-    },
-    {
-      "nom": "le non-dit des objectifs n'est pas conservé",
-      "avant": "             - (case when r.detail_objectifs then array[]::text[]\n                     else array['objectifs'] end)\n",
-      "apres": ""
-    },
-    {
-      "nom": "le non-dit du prescripteur n'est pas conservé",
-      "avant": "             - (case when r.detail_prescripteur then array[]::text[]\n                     else array['prescripteur'] end)",
-      "apres": ""
-    },
-    {
-      "nom": "la mention « remis pour transmission » est figée",
-      "avant": "               when 'remis_pour_transmission' then",
-      "apres": "               when 'jamais_ce_cas' then"
-    },
-    {
-      "nom": "le journal distingue une remise sans accord",
-      "avant": "    case when v_accord = 'accorde' then 'third_party_report.issue'\n         else 'third_party_report.issue_without_consent' end,",
-      "apres": "    'third_party_report.issue',"
-    },
-    {
-      "nom": "qui a donné l'accord est figé",
-      "avant": "           'consentement_donne_par', (",
-      "apres": "           'consentement_donne_par_retire', ("
-    },
-    {
       "nom": "une annulation ne se défait pas",
       "avant": "    if not (old.status = 'emis' and new.status = 'annule') then",
       "apres": "    if false then"
@@ -135,11 +81,6 @@
       "nom": "un écrit remis ne se supprime pas",
       "avant": "  if old.status <> 'brouillon' then\n    raise exception\n      'Un écrit remis ne se supprime pas",
       "apres": "  if false then\n    raise exception\n      'Un écrit remis ne se supprime pas"
-    },
-    {
-      "nom": "[contre-contrôle] une clé ajoutée à l'instantané est vue",
-      "avant": "           'emis_le', v_emission,\n           'usage', r.intended_use,",
-      "apres": "           'emis_le', v_emission, 'cle_en_trop', 'x',\n           'usage', r.intended_use,"
     },
     {
       "nom": "figé après remise — intended_use",

@@ -1,5 +1,6 @@
 {
   "cible": "supabase/migrations/0024_ecrit_de_fin.sql",
+  "note": "Depuis 0027 (2026-09-14), les fonctions que 0027 redéfinit ne vivent plus dans ce fichier : leurs mutations y seraient sans effet. Elles sont rejouées sur la copie en service, dans 0027_jour_et_fuseau_du_cabinet.json, sous le préfixe « 0024 · ».",
   "mutations": [
     {
       "nom": "refus uniforme (oracle d'appartenance)",
@@ -20,31 +21,6 @@
       "nom": "la remise et le destinataire s'accordent",
       "avant": "  constraint closure_remise_ck check (\n    (delivery_mode = 'destinataire') = (recipient_contact_id is not null))",
       "apres": "  constraint closure_remise_ck check (true)"
-    },
-    {
-      "nom": "un écrit sans observation ne part pas",
-      "avant": "  if btrim(coalesce(r.observed, '')) = '' then",
-      "apres": "  if false then"
-    },
-    {
-      "nom": "le parcours doit être clos",
-      "avant": "  if cp.status not in ('termine', 'interrompu', 'reoriente') then",
-      "apres": "  if false then"
-    },
-    {
-      "nom": "la fin ne se situe pas dans le futur",
-      "avant": "  if cp.ended_on > current_date then",
-      "apres": "  if false then"
-    },
-    {
-      "nom": "le parcours doit avoir une date de début",
-      "avant": "  if cp.started_on is null then",
-      "apres": "  if false then"
-    },
-    {
-      "nom": "l'écrit ne se date pas du futur",
-      "avant": "  if v_emission > current_date then",
-      "apres": "  if false then"
     },
     {
       "nom": "la lecture est clinique, pas simplement membre",
@@ -77,46 +53,6 @@
       "apres": "       where o.practice_id = cp.practice_id), '[]'::jsonb),"
     },
     {
-      "nom": "les avertissements d'écran ne partent pas avec le document",
-      "avant": "             - 'honorees_sans_parcours' - 'rendez_vous_a_venir'\n             - 'objectifs_en_cours'\n",
-      "apres": "             "
-    },
-    {
-      "nom": "la parole proposée à la reprise n'est pas imprimée",
-      "avant": "             - 'motif_demande_a_reprendre' - 'fin_du_parcours_a_reprendre'\n",
-      "apres": ""
-    },
-    {
-      "nom": "le non-dit des absences n'est pas conservé",
-      "avant": "             - (case when r.detail_absences then array[]::text[]\n                     else array['absences', 'annulees_par_le_cabinet'] end)\n",
-      "apres": ""
-    },
-    {
-      "nom": "le non-dit des objectifs n'est pas conservé",
-      "avant": "             - (case when r.detail_objectifs then array[]::text[]\n                     else array['objectifs'] end)\n",
-      "apres": ""
-    },
-    {
-      "nom": "le non-dit du financement n'est pas conservé",
-      "avant": "             - (case when r.detail_financement then array[]::text[]\n                     else array['financement'] end)",
-      "apres": ""
-    },
-    {
-      "nom": "la nature de la fin est énoncée et figée",
-      "avant": "             'nature', case r.closure_kind",
-      "apres": "             'nature_retiree', case r.closure_kind"
-    },
-    {
-      "nom": "un écrit versé au dossier le dit",
-      "avant": "             'remise', case r.delivery_mode",
-      "apres": "             'remise_retiree', case r.delivery_mode"
-    },
-    {
-      "nom": "l'accord de partage est figé",
-      "avant": "           'consentement_partage', (",
-      "apres": "           'consentement_partage_retire', ("
-    },
-    {
       "nom": "un parcours portant un écrit remis ne se rouvre pas",
       "avant": "  if old.status in ('termine', 'interrompu', 'reoriente')\n     and new.status not in ('termine', 'interrompu', 'reoriente')",
       "apres": "  if false"
@@ -140,11 +76,6 @@
       "nom": "un écrit remis ne se supprime pas",
       "avant": "  if old.status <> 'brouillon' then\n    raise exception\n      'Un écrit de fin remis ne se supprime pas",
       "apres": "  if false then\n    raise exception\n      'Un écrit de fin remis ne se supprime pas"
-    },
-    {
-      "nom": "[contre-contrôle] une clé ajoutée à l'instantané est vue",
-      "avant": "           'emis_le', v_emission,\n           'nature', r.closure_kind,",
-      "apres": "           'emis_le', v_emission, 'cle_en_trop', 'x',\n           'nature', r.closure_kind,"
     },
     {
       "nom": "figé après remise — closure_kind",

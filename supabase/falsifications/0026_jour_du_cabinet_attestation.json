@@ -1,31 +1,7 @@
 {
   "cible": "supabase/migrations/0026_jour_du_cabinet_attestation.sql",
+  "note": "Depuis 0027 (2026-09-14), les fonctions que 0027 redéfinit ne vivent plus dans ce fichier : leurs mutations y seraient sans effet. Elles sont rejouées sur la copie en service, dans 0027_jour_et_fuseau_du_cabinet.json, sous le préfixe « 0026 · ».",
   "mutations": [
-    {
-      "nom": "la garde de signature suit le jour du cabinet",
-      "avant": "  if v_emission > v_aujourdhui then\n",
-      "apres": "  if v_emission > current_date then\n"
-    },
-    {
-      "nom": "sans date fournie, le jour du cabinet",
-      "avant": "  v_emission := coalesce(p_issued_on, v_aujourdhui);\n",
-      "apres": "  v_emission := coalesce(p_issued_on, current_date);\n"
-    },
-    {
-      "nom": "le fuseau DE CE cabinet, pas un fuseau figé",
-      "avant": "    return (now() at time zone coalesce(nullif(btrim(v_fuseau), ''), 'Europe/Paris'))::date;\n",
-      "apres": "    return (now() at time zone 'Europe/Paris')::date;\n"
-    },
-    {
-      "nom": "un fuseau illisible retombe sur le défaut",
-      "avant": "  exception when invalid_parameter_value then\n    return (now() at time zone 'Europe/Paris')::date;\n",
-      "apres": ""
-    },
-    {
-      "nom": "indépendant du fuseau de la session",
-      "avant": "    return (now() at time zone coalesce(nullif(btrim(v_fuseau), ''), 'Europe/Paris'))::date;\n",
-      "apres": "    return current_date;\n"
-    },
     {
       "nom": "le fuseau d'un cabinet ne s'interroge pas de l'extérieur",
       "avant": "revoke all on function app.jour_du_cabinet(uuid) from public, anon, authenticated;\n",

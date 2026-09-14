@@ -1,0 +1,450 @@
+{
+  "cible": "supabase/migrations/0027_jour_et_fuseau_du_cabinet.sql",
+  "mutations": [
+    {
+      "nom": "un fuseau illisible retombe sur le défaut, sans échouer",
+      "avant": "  return v_fuseau;\nexception when invalid_parameter_value then\n  return 'Europe/Paris';\nend;\n",
+      "apres": "  return v_fuseau;\nend;\n"
+    },
+    {
+      "nom": "un fuseau est rendu sans ses espaces",
+      "avant": "  v_fuseau text := nullif(btrim(p_fuseau), '');\n",
+      "apres": "  v_fuseau text := p_fuseau;\n"
+    },
+    {
+      "nom": "un fuseau lisible est rendu tel quel, pas remplacé par le défaut",
+      "avant": "  perform timestamptz '2000-01-01 00:00:00+00' at time zone v_fuseau;\n  return v_fuseau;\n",
+      "apres": "  perform timestamptz '2000-01-01 00:00:00+00' at time zone v_fuseau;\n  return 'Europe/Paris';\n"
+    },
+    {
+      "nom": "le fuseau effectif applique la règle, à l'écriture",
+      "avant": "  generated always as (app.fuseau_utilisable(timezone)) stored;\n",
+      "apres": "  generated always as (btrim(timezone)) stored;\n"
+    },
+    {
+      "nom": "le fuseau d'un cabinet est lu sur sa fiche",
+      "avant": "  return coalesce(v_fuseau, app.fuseau_utilisable(null));\n",
+      "apres": "  return app.fuseau_utilisable(null);\n"
+    },
+    {
+      "nom": "les fonctions lisent le fuseau effectif, pas la saisie",
+      "avant": "  select pr.effective_timezone into v_fuseau from public.practices pr where pr.id = p_practice_id;\n",
+      "apres": "  select pr.timezone into v_fuseau from public.practices pr where pr.id = p_practice_id;\n"
+    },
+    {
+      "nom": "le jour du cabinet ne dépend pas de la session",
+      "avant": "  return (now() at time zone app.fuseau_du_cabinet(p_practice_id))::date;\n",
+      "apres": "  return current_date;\n"
+    },
+    {
+      "nom": "un membre peut modifier sa fiche : le fuseau effectif se recalcule sous ses droits",
+      "avant": "grant execute on function app.fuseau_utilisable(text) to authenticated;\n",
+      "apres": ""
+    },
+    {
+      "nom": "le fuseau d'un cabinet ne s'interroge pas par son identifiant",
+      "avant": "revoke all on function app.fuseau_du_cabinet(uuid) from public, anon, authenticated;\n",
+      "apres": ""
+    },
+    {
+      "nom": "courrier : sans date, le jour du cabinet",
+      "avant": "  v_aujourdhui := app.jour_du_cabinet(l.practice_id);\n  v_emission := coalesce(p_issued_on, v_aujourdhui);\n",
+      "apres": "  v_aujourdhui := app.jour_du_cabinet(l.practice_id);\n  v_emission := coalesce(p_issued_on, current_date);\n"
+    },
+    {
+      "nom": "courrier : la garde du futur suit le jour du cabinet",
+      "avant": "  if v_emission > v_aujourdhui then\n    raise exception 'Un courrier ne se date pas du futur.'",
+      "apres": "  if v_emission > current_date then\n    raise exception 'Un courrier ne se date pas du futur.'"
+    },
+    {
+      "nom": "écrit pour un tiers : sans date, le jour du cabinet",
+      "avant": "  v_aujourdhui := app.jour_du_cabinet(r.practice_id);\n  v_emission := coalesce(p_issued_on, v_aujourdhui);\n",
+      "apres": "  v_aujourdhui := app.jour_du_cabinet(r.practice_id);\n  v_emission := coalesce(p_issued_on, current_date);\n"
+    },
+    {
+      "nom": "écrit pour un tiers : la garde du futur suit le jour du cabinet",
+      "avant": "  if v_emission > v_aujourdhui then\n    raise exception 'Un écrit ne se date pas du futur.'",
+      "apres": "  if v_emission > current_date then\n    raise exception 'Un écrit ne se date pas du futur.'"
+    },
+    {
+      "nom": "synthèse : sans date, le jour du cabinet",
+      "avant": "  v_aujourdhui := app.jour_du_cabinet(s.practice_id);\n  v_emission := coalesce(p_issued_on, v_aujourdhui);\n",
+      "apres": "  v_aujourdhui := app.jour_du_cabinet(s.practice_id);\n  v_emission := coalesce(p_issued_on, current_date);\n"
+    },
+    {
+      "nom": "synthèse : la garde du futur suit le jour du cabinet",
+      "avant": "  if v_emission > v_aujourdhui then\n    raise exception 'Une synthèse ne se date pas du futur.'",
+      "apres": "  if v_emission > current_date then\n    raise exception 'Une synthèse ne se date pas du futur.'"
+    },
+    {
+      "nom": "synthèse : la période se juge au jour du cabinet",
+      "avant": "  if s.period_end > v_aujourdhui then\n",
+      "apres": "  if s.period_end > current_date then\n"
+    },
+    {
+      "nom": "écrit de fin : sans date, le jour du cabinet",
+      "avant": "  v_emission := coalesce(p_issued_on, v_aujourdhui);\n  if v_emission > v_aujourdhui then\n    raise exception 'Un écrit de fin ne se date pas du futur.'",
+      "apres": "  v_emission := coalesce(p_issued_on, current_date);\n  if v_emission > v_aujourdhui then\n    raise exception 'Un écrit de fin ne se date pas du futur.'"
+    },
+    {
+      "nom": "écrit de fin : la garde du futur suit le jour du cabinet",
+      "avant": "  if v_emission > v_aujourdhui then\n    raise exception 'Un écrit de fin ne se date pas du futur.'",
+      "apres": "  if v_emission > current_date then\n    raise exception 'Un écrit de fin ne se date pas du futur.'"
+    },
+    {
+      "nom": "écrit de fin : la clôture se juge au jour du cabinet",
+      "avant": "  if cp.ended_on > v_aujourdhui then\n",
+      "apres": "  if cp.ended_on > current_date then\n"
+    },
+    {
+      "nom": "pièce comptable : sans date, le jour du cabinet",
+      "avant": "  v_emission := coalesce(p_issued_on, app.jour_du_cabinet(d.practice_id));\n",
+      "apres": "  v_emission := coalesce(p_issued_on, current_date);\n"
+    },
+    {
+      "nom": "archivage : les parcours se closent au jour du cabinet",
+      "avant": "         ended_on = coalesce(ended_on, app.jour_du_cabinet(v_practice)),\n",
+      "apres": "         ended_on = coalesce(ended_on, current_date),\n"
+    },
+    {
+      "nom": "découpage : validé au jour du cabinet",
+      "avant": "         validated_on = coalesce(validated_on, app.jour_du_cabinet(v_practice))\n",
+      "apres": "         validated_on = coalesce(validated_on, current_date)\n"
+    },
+    {
+      "nom": "note sans date : le jour du cabinet",
+      "avant": "      new.written_on := app.jour_du_cabinet(new.practice_id);\n",
+      "apres": "      new.written_on := current_date;\n"
+    },
+    {
+      "nom": "règlement sans date : le jour du cabinet",
+      "avant": "      new.received_on := app.jour_du_cabinet(new.practice_id);\n",
+      "apres": "      new.received_on := current_date;\n"
+    },
+    {
+      "nom": "le défaut `current_date` des notes est bien retiré",
+      "avant": "alter table public.patient_notes alter column written_on drop default;\n",
+      "apres": ""
+    },
+    {
+      "nom": "le défaut `current_date` des règlements est bien retiré",
+      "avant": "alter table public.payments alter column received_on drop default;\n",
+      "apres": ""
+    },
+    {
+      "nom": "le déclencheur de date ne s'appelle pas directement",
+      "avant": "revoke all on function app.dater_au_jour_du_cabinet() from public, anon, authenticated;\n",
+      "apres": ""
+    },
+    {
+      "nom": "le jour d'échéance reste couvert",
+      "avant": "     and p_expires_on is not null and p_expires_on < p_aujourdhui\n",
+      "apres": "     and p_expires_on is not null and p_expires_on <= p_aujourdhui\n"
+    },
+    {
+      "nom": "la licence ne lit plus l'horloge de la session",
+      "avant": "     and p_expires_on is not null and p_expires_on < p_aujourdhui\n",
+      "apres": "     and p_expires_on is not null and p_expires_on < current_date\n"
+    },
+    {
+      "nom": "vue des séances : le jour dans le fuseau du cabinet",
+      "avant": "  (a.starts_at at time zone coalesce(pr.effective_timezone, app.fuseau_utilisable(null)))::date as session_date,\n",
+      "apres": "  (a.starts_at at time zone 'Europe/Paris')::date as session_date,\n"
+    },
+    {
+      "nom": "relevé : le fuseau lu est celui du cabinet",
+      "avant": "  v_fuseau := app.fuseau_du_cabinet(v_practice);\n",
+      "apres": "  v_fuseau := 'Europe/Paris';\n"
+    },
+    {
+      "nom": "relevé : les absences au jour du cabinet",
+      "avant": "         and a.attendance in ('absent_excuse', 'absent_non_excuse')\n         and (a.starts_at at time zone v_fuseau)::date between p_from and p_to),\n",
+      "apres": "         and a.attendance in ('absent_excuse', 'absent_non_excuse')\n         and (a.starts_at at time zone 'Europe/Paris')::date between p_from and p_to),\n"
+    },
+    {
+      "nom": "relevé : les annulations au jour du cabinet",
+      "avant": "         and a.attendance = 'annule_praticien'\n         and (a.starts_at at time zone v_fuseau)::date between p_from and p_to),\n",
+      "apres": "         and a.attendance = 'annule_praticien'\n         and (a.starts_at at time zone 'Europe/Paris')::date between p_from and p_to),\n"
+    },
+    {
+      "nom": "attestation : le fuseau lu est celui du cabinet",
+      "avant": "  v_fuseau := app.fuseau_du_cabinet(a.practice_id);\n",
+      "apres": "  v_fuseau := 'Europe/Paris';\n"
+    },
+    {
+      "nom": "attestation : le dernier fait attesté, au jour du cabinet",
+      "avant": "    select (ap.starts_at at time zone v_fuseau)::date as jour\n",
+      "apres": "    select (ap.starts_at at time zone 'Europe/Paris')::date as jour\n"
+    },
+    {
+      "nom": "attestation : début de période, au jour du cabinet",
+      "avant": "              and (ap.starts_at at time zone v_fuseau)::date < a.period_start)\n",
+      "apres": "              and (ap.starts_at at time zone 'Europe/Paris')::date < a.period_start)\n"
+    },
+    {
+      "nom": "attestation : fin de période, au jour du cabinet",
+      "avant": "              and (ap.starts_at at time zone v_fuseau)::date > a.period_end))\n",
+      "apres": "              and (ap.starts_at at time zone 'Europe/Paris')::date > a.period_end))\n"
+    },
+    {
+      "nom": "attestation : la date imprimée d'une séance, au jour du cabinet",
+      "avant": "        'date', (ap.starts_at at time zone v_fuseau)::date,\n",
+      "apres": "        'date', (ap.starts_at at time zone 'Europe/Paris')::date,\n"
+    },
+    {
+      "nom": "vue des séances : le fuseau ne se rejuge pas à chaque séance",
+      "avant": "  (a.starts_at at time zone coalesce(pr.effective_timezone, app.fuseau_utilisable(null)))::date as session_date,\n",
+      "apres": "  (a.starts_at at time zone app.fuseau_utilisable(pr.timezone))::date as session_date,\n"
+    },
+    {
+      "nom": "0023 · une synthèse sans texte ne part pas",
+      "avant": "  if btrim(coalesce(s.observed_evolution, '')) = '' then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "0023 · une période close dans le futur ne se remet pas",
+      "avant": "  if s.period_end > v_aujourdhui then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "0023 · une synthèse ne se date pas du futur",
+      "avant": "  v_aujourdhui := app.jour_du_cabinet(s.practice_id);\n  v_emission := coalesce(p_issued_on, v_aujourdhui);\n  if v_emission > v_aujourdhui then",
+      "apres": "  v_aujourdhui := app.jour_du_cabinet(s.practice_id);\n  v_emission := coalesce(p_issued_on, v_aujourdhui);\n  if false then"
+    },
+    {
+      "nom": "0023 · le parcours est celui du dossier (faits)",
+      "avant": "  if p_pathway_id is not null and not exists (\n    select 1 from public.care_pathways cp\n     where cp.id = p_pathway_id\n       and cp.patient_id = p_patient_id\n       and cp.practice_id = v_practice\n  ) then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "0023 · le contenu clinique n'est pas lisible par un assistant",
+      "avant": "  if not app.can_read_clinical(v_practice) then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "0023 · les bornes de période filtrent les séances",
+      "avant": "         and (p_pathway_id is null or r.pathway_id = p_pathway_id)\n         and r.session_date between p_from and p_to),",
+      "apres": "         and (p_pathway_id is null or r.pathway_id = p_pathway_id)\n         and r.session_date between p_from - 400 and p_to + 400),"
+    },
+    {
+      "nom": "0023 · les deux comptes sur la même base (filtre de nature)",
+      "avant": "         and a.kind in ('seance', 'bilan', 'entretien', 'restitution')\n         and a.attendance in ('absent_excuse', 'absent_non_excuse')",
+      "apres": "         and a.attendance in ('absent_excuse', 'absent_non_excuse')"
+    },
+    {
+      "nom": "0023 · les annulations du cabinet sont comptées",
+      "avant": "    'annulees_par_le_cabinet', (",
+      "apres": "    'annulees_par_le_cabinet_retire', ("
+    },
+    {
+      "nom": "0023 · les séances hors parcours sont signalées",
+      "avant": "    'honorees_sans_parcours', (",
+      "apres": "    'honorees_sans_parcours_retire', ("
+    },
+    {
+      "nom": "0023 · l'avertissement ne part pas avec le document",
+      "avant": "             s.patient_id, s.pathway_id, s.period_start, s.period_end)\n             - 'honorees_sans_parcours'",
+      "apres": "             s.patient_id, s.pathway_id, s.period_start, s.period_end)\n"
+    },
+    {
+      "nom": "0023 · un objectif posé après la période est exclu",
+      "avant": "         and (o.set_on is null or o.set_on <= p_to)), '[]'::jsonb));",
+      "apres": "         ), '[]'::jsonb));"
+    },
+    {
+      "nom": "0023 · les objectifs sont filtrés par parcours",
+      "avant": "         and o.pathway_id = p_pathway_id\n",
+      "apres": ""
+    },
+    {
+      "nom": "0023 · la note de réévaluation est figée avec l'objectif",
+      "avant": "          'revu_le', o.reviewed_on,\n          'note_de_reevaluation', o.review_note) order by o.position",
+      "apres": "          'revu_le', o.reviewed_on) order by o.position"
+    },
+    {
+      "nom": "0023 · la remise se lit du destinataire, pas de la case",
+      "avant": "           'remise', case when s.recipient_contact_id is not null\n                          then 'au_destinataire' else 'a_la_personne_suivie' end,",
+      "apres": "           'remise', case when s.recipient_is_patient\n                          then 'a_la_personne_suivie' else 'au_destinataire' end,"
+    },
+    {
+      "nom": "0023 · le rôle du destinataire au dossier est figé",
+      "avant": "                * cabinet non rattachés à ce dossier. */\n               'role_au_dossier', coalesce((",
+      "apres": "                * cabinet non rattachés à ce dossier. */\n               'role_ignore', coalesce(("
+    },
+    {
+      "nom": "0023 · l'accord de partage est figé, pas relu",
+      "avant": "            * Trouvé par la relecture protection des données du rang 3. */\n           'consentement_partage', (",
+      "apres": "            * Trouvé par la relecture protection des données du rang 3. */\n           'consentement_partage_retire', ("
+    },
+    {
+      "nom": "0023 · un accord sans date ne compte pas",
+      "avant": "            * Trouvé par la relecture protection des données du rang 3. */\n           'consentement_partage', (\n             select case\n               when bool_or(pc.withdrawn_on is not null) then 'retire'\n               when bool_or(pc.granted_on is not null\n                            and pc.withdrawn_on is null) then 'accorde'",
+      "apres": "            * Trouvé par la relecture protection des données du rang 3. */\n           'consentement_partage', (\n             select case\n               when bool_or(pc.withdrawn_on is not null) then 'retire'\n               when bool_or(pc.withdrawn_on is null) then 'accorde'"
+    },
+    {
+      "nom": "0023 · un retrait l'emporte sur un accord",
+      "avant": "            * Trouvé par la relecture protection des données du rang 3. */\n           'consentement_partage', (\n             select case\n               when bool_or(pc.withdrawn_on is not null) then 'retire'\n",
+      "apres": "            * Trouvé par la relecture protection des données du rang 3. */\n           'consentement_partage', (\n             select case\n"
+    },
+    {
+      "nom": "0023 · la mention encadrante est figée",
+      "avant": "           'mentions', jsonb_build_object('comptes',",
+      "apres": "           'mentions_retirees', jsonb_build_object('comptes',"
+    },
+    {
+      "nom": "0023 · le non-dit des absences n'est pas conservé",
+      "avant": "             - (case when s.detail_absences then array[]::text[]\n                     else array['absences', 'annulees_par_le_cabinet'] end)",
+      "apres": ""
+    },
+    {
+      "nom": "0023 · les objectifs retirés ne sont pas conservés",
+      "avant": "             - (case when s.detail_objectifs then array[]::text[]\n                     else array['objectifs'] end)",
+      "apres": ""
+    },
+    {
+      "nom": "0023 · [contre-contrôle] une clé ajoutée à l'instantané est vue",
+      "avant": "         -- sens sur une pièce qu'on remet.\n         cancellation_reason = null,\n         snapshot = jsonb_build_object(\n           'emis_le', v_emission,",
+      "apres": "         -- sens sur une pièce qu'on remet.\n         cancellation_reason = null,\n         snapshot = jsonb_build_object(\n           'emis_le', v_emission, 'cle_en_trop', 'x',"
+    },
+    {
+      "nom": "0024 · un écrit sans observation ne part pas",
+      "avant": "    raise exception 'Votre rôle ne permet pas de remettre un écrit de fin.'\n      using errcode = 'insufficient_privilege';\n  end if;\n  if r.status <> 'brouillon' then\n    raise exception 'Cet écrit est déjà remis.' using errcode = 'check_violation';\n  end if;\n\n  if btrim(coalesce(r.observed, '')) = '' then",
+      "apres": "    raise exception 'Votre rôle ne permet pas de remettre un écrit de fin.'\n      using errcode = 'insufficient_privilege';\n  end if;\n  if r.status <> 'brouillon' then\n    raise exception 'Cet écrit est déjà remis.' using errcode = 'check_violation';\n  end if;\n\n  if false then"
+    },
+    {
+      "nom": "0024 · le parcours doit être clos",
+      "avant": "  if cp.status not in ('termine', 'interrompu', 'reoriente') then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "0024 · la fin ne se situe pas dans le futur",
+      "avant": "  if cp.ended_on > v_aujourdhui then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "0024 · le parcours doit avoir une date de début",
+      "avant": "  if cp.started_on is null then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "0024 · l'écrit ne se date pas du futur",
+      "avant": "  end if;\n\n  v_emission := coalesce(p_issued_on, v_aujourdhui);\n  if v_emission > v_aujourdhui then",
+      "apres": "  end if;\n\n  v_emission := coalesce(p_issued_on, v_aujourdhui);\n  if false then"
+    },
+    {
+      "nom": "0024 · les avertissements d'écran ne partent pas avec le document",
+      "avant": "             - 'honorees_sans_parcours' - 'rendez_vous_a_venir'\n             - 'objectifs_en_cours'\n",
+      "apres": "             "
+    },
+    {
+      "nom": "0024 · la parole proposée à la reprise n'est pas imprimée",
+      "avant": "             - 'motif_demande_a_reprendre' - 'fin_du_parcours_a_reprendre'\n",
+      "apres": ""
+    },
+    {
+      "nom": "0024 · le non-dit des absences n'est pas conservé",
+      "avant": "             - (case when r.detail_absences then array[]::text[]\n                     else array['absences', 'annulees_par_le_cabinet'] end)\n",
+      "apres": ""
+    },
+    {
+      "nom": "0024 · le non-dit des objectifs n'est pas conservé",
+      "avant": "                     else array['absences', 'annulees_par_le_cabinet'] end)\n             - (case when r.detail_objectifs then array[]::text[]\n                     else array['objectifs'] end)\n",
+      "apres": "                     else array['absences', 'annulees_par_le_cabinet'] end)\n"
+    },
+    {
+      "nom": "0024 · le non-dit du financement n'est pas conservé",
+      "avant": "             - (case when r.detail_financement then array[]::text[]\n                     else array['financement'] end)",
+      "apres": ""
+    },
+    {
+      "nom": "0024 · la nature de la fin est énoncée et figée",
+      "avant": "             'nature', case r.closure_kind",
+      "apres": "             'nature_retiree', case r.closure_kind"
+    },
+    {
+      "nom": "0024 · un écrit versé au dossier le dit",
+      "avant": "               end,\n             'remise', case r.delivery_mode",
+      "apres": "               end,\n             'remise_retiree', case r.delivery_mode"
+    },
+    {
+      "nom": "0024 · l'accord de partage est figé",
+      "avant": "           -- Ce que le dossier disait de l'accord de partage, ce jour-là.\n           'consentement_partage', (",
+      "apres": "           -- Ce que le dossier disait de l'accord de partage, ce jour-là.\n           'consentement_partage_retire', ("
+    },
+    {
+      "nom": "0024 · [contre-contrôle] une clé ajoutée à l'instantané est vue",
+      "avant": "           'emis_le', v_emission,\n           'nature', r.closure_kind,",
+      "apres": "           'emis_le', v_emission, 'cle_en_trop', 'x',\n           'nature', r.closure_kind,"
+    },
+    {
+      "nom": "0025 · un écrit sans observation ne part pas",
+      "avant": "    raise exception 'Votre rôle ne permet pas de remettre cet écrit.'\n      using errcode = 'insufficient_privilege';\n  end if;\n  if r.status <> 'brouillon' then\n    raise exception 'Cet écrit est déjà remis.' using errcode = 'check_violation';\n  end if;\n\n  if btrim(coalesce(r.observed, '')) = '' then",
+      "apres": "    raise exception 'Votre rôle ne permet pas de remettre cet écrit.'\n      using errcode = 'insufficient_privilege';\n  end if;\n  if r.status <> 'brouillon' then\n    raise exception 'Cet écrit est déjà remis.' using errcode = 'check_violation';\n  end if;\n\n  if false then"
+    },
+    {
+      "nom": "0025 · UN RETRAIT NE SE CONTOURNE PAS",
+      "avant": "  if v_accord = 'retire' then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "0025 · sans accord ni motif, on ne remet pas",
+      "avant": "  if v_accord <> 'accorde'\n     and btrim(coalesce(r.consent_override_reason, '')) = '' then",
+      "apres": "  if false then"
+    },
+    {
+      "nom": "0025 · l'écrit ne se date pas du futur",
+      "avant": "  v_aujourdhui := app.jour_du_cabinet(r.practice_id);\n  v_emission := coalesce(p_issued_on, v_aujourdhui);\n  if v_emission > v_aujourdhui then",
+      "apres": "  v_aujourdhui := app.jour_du_cabinet(r.practice_id);\n  v_emission := coalesce(p_issued_on, v_aujourdhui);\n  if false then"
+    },
+    {
+      "nom": "0025 · les avertissements ne partent pas avec le document",
+      "avant": "             - 'honorees_hors_parcours' - 'motif_demande_a_reprendre'\n             - 'accord_partage'\n",
+      "apres": "             "
+    },
+    {
+      "nom": "0025 · le non-dit des comptes n'est pas conservé",
+      "avant": "             - (case when r.detail_seances then array[]::text[]\n                     else array['seances_honorees'] end)\n",
+      "apres": ""
+    },
+    {
+      "nom": "0025 · le non-dit des objectifs n'est pas conservé",
+      "avant": "                     else array['seances_honorees'] end)\n             - (case when r.detail_objectifs then array[]::text[]\n                     else array['objectifs'] end)\n",
+      "apres": "                     else array['seances_honorees'] end)\n"
+    },
+    {
+      "nom": "0025 · le non-dit du prescripteur n'est pas conservé",
+      "avant": "             - (case when r.detail_prescripteur then array[]::text[]\n                     else array['prescripteur'] end)",
+      "apres": ""
+    },
+    {
+      "nom": "0025 · la mention « remis pour transmission » est figée",
+      "avant": "               when 'remis_pour_transmission' then",
+      "apres": "               when 'jamais_ce_cas' then"
+    },
+    {
+      "nom": "0025 · le journal distingue une remise sans accord",
+      "avant": "    case when v_accord = 'accorde' then 'third_party_report.issue'\n         else 'third_party_report.issue_without_consent' end,",
+      "apres": "    'third_party_report.issue',"
+    },
+    {
+      "nom": "0025 · qui a donné l'accord est figé",
+      "avant": "           'consentement_donne_par', (",
+      "apres": "           'consentement_donne_par_retire', ("
+    },
+    {
+      "nom": "0025 · [contre-contrôle] une clé ajoutée à l'instantané est vue",
+      "avant": "           'emis_le', v_emission,\n           'usage', r.intended_use,",
+      "apres": "           'emis_le', v_emission, 'cle_en_trop', 'x',\n           'usage', r.intended_use,"
+    },
+    {
+      "nom": "0026 · la garde de signature suit le jour du cabinet",
+      "avant": "   * la reçoit, et une attestation postdatée n'est pas encore un document. */\n  if v_emission > v_aujourdhui then\n",
+      "apres": "   * la reçoit, et une attestation postdatée n'est pas encore un document. */\n  if v_emission > current_date then\n"
+    },
+    {
+      "nom": "0026 · sans date fournie, le jour du cabinet",
+      "avant": "  v_fuseau := app.fuseau_du_cabinet(a.practice_id);\n  v_emission := coalesce(p_issued_on, v_aujourdhui);\n",
+      "apres": "  v_fuseau := app.fuseau_du_cabinet(a.practice_id);\n  v_emission := coalesce(p_issued_on, current_date);\n"
+    }
+  ]
+}
