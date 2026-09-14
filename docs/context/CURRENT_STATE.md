@@ -87,6 +87,9 @@ jetable, et les **budgets de performance**.
 
 | Date | Vérification | Résultat |
 |---|---|---|
+| 2026-09-14 | Application de `0026` en production, projet « Psychomotime » identifié avant écriture | empreintes avant (`0016`) et après (`0026`) conformes au fichier testé ; droits conformes ; aucune catégorie nouvelle à l'analyseur |
+| 2026-09-14 | Fuseau de la base de production, lu | `UTC` — trois cabinets réglés sur `Europe/Paris` |
+| 2026-09-14 | `npm run verify` après fusion de l'attestation | tout passe — 182 contrôles, 15 fichiers SQL, bascule, concurrence, budgets |
 | 2026-09-13 | `npm run verify` après la coque imprimée | tout passe — 161 contrôles unitaires, 14 fichiers SQL, budgets tenus |
 | 2026-09-13 | PDF Chrome 152, relus par `pdftotext` : deux mécanismes de rappel | `position: fixed` : 0 page sur 4 ; boîtes de marge `@page` : 4 sur 4 |
 | 2026-09-13 | PDF d'un écrit pour un tiers réel, migré | rappel sur 8 pages sur 8, bandeau présent, barre d'écran absente |
@@ -424,24 +427,29 @@ peine de le garder.
   démontré. Une série de 30 séances au plus traverse forcément un changement
   d'heure en France.
 
-  **Reste l'attestation, et elle est prête — mais PAS en production.** Sa
-  date proposée pour signer est envoyée à `issue_attestation`, dont la garde
-  refusait une date postérieure à `current_date`, calculé dans le fuseau de la
-  session de la base. **`0026`** introduit `app.jour_du_cabinet()` et aligne sur
-  lui la garde et la date par défaut ; la définition d'origine est reproduite à
-  l'identique hors de ces deux lignes — vérifié par différentiel. Contrôlée par
+  **L'attestation est corrigée, et `0026` est appliquée en production depuis
+  le 2026-09-14**, sur autorisation explicite. Sa date proposée pour signer
+  est envoyée à `issue_attestation`, dont la garde refusait une date
+  postérieure à `current_date` — calculé dans le fuseau de la session de la
+  base. `0026` introduit `app.jour_du_cabinet()` et aligne sur lui la garde et
+  la date par défaut ; la définition d'origine est reproduite à l'identique hors
+  de ces deux lignes, vérifié par différentiel. Contrôlée par
   `150_jour_du_cabinet.sql`, qui fait varier le fuseau de la SESSION dans la
-  transaction : à tout instant, UTC−12 ou UTC+14 donne une autre date que Paris,
-  si bien que le cas discriminant se construit à n'importe quelle heure. Six
-  gardes, six détections.
+  transaction ; six gardes, six détections.
 
-  **L'ORDRE DE LIVRAISON EST UNE CONDITION DE SÉCURITÉ.** `0026` est
-  rétrocompatible avec l'application actuelle. L'inverse n'est pas vrai : la
-  correction de la page d'attestation, livrée avant `0026` sur une base en UTC,
-  ferait refuser des signatures entre minuit et deux heures. Elle attend donc
-  sur la branche `attestation-jour-du-cabinet`, à fusionner une fois `0026`
-  appliquée en production et ses empreintes vérifiées. **L'application en
-  production n'a pas été faite : elle demande une autorisation explicite.**
+  **Appliquée dans l'ordre qui la rendait sûre, et vérifiée.** Environnement
+  identifié avant écriture : projet « Psychomotime », eu-west-1. Avant : la
+  définition en production portait exactement l'empreinte de `0016` testée —
+  aucune divergence. Après : les corps de `issue_attestation` et de
+  `app.jour_du_cabinet` portent exactement les empreintes calculées sur le
+  fichier versionné ; attributs de sécurité et droits conformes ; l'analyseur
+  de sécurité ne signale aucune catégorie nouvelle. La page d'attestation n'a
+  été fusionnée qu'ensuite.
+
+  **Le fuseau de la base de production est MESURÉ : UTC.** La fenêtre de refus
+  existait donc réellement, et l'ordre de livraison n'était pas une précaution
+  de principe. Le dernier fichier de `DETTE_Q507` est corrigé : la dette côté
+  application est soldée, et le garde-fou reste en place, liste vide.
 
 - **`main` ne passait plus `npm run verify` depuis le 14 septembre 2026.**
   `supabase/tests/130_ecrit_de_fin.sql`, écrit la veille, attendait en dur la
