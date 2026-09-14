@@ -20,9 +20,36 @@ export interface Age {
   totalMonths: number;
 }
 
-function parseDate(iso: string | null | undefined): Date | null {
-  if (!iso) return null;
-  const d = new Date(iso.length === 10 ? `${iso}T00:00:00` : iso);
+/**
+ * Une date CIVILE, « AAAA-MM-JJ ». Jamais un instant.
+ *
+ * ── POURQUOI CE MODULE N'ACCEPTE PLUS D'INSTANT ───────────────────────────
+ *
+ * `ageAt` acceptait un `Date`, et le lisait par `getFullYear`, `getMonth` et
+ * `getDate` — dans le fuseau du PROCESSUS. Sur un serveur UTC, à 00 h 30 à
+ * Paris le jour d'un anniversaire, il rendait l'âge de la VEILLE. Quatre écrans
+ * lui passaient un instant : la fiche patient, la liste des dossiers, la page
+ * d'un dossier, l'éditeur de bilan. La fiche imprimait ainsi « Éditée le
+ * 14/09 » à côté de l'âge du 13/09. Rien ne le voyait sur une machine réglée
+ * sur Paris.
+ *
+ * Le type n'admet donc plus qu'une chaîne : passer un `Date` est une ERREUR DE
+ * COMPILATION. Et une chaîne horodatée — `toISOString()` — ne donne plus aucun
+ * âge : elle désigne un instant, pas un jour, et un âge absent se voit là où un
+ * âge faux passe inaperçu. Pour « aujourd'hui » : `dateCivile(instant, fuseau
+ * du cabinet)`, de `lib/dateCivile.ts`.
+ */
+export type DateCivile = string;
+
+const FORMAT_CIVIL = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Relue à minuit LOCAL, puis rendue par les accesseurs locaux : une date civile
+ * retombe sur le même jour quel que soit le fuseau du processus.
+ */
+function parseDate(civile: DateCivile | null | undefined): Date | null {
+  if (!civile || !FORMAT_CIVIL.test(civile)) return null;
+  const d = new Date(`${civile}T00:00:00`);
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
@@ -34,11 +61,11 @@ function parseDate(iso: string | null | undefined): Date | null {
  * mieux que de rendre un nombre trompeur.
  */
 export function ageAt(
-  birthDate: string | null | undefined,
-  at: string | Date,
+  birthDate: DateCivile | null | undefined,
+  at: DateCivile,
 ): Age | null {
   const birth = parseDate(birthDate);
-  const ref = at instanceof Date ? at : parseDate(at);
+  const ref = parseDate(at);
   if (!birth || !ref) return null;
   if (ref.getTime() < birth.getTime()) return null;
 
@@ -78,8 +105,8 @@ export function formatAge(age: Age | null): string {
 
 /** Raccourci : âge formaté à une date donnée. */
 export function formatAgeAt(
-  birthDate: string | null | undefined,
-  at: string | Date,
+  birthDate: DateCivile | null | undefined,
+  at: DateCivile,
 ): string {
   return formatAge(ageAt(birthDate, at));
 }

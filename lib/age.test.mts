@@ -111,9 +111,29 @@ test("un anniversaire à 00 h 30 à Paris, sur un serveur UTC : la date et l'âg
     assert.equal(age, "8 ans", `âge sous ${tz} — il doit être celui du jour imprimé`);
   }
 
-  /* Et le piège, écrit pour qu'on ne le réintroduise pas : un `Date` passé à
-   * `formatAgeAt` est lu dans le fuseau du PROCESSUS. */
-  assert.equal(sousFuseau("UTC", () => formatAgeAt(naissance, instant)), "7 ans 11 mois");
+  /* LA BASCULE AGIT RÉELLEMENT. Sans cette preuve, la boucle ci-dessus
+   * passerait même si `sousFuseau` ne changeait rien : `editionEtAge` ne
+   * dépend plus du fuseau du processus. C'est l'assertion que la seconde
+   * session a vue attraper une bascule sans effet ; elle garde son rôle. */
+  assert.equal(sousFuseau("UTC", () => instant.getDate()), 13);
+  assert.equal(sousFuseau("Europe/Paris", () => instant.getDate()), 14);
+});
+
+test("le calcul d'âge refuse un instant : à la compilation, et à l'exécution", () => {
+  const naissance = "2018-09-14";
+  const instant = new Date("2026-09-13T22:30:00Z");
+
+  /* À LA COMPILATION. `tsc` vérifie ce fichier : si quelqu'un réadmet un
+   * `Date` dans la signature, cette directive devient inutile, et `tsc`
+   * échoue — c'est le garde-fou qui interdit à une page de repasser un instant. */
+  // @ts-expect-error — un instant n'est pas une date civile
+  assert.equal(formatAgeAt(naissance, instant), "");
+
+  /* À L'EXÉCUTION. Une chaîne horodatée désigne un instant, pas un jour : elle
+   * ne donne AUCUN âge. Un âge absent se voit ; un âge faux passe inaperçu. */
+  assert.equal(formatAgeAt(naissance, "2026-09-13T22:30:00.000Z"), "");
+  assert.equal(ageAt("2018-09-14T00:00:00Z", "2026-09-14"), null);
+  assert.equal(formatAgeAt(naissance, "2026-09-14"), "8 ans");
 });
 
 test("la même journée, à 10 h à Paris : aucun écart, sous aucun fuseau", () => {

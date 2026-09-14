@@ -245,6 +245,16 @@
       "nom": "figé après remise — created_at",
       "avant": "     or new.created_at is distinct from old.created_at then",
       "apres": "     or false then"
+    },
+    {
+      "nom": "la dernière SÉANCE, pas le dernier rendez-vous",
+      "avant": "    'derniere_seance_le', (\n      select max(r.session_date) from public.realised_sessions r\n       where r.pathway_id = p_pathway_id and r.practice_id = cp.practice_id),",
+      "apres": "    'derniere_seance_le', (\n      select max((r.starts_at at time zone 'Europe/Paris')::date) from public.appointments r\n       where r.pathway_id = p_pathway_id and r.practice_id = cp.practice_id and r.starts_at < now()),"
+    },
+    {
+      "nom": "la séance la plus RÉCENTE, pas la plus ancienne",
+      "avant": "    'derniere_seance_le', (\n      select max(r.session_date) from public.realised_sessions r\n       where r.pathway_id = p_pathway_id and r.practice_id = cp.practice_id),",
+      "apres": "    'derniere_seance_le', (\n      select min(r.session_date) from public.realised_sessions r\n       where r.pathway_id = p_pathway_id and r.practice_id = cp.practice_id),"
     }
   ]
 }

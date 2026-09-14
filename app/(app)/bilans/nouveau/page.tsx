@@ -5,6 +5,8 @@ import { getSettings } from "@/lib/data";
 import type { Patient } from "@/lib/types";
 import { Card } from "@/components/ui";
 import NouveauBilanForm from "./NouveauBilanForm";
+import { getCurrentPractice } from "@/lib/dossier/practice";
+import { dateCivile } from "@/lib/dateCivile";
 
 import type { Metadata } from "next";
 /* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
@@ -34,7 +36,12 @@ export default async function NouveauBilanPage({
     "id" | "first_name" | "last_name" | "birth_date"
   >[];
 
-  const today = new Date().toISOString().slice(0, 10);
+  /* LE JOUR CIVIL DU CABINET. En UTC, entre minuit et une heure du matin
+     l'hiver — deux heures l'été —, le formulaire proposait la date de la VEILLE,
+     et affichait l'âge de ce jour-là. Aucune garde en base ne compare la date
+     d'un bilan à `current_date` : la corriger ne peut rien faire refuser. */
+  const practice = await getCurrentPractice();
+  const today = dateCivile(new Date(), practice?.timezone);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-2xl mx-auto">

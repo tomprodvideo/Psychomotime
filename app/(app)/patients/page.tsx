@@ -3,6 +3,7 @@ import { Archive, ChevronRight, Users } from "lucide-react";
 import { PageHeader, EmptyState } from "@/components/ui";
 import { frDate } from "@/lib/format";
 import { formatAgeAt } from "@/lib/age";
+import { dateCivile } from "@/lib/dateCivile";
 import { getCurrentPractice } from "@/lib/dossier/practice";
 import { listPatients } from "@/lib/dossier/queries";
 import { patientName } from "@/lib/dossier/types";
@@ -57,7 +58,10 @@ export default async function PatientsPage({
   // L'âge se lit toujours à une date explicite. Ici, c'est aujourd'hui, et
   // c'est légitime : on affiche l'âge courant d'un dossier, pas l'âge à une
   // passation. Sur un document, ce sera la date de passation.
-  const aujourdhui = new Date();
+  /* Le JOUR CIVIL du cabinet, et non un instant : un instant était lu dans le
+     fuseau du serveur, et un enfant dont c'est l'anniversaire à 00 h 30 à Paris
+     s'affichait avec l'âge de la veille. */
+  const aujourdhui = dateCivile(new Date(), practice?.timezone);
 
   const aucunResultat = resultats.items.length === 0;
   const rechercheEnCours = search.trim().length > 0 || statut !== "actif";

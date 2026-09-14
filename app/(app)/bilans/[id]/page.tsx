@@ -4,6 +4,8 @@ import { getSettings } from "@/lib/data";
 import { resolveBilanSections } from "@/lib/constants";
 import type { Bilan } from "@/lib/types";
 import BilanEditor from "./BilanEditor";
+import { getCurrentPractice } from "@/lib/dossier/practice";
+import { dateCivile } from "@/lib/dateCivile";
 
 import type { Metadata } from "next";
 /* LE TITRE EST STATIQUE, ET C'EST DÉLIBÉRÉ. Un titre qui porterait le nom du
@@ -44,6 +46,11 @@ export default async function BilanEditPage({
       : settings.profile?.adaptation_folders) ?? [];
   const sections = resolveBilanSections(settings.profile, bilanType);
 
+  /* Le moteur de bilans relève encore du modèle v1, clé sur le compte : il ne
+     lisait pas le cabinet. Sans cabinet rattaché, `dateCivile` retombe sur le
+     fuseau par défaut de la base. */
+  const practice = await getCurrentPractice();
+
   let patientBirthDate: string | null = null;
   if (bilan.patient_id) {
     const { data: p } = await supabase
@@ -61,6 +68,7 @@ export default async function BilanEditPage({
       folders={folders}
       sections={sections}
       patientBirthDate={patientBirthDate}
+      aujourdhui={dateCivile(new Date(), practice?.timezone)}
     />
   );
 }

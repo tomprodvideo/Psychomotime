@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { AlertTriangle, ArrowLeft, Archive } from "lucide-react";
 import { frDate } from "@/lib/format";
 import { formatAgeAt } from "@/lib/age";
+import { dateCivile } from "@/lib/dateCivile";
 import { getCurrentPractice } from "@/lib/dossier/practice";
 import {
   countPatientSessions,
@@ -103,7 +104,12 @@ export default async function FichePatientPage({
     parcours.map((p) => p.id),
   );
 
-  const age = formatAgeAt(patient.birth_date, maintenant);
+  /* `maintenant` reste un INSTANT — il compte et filtre les séances, ce qui
+     est juste. L'âge, lui, se calcule sur le JOUR CIVIL du cabinet. */
+  const age = formatAgeAt(
+    patient.birth_date,
+    dateCivile(maintenant, practice.timezone),
+  );
   const archive = patient.status === "archive";
 
   return (

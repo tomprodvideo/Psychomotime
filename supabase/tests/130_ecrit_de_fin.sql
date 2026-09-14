@@ -121,8 +121,32 @@ begin
 
   perform tests.assert_equals((v_f ->> 'seances_honorees')::int, 7,
     'Le compte porte sur tout l''épisode.');
-  perform tests.assert_equals(v_f ->> 'derniere_seance_le', '2026-09-03',
-    'UNE date, pas une liste : le repère que la famille reconnaît.');
+  /* UNE BOMBE À RETARDEMENT, DÉSAMORCÉE. Ce contrôle attendait la date en dur
+   * « 2026-09-03 » : la séance honorée la plus récente LE JOUR OÙ IL A ÉTÉ
+   * ÉCRIT. Or le jeu d'essai date ses rendez-vous par rapport à `now()` — il le
+   * dit en tête de `0003_agenda_fictif.sql` — et la séance honorée la plus
+   * récente tombe dix jours avant son chargement. Le contrôle ne pouvait
+   * réussir que le 13 septembre 2026 : le 14, `main` ne passait plus
+   * `npm run verify`.
+   *
+   * La référence est donc lue dans la table des rendez-vous elle-même — sans
+   * la vue `realised_sessions` ni `closure_facts`, qui sont ce qu'on éprouve —
+   * et sans `now()` dans l'égalité : le jeu est chargé quelques secondes avant
+   * ce contrôle, et `date_trunc('hour', now())` pouvait changer d'heure entre
+   * les deux, pile au passage de minuit à Paris.
+   *
+   * Cette égalité seule ne distingue pas « la dernière séance » du « dernier
+   * rendez-vous » : sur CE parcours, le jeu d'essai n'a aucun rendez-vous non
+   * honoré plus récent — vérifié en l'exigeant, et l'exigence a échoué. La
+   * date en dur d'origine ne le distinguait donc pas davantage. Le contrôle
+   * qui le fait est à la fin de ce bloc. */
+  perform tests.assert_equals(
+    v_f ->> 'derniere_seance_le',
+    (select max((a.starts_at at time zone 'Europe/Paris')::date)::text
+       from public.appointments a
+      where a.pathway_id = 'a7000000-0000-4000-8000-000000000001'
+        and a.attendance = 'honore'),
+    'UNE date, pas une liste : le repère que la famille reconnaît — la dernière séance HONORÉE, pas le dernier rendez-vous.');
   perform tests.assert_equals((v_f ->> 'rendez_vous_a_venir')::int, 4,
     'Les créneaux encore à venir sont signalés : ils restent bloqués à l''agenda.');
   perform tests.assert_equals((v_f ->> 'objectifs_en_cours')::int, 2,
@@ -140,6 +164,32 @@ begin
     'Le motif de la demande est proposé à la reprise.');
   perform tests.assert(v_f ? 'fin_du_parcours_a_reprendre',
     'Le motif de fin noté au parcours aussi — il est parfois écrit par le logiciel lui-même.');
+
+  /* « LA DERNIÈRE SÉANCE », PAS « LE DERNIER RENDEZ-VOUS ». Un rendez-vous
+   * annulé DEUX JOURS après la dernière séance honorée, sur ce parcours : il
+   * est plus récent, et ne doit rien déplacer. Deux jours et non un : l'autre
+   * dossier fictif porte une annulation au même créneau, chez la même
+   * praticienne. Posé après toutes les assertions ci-dessus, qui lisent `v_f`
+   * tel qu'avant ; la transaction est annulée. */
+  insert into public.appointments
+    (practice_id, patient_id, pathway_id, practitioner_member_id,
+     kind, starts_at, ends_at, attendance, attendance_note, billable, created_by)
+  select 'a1111111-1111-4111-8111-111111111111',
+         'a6000000-0000-4000-8000-000000000001',
+         'a7000000-0000-4000-8000-000000000001',
+         'a2222222-2222-4222-8222-222222222221',
+         'seance',
+         max(h.starts_at) + interval '2 days',
+         max(h.starts_at) + interval '2 days 45 minutes',
+         'annule_praticien', 'Annulation fictive, plus récente que la dernière séance.', false,
+         'a0000000-0000-4000-8000-000000000001'
+    from public.appointments h
+   where h.pathway_id = 'a7000000-0000-4000-8000-000000000001'
+     and h.attendance = 'honore';
+  perform tests.assert_equals(
+    public.closure_facts('a7000000-0000-4000-8000-000000000001') ->> 'derniere_seance_le',
+    v_f ->> 'derniere_seance_le',
+    'Un rendez-vous plus récent mais NON honoré ne déplace pas la dernière séance.');
 end
 $$;
 rollback;

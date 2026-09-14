@@ -103,12 +103,20 @@ export default function BilanEditor({
   folders,
   sections,
   patientBirthDate,
+  aujourdhui,
 }: {
   bilan: Bilan;
   templates: AdaptationTemplate[];
   folders?: AdaptationFolder[];
   sections: BilanSectionConfig[];
   patientBirthDate?: string | null;
+  /**
+   * Le jour civil du cabinet, calculé CÔTÉ SERVEUR. Pas `new Date()` ici : ce
+   * composant est d'abord rendu sur le serveur, puis sur le poste ; autour de
+   * minuit les deux lisaient deux jours différents, et l'âge changeait entre le
+   * premier affichage et l'hydratation.
+   */
+  aujourdhui: string;
 }) {
   const raw0 = bilan.content ?? {};
 
@@ -901,7 +909,7 @@ export default function BilanEditor({
                     l'écran doit montrer celui sur lequel on travaille. */}
                 {bilanDate
                   ? `${formatAgeAt(patientBirthDate, bilanDate)} à la date du bilan`
-                  : formatAgeAt(patientBirthDate, new Date())}
+                  : formatAgeAt(patientBirthDate, aujourdhui)}
               </p>
             )}
           </div>

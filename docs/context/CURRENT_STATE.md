@@ -383,8 +383,36 @@ peine de le garder.
   partir de la même date civile. Le contrôle qui manquait se place LUI-MÊME en
   UTC ; falsifié sur la machine réglée sur Paris, il échoue.
 
-  Ce correctif ne vaut que pour la fiche. Le même défaut existe ailleurs, et
-  il n'est PAS corrigeable par simple remplacement : voir `Q-507`.
+  **Depuis, l'âge ne peut plus être calculé sur un instant, nulle part.**
+  `ageAt` et `formatAgeAt` n'admettent qu'une date civile « AAAA-MM-JJ » :
+  passer un `Date` est une erreur de compilation — éprouvé, réadmettre un
+  instant fait échouer `tsc` —, et une chaîne horodatée ne donne plus aucun âge.
+  Le compilateur a désigné QUATRE écrans, pas les deux annoncés : la liste des
+  dossiers, la page d'un dossier, l'éditeur de bilan — composant client dont le
+  premier rendu se fait sur le serveur, et qui lit maintenant le jour du cabinet
+  transmis par la page — et, par une chaîne calculée en UTC, le formulaire de
+  nouveau bilan, dont la date proposée était aussi celle de la veille.
+
+  **`lib/dates.architecture.test.mts` interdit toute nouvelle date UTC
+  tronquée** (`toISOString().slice(0, 10)` et ses variantes) dans `app/`,
+  `lib/` et `components/`. Les dix fichiers qui en portent encore sont une
+  dette NOMMÉE, qui ne peut que rétrécir : un fichier corrigé doit quitter la
+  liste, sans quoi le contrôle échoue. Trois mutations, trois détections.
+  Cette dette n'est pas corrigeable par simple remplacement : voir `Q-507`.
+
+- **`main` ne passait plus `npm run verify` depuis le 14 septembre 2026.**
+  `supabase/tests/130_ecrit_de_fin.sql`, écrit la veille, attendait en dur la
+  date de la dernière séance honorée — « 2026-09-03 » —, alors que le jeu
+  d'essai date ses rendez-vous par rapport à `now()` et le dit en tête de
+  fichier. Le contrôle ne pouvait réussir que le jour où il a été écrit.
+  Prouvé en rejouant les contrôles SQL sur le code poussé, sans les
+  modifications en cours : même échec. **Et il ne vérifiait pas ce qu'il
+  prétendait** : sur ce parcours, le jeu d'essai n'a aucun rendez-vous non
+  honoré plus récent que la dernière séance, si bien que « dernière séance » et
+  « dernier rendez-vous » donnaient la même date — établi en l'exigeant, et
+  l'exigence a échoué. Désormais la référence est lue dans la table des
+  rendez-vous, sans `now()` dans l'égalité, et un rendez-vous annulé plus récent
+  est ajouté dans la transaction : il ne doit rien déplacer.
 
 ## Risques ouverts
 
