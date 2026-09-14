@@ -28,10 +28,9 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "..");
 
-const DETTE_Q507: Record<string, string> = {
-  "app/(app)/comptabilite/attestations/[id]/page.tsx":
-    "Date proposée pour SIGNER une attestation. Envoyée explicitement à `issue_attestation`, dont la garde refuse une date postérieure à `current_date` (`0016`) — calculé dans le fuseau de la session de la base. Passer l'application seule au jour du cabinet ferait refuser une signature entre minuit et deux heures du matin si la base de production est réglée en UTC. Attend la migration qui aligne cette garde sur le jour du cabinet.",
-};
+/* LA DETTE EST SOLDÉE — le 2026-09-14. Elle comptait dix fichiers. La liste
+   reste, vide : toute entrée future devra y être écrite, avec sa raison. */
+const DETTE_Q507: Record<string, string> = {};
 
 /** Toutes les façons connues d'extraire la date UTC d'un instant. */
 const DATE_UTC =

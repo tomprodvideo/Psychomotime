@@ -58,7 +58,12 @@ export default async function AttestationPage({
 
   const { attestation: a } = complete;
   const modifiable = attestationModifiable(a) && practice.canWrite;
-  const aujourdhui = new Date().toISOString().slice(0, 10);
+  /* LE JOUR PROPOSÉ POUR SIGNER, dans le fuseau du cabinet. Il était calculé
+     en UTC : la veille, entre minuit et deux heures du matin à Paris. Cette
+     correction DÉPEND de `0026`, qui aligne la garde de `issue_attestation` sur
+     ce même jour — sans elle, une base réglée en UTC refuserait la signature
+     comme « future » dans cette fenêtre. */
+  const aujourdhui = dateCivile(new Date(), practice.timezone);
 
   const [liens, contacts, seances, reglements, liensPartage] = await Promise.all([
     /* LE DESTINATAIRE SE CHOISIT D'ABORD PARMI L'ENTOURAGE DU DOSSIER, avec
