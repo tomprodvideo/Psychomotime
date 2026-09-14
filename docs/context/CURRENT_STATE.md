@@ -424,12 +424,24 @@ peine de le garder.
   démontré. Une série de 30 séances au plus traverse forcément un changement
   d'heure en France.
 
-  **Reste l'attestation.** Sa date proposée pour signer est envoyée à
-  `issue_attestation`, dont la garde refuse une date postérieure à
-  `current_date`. La corriger côté application seule ferait refuser une
-  signature entre minuit et deux heures du matin si la base de production est
-  réglée en UTC — ce qui n'a pas pu être vérifié. Elle attend la migration qui
-  aligne cette garde sur le jour du cabinet. Voir `Q-507`.
+  **Reste l'attestation, et elle est prête — mais PAS en production.** Sa
+  date proposée pour signer est envoyée à `issue_attestation`, dont la garde
+  refusait une date postérieure à `current_date`, calculé dans le fuseau de la
+  session de la base. **`0026`** introduit `app.jour_du_cabinet()` et aligne sur
+  lui la garde et la date par défaut ; la définition d'origine est reproduite à
+  l'identique hors de ces deux lignes — vérifié par différentiel. Contrôlée par
+  `150_jour_du_cabinet.sql`, qui fait varier le fuseau de la SESSION dans la
+  transaction : à tout instant, UTC−12 ou UTC+14 donne une autre date que Paris,
+  si bien que le cas discriminant se construit à n'importe quelle heure. Six
+  gardes, six détections.
+
+  **L'ORDRE DE LIVRAISON EST UNE CONDITION DE SÉCURITÉ.** `0026` est
+  rétrocompatible avec l'application actuelle. L'inverse n'est pas vrai : la
+  correction de la page d'attestation, livrée avant `0026` sur une base en UTC,
+  ferait refuser des signatures entre minuit et deux heures. Elle attend donc
+  sur la branche `attestation-jour-du-cabinet`, à fusionner une fois `0026`
+  appliquée en production et ses empreintes vérifiées. **L'application en
+  production n'a pas été faite : elle demande une autorisation explicite.**
 
 - **`main` ne passait plus `npm run verify` depuis le 14 septembre 2026.**
   `supabase/tests/130_ecrit_de_fin.sql`, écrit la veille, attendait en dur la
