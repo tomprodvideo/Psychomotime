@@ -1,6 +1,6 @@
 # État courant
 
-Dernière mise à jour : 2026-09-14. Dépôt sur `main`, synchronisé avec `origin/main`.
+Dernière mise à jour : 2026-09-15. Dépôt sur `main`, synchronisé avec `origin/main`.
 
 Ce document ne contient que ce que le dépôt et la base DÉMONTRENT. Ce qui est
 supposé est marqué comme tel. Il a été entièrement réécrit : la version
@@ -14,10 +14,8 @@ locataire n'est plus le compte : c'est le CABINET** (`practices` +
 `practice_members`, cinq rôles). C'est le changement structurant dont tout le
 reste découle.
 
-Vingt-sept migrations (`0000` à `0026`) sont appliquées en production —
+Vingt-huit migrations (`0000` à `0027`) sont appliquées en production —
 projet Supabase `sisummvlowhtfgiatwwf`, vérifié après chaque application.
-**`0027` est versionnée et éprouvée, mais n'est PAS appliquée** : elle attend
-une autorisation explicite.
 Depuis `0023`, la vérification ne se contente plus de compter les objets :
 **les empreintes des huit fonctions déployées sont comparées une à une à
 celles de la base locale éprouvée.** C'est ce contrôle qui a montré, sur cette
@@ -89,6 +87,7 @@ jetable, et les **budgets de performance**.
 
 | Date | Vérification | Résultat |
 |---|---|---|
+| 2026-09-15 | Application de `0027` en production, sur autorisation explicite : projet « Psychomotime » identifié avant écriture, six parties répétées d'abord sur une base locale à l'état `0026` | avant : 8 fonctions sur 12 à l'empreinte exacte du dépôt, 4 écrites autrement mais identiques une fois commentaires et espaces normalisés ; après : 15 empreintes sur 15, droits identiques, vue inchangée hors `session_date`, aucune fonction ne lit `current_date`, aucune séance ne change de jour ; avis de sécurité strictement inchangés |
 | 2026-09-14 | `npm run verify` et `npm run build` après le reste de `Q-507` | tout passe — 192 contrôles unitaires, 16 fichiers SQL, bascule, concurrence, budgets ; construction de production réussie |
 | 2026-09-14 | Page de vérification temporaire, serveur de développement lancé en `TZ=UTC` | séance de 14 h 30 affichée 12:30 avant, 14:30 après ; jour d'une séance à 0 h 30 : le 12 avant, le 13 après ; année proposée la nuit du réveillon : 2026 avant, 2027 après ; liste des séances hydratée sans erreur ; page retirée |
 | 2026-09-14 | Garde-fou des dates falsifié : chaque forme corrigée réintroduite dans un vrai fichier | 7 formes, 7 détectées — la septième échappait d'abord au détecteur, qui relit désormais les arguments parenthèses équilibrées |
@@ -476,7 +475,7 @@ peine de le garder.
   `lib/compta/periode.ts` n'admet plus un instant à la compilation. Le
   garde-fou surveille désormais sept formes, liste de dette vide.
 
-  **`0027` corrige le reste côté base — versionnée, NON appliquée.** Les quatre
+  **`0027` corrige le reste côté base — appliquée en production le 2026-09-15.** Les quatre
   écrits cliniques, la pièce comptable, l'archivage, le découpage de bandes, les
   notes et les règlements dataient par `current_date` ; trois lectures figeaient
   `'Europe/Paris'`. Le jour du cabinet partout ; le fuseau effectif calculé une
@@ -486,6 +485,18 @@ peine de le garder.
   `care_pathways_periode_ck` — démontré par mutation. Compatible avec
   l'application déployée : pour un cabinet à l'est d'UTC, aucune garde ne
   devient plus stricte. **Les dates déjà enregistrées ne sont pas réécrites.**
+
+  **Le contrôle d'avant a trouvé quatre fonctions de production qui ne
+  portaient PAS l'empreinte du dépôt** : `archive_patient`, `activate_band_set`,
+  `guard_scale_licence` (`0002`, `0007`) et `issue_liaison_letter` (`0022`),
+  toutes appliquées avant que les empreintes ne soient comparées. L'application
+  a été suspendue le temps de l'établir : une empreinte calculée en production
+  et en local après retrait des commentaires et normalisation des espaces
+  concorde pour les douze fonctions remplacées — ces quatre-là avaient été
+  appliquées dans une version compactée, sans aucune différence de logique. Une
+  empreinte brute qui diverge ne suffit donc pas à conclure, pour une fonction
+  antérieure à `0023` : c'est la comparaison normalisée qui tranche. Les quatre
+  portent désormais le texte exact du dépôt.
 
   **Deux défauts de la preuve elle-même, trouvés en falsifiant `0027`.**
   `scripts/falsifier.mjs` comptait comme « détectée » toute mutation qui faisait
@@ -527,8 +538,6 @@ lever :
 
 ## Prochaine action
 
-Appliquer `0027` en production, **sur autorisation explicite** : environnement
-identifié, empreintes des douze fonctions remplacées comparées avant écriture,
-empreintes et droits vérifiés après. Puis poursuivre les écrits manquants :
-rang 6 (notice d'information), rang 7 (projet d'accompagnement imprimable).
+Poursuivre les écrits manquants : rang 6 (notice d'information), rang 7
+(projet d'accompagnement imprimable).
 Reste ensuite l'accessibilité WCAG 2.2 AA du lot 8, puis L6, et L9 en dernier.
